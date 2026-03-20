@@ -5,40 +5,80 @@ import { usePathname } from "next/navigation";
 import type { Role } from "@prisma/client";
 import {
   BriefcaseBusiness,
+  CalendarDays,
+  CalendarRange,
   LayoutDashboard,
   Settings2,
+  Ship,
   Trophy,
 } from "lucide-react";
 
 import type { NavigationItem } from "@/types";
 import { cn } from "@/lib/utils";
 
-const navigation: NavigationItem[] = [
-  {
-    href: "/dashboard",
-    label: "Dashboard",
-    description: "Genel operasyon gorunumu",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/jobs",
-    label: "Is Listesi",
-    description: "Is emirleri ve durum takibi",
-    icon: BriefcaseBusiness,
-  },
-  {
-    href: "/scoreboard",
-    label: "Puan Tablosu",
-    description: "Aylik liderlik ve rozetler",
-    icon: Trophy,
-  },
-  {
-    href: "/settings",
-    label: "Ayarlar",
-    description: "Rol, kategori ve sistem alanlari",
-    icon: Settings2,
-  },
-];
+function getNavigation(role?: Role): NavigationItem[] {
+  if (role === "TECHNICIAN") {
+    return [
+      {
+        href: "/my-jobs",
+        label: "Bugun",
+        description: "Bugunku atamalar ve saha akisi",
+        icon: CalendarDays,
+      },
+      {
+        href: "/my-jobs/weekly",
+        label: "Haftam",
+        description: "Pazartesi - Cumartesi ozeti",
+        icon: CalendarRange,
+      },
+      {
+        href: "/jobs",
+        label: "Tum Isler",
+        description: "Salt okunur genel is listesi",
+        icon: BriefcaseBusiness,
+      },
+    ];
+  }
+
+  return [
+    {
+      href: "/dashboard",
+      label: "Dashboard",
+      description: "Genel operasyon gorunumu",
+      icon: LayoutDashboard,
+    },
+    {
+      href: "/jobs",
+      label: "Is Listesi",
+      description: "Is emirleri ve durum takibi",
+      icon: BriefcaseBusiness,
+    },
+    {
+      href: "/dispatch",
+      label: "Dispatch",
+      description: "Gunluk ve haftalik planlama",
+      icon: CalendarDays,
+    },
+    {
+      href: "/boats",
+      label: "Tekneler",
+      description: "VIP, irtibat ve servis gecmisi",
+      icon: Ship,
+    },
+    {
+      href: "/scoreboard",
+      label: "Puan Tablosu",
+      description: "Aylik liderlik ve rozetler",
+      icon: Trophy,
+    },
+    {
+      href: "/settings",
+      label: "Ayarlar",
+      description: "Rol, kategori ve sistem alanlari",
+      icon: Settings2,
+    },
+  ];
+}
 
 function isNavActive(pathname: string, href: string) {
   if (href === "/dashboard") {
@@ -69,6 +109,7 @@ export function SidebarContent({
   currentUser?: SidebarUser;
 }) {
   const pathname = usePathname() ?? "/";
+  const navigation = getNavigation(currentUser?.role);
 
   return (
     <div className="flex h-full flex-col">

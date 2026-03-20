@@ -12,6 +12,7 @@ import {
   updateJobStatusAction,
 } from "@/app/(dashboard)/jobs/actions";
 import DifficultyBadge from "@/components/jobs/DifficultyBadge";
+import ClientNotificationPanel from "@/components/jobs/ClientNotificationPanel";
 import { getStatusLabel } from "@/components/jobs/StatusBadge";
 import StatusBadge from "@/components/jobs/StatusBadge";
 import CloseoutFlow from "@/components/scoring/CloseoutFlow";
@@ -84,7 +85,7 @@ export default async function JobDetailPage({
     notFound();
   }
 
-  const { job, sameBoatOpenJobs } = data;
+  const { job, sameBoatOpenJobs, recentBoatHistory } = data;
   const responsible =
     job.assignments.find((assignment) => assignment.role === JobRole.SORUMLU)?.user ??
     job.assignments[0]?.user ??
@@ -99,6 +100,7 @@ export default async function JobDetailPage({
   const closeoutRequested = takeFirstValue(searchParams?.closeout) === "1";
   const canManageJob =
     currentUser.role === Role.ADMIN || currentUser.role === Role.COORDINATOR;
+  const canSendClientNotification = canManageJob && job.boat.contacts.length > 0;
   const needsMandatoryCloseout =
     job.status === JobStatus.TAMAMLANDI &&
     (!job.deliveryReport || !job.evaluation || job.jobScores.length === 0);
@@ -333,6 +335,36 @@ export default async function JobDetailPage({
               </div>
             </CardContent>
           </Card>
+
+          <Card className="border-white/80 bg-white/95">
+            <CardHeader>
+              <CardTitle className="text-lg text-marine-navy">Son 3 ziyaret</CardTitle>
+              <CardDescription>
+                Sureklilik takibi icin ayni teknenin son servis gecmisi.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {recentBoatHistory.length > 0 ? (
+                recentBoatHistory.map((historyItem) => (
+                  <div
+                    key={historyItem.id}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600"
+                  >
+                    <div className="font-medium text-marine-navy">{historyItem.category.name}</div>
+                    <div className="mt-1">{historyItem.category.subScope}</div>
+                    <div className="mt-2 text-xs uppercase tracking-[0.12em] text-slate-500">
+                      {formatDateTime(historyItem.closedAt ?? historyItem.createdAt)} ·{" "}
+                      {historyItem.assignments.map((assignment) => assignment.user.name).join(", ")}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-sm text-slate-600">
+                  Bu tekne icin onceki servis gecmisi bulunmuyor.
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-6">
@@ -449,6 +481,48 @@ export default async function JobDetailPage({
                     Puanlamaya Itiraz Et
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {canSendClientNotification ? (
+            <Card className="border-white/80 bg-white/95">
+              <CardHeader>
+                <CardTitle className="text-lg text-marine-navy">
+                  Randevu bildirimi gonder
+                </CardTitle>
+                <CardDescription>
+                  Irtibat kisinin dil tercihine gore WA sablonu hazirlanir.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ClientNotificationPanel
+                  jobId={job.id}
+                  boatName={job.boat.name}
+                  categoryName={job.category.name}
+                  location={job.location}
+                  appointmentDateIso={job.createdAt.toISOString()}
+                  technicianName={responsible?.name ?? "Teknisyen"}
+                  contacts={job.boat.contacts.map((contact) => ({
+                    id: contact.id,
+                    name: contact.name,
+                    role: contact.role,
+                    phone: contact.phone,
+                    email: contact.email,
+                    language: contact.language,
+                    isPrimary: contact.isPrimary,
+                    whatsappOptIn: contact.whatsappOptIn,
+                  }))}
+                  notifications={job.clientNotifications.map((notification) => ({
+                    id: notification.id,
+                    templateLang: notification.templateLang,
+                    sentAt: notification.sentAt?.toISOString() ?? null,
+                    confirmed: notification.confirmed,
+                    contact: {
+                      name: notification.contact.name,
+                    },
+                  }))}
+                />
               </CardContent>
             </Card>
           ) : null}

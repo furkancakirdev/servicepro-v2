@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { Check, ShieldCheck, UsersRound, Wrench } from "lucide-react";
 
@@ -44,11 +44,127 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 
 export default function JobForm({ meta }: JobFormProps) {
   const [state, formAction] = useFormState(createJobAction, initialCreateJobFormState);
+  const [boatNameInput, setBoatNameInput] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedResponsibleId, setSelectedResponsibleId] = useState("");
   const [selectedSupportIds, setSelectedSupportIds] = useState<string[]>([]);
 
   const canSubmit = meta.categories.length > 0 && meta.technicians.length > 0;
+  const matchedBoat = useMemo(() => {
+    const normalizedBoatName = boatNameInput.trim().toLocaleLowerCase("tr");
+
+    if (!normalizedBoatName) {
+      return null;
+    }
+
+    return (
+      meta.boats.find(
+        (boat) => boat.name.trim().toLocaleLowerCase("tr") === normalizedBoatName
+      ) ?? null
+    );
+  }, [boatNameInput, meta.boats]);
+  const recommendedTechnicianIds = new Set(
+    matchedBoat?.continuitySuggestions.map((suggestion) => suggestion.userId) ?? []
+  );
+  const recommendedTechnicians = meta.technicians.filter((technician) =>
+    recommendedTechnicianIds.has(technician.id)
+  );
+  const otherTechnicians = meta.technicians.filter(
+    (technician) => !recommendedTechnicianIds.has(technician.id)
+  );
+
+  function renderResponsibleOption(
+    technician: JobFormMeta["technicians"][number],
+    recommendationLabel?: string
+  ) {
+    const selected = selectedResponsibleId === technician.id;
+
+    return (
+      <label
+        key={technician.id}
+        className={cn(
+          "cursor-pointer rounded-2xl border px-4 py-4 transition-all",
+          selected
+            ? "border-marine-navy bg-marine-navy text-white shadow-lg shadow-marine-navy/10"
+            : "border-slate-200 bg-slate-50 hover:border-marine-ocean/40 hover:bg-white"
+        )}
+      >
+        <input
+          type="radio"
+          name="responsibleId"
+          value={technician.id}
+          className="sr-only"
+          checked={selected}
+          onChange={() => {
+            setSelectedResponsibleId(technician.id);
+            setSelectedSupportIds((current) =>
+              current.filter((item) => item !== technician.id)
+            );
+          }}
+        />
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="font-medium">{technician.name}</div>
+            <div
+              className={cn("text-sm", selected ? "text-white/80" : "text-slate-600")}
+            >
+              {recommendationLabel ?? "Sorumlu teknisyen"}
+            </div>
+          </div>
+          {selected ? <Check className="size-5" /> : null}
+        </div>
+      </label>
+    );
+  }
+
+  function renderSupportOption(
+    technician: JobFormMeta["technicians"][number],
+    recommendationLabel?: string
+  ) {
+    const checked = selectedSupportIds.includes(technician.id);
+    const disabled = selectedResponsibleId === technician.id;
+
+    return (
+      <label
+        key={technician.id}
+        className={cn(
+          "flex cursor-pointer items-center justify-between rounded-2xl border px-4 py-4 transition-colors",
+          disabled
+            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+            : checked
+              ? "border-marine-ocean bg-marine-ocean/10 text-marine-navy"
+              : "border-slate-200 bg-slate-50 hover:border-marine-ocean/40 hover:bg-white"
+        )}
+      >
+        <div>
+          <div className="font-medium">{technician.name}</div>
+          <div className="text-sm">
+            {disabled
+              ? "Sorumlu secildigi icin destekte kullanilamaz"
+              : recommendationLabel ?? "Destek personeli"}
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          name="supportIds"
+          value={technician.id}
+          className="size-4 rounded border-slate-300"
+          checked={checked}
+          disabled={disabled}
+          onChange={(event) => {
+            if (event.target.checked) {
+              setSelectedSupportIds((current) => [...current, technician.id]);
+              return;
+            }
+
+            setSelectedSupportIds((current) =>
+              current.filter((item) => item !== technician.id)
+            );
+          }}
+        />
+      </label>
+    );
+  }
 
   return (
     <form
@@ -69,6 +185,8 @@ export default function JobForm({ meta }: JobFormProps) {
               <Input
                 id="boatName"
                 name="boatName"
+                value={boatNameInput}
+                onChange={(event) => setBoatNameInput(event.target.value)}
                 className="h-12"
                 placeholder="M/V Bonita II"
                 list="job-boat-suggestions"
@@ -83,6 +201,17 @@ export default function JobForm({ meta }: JobFormProps) {
               </datalist>
               {state.fieldErrors.boatName ? (
                 <p className="text-sm text-red-600">{state.fieldErrors.boatName}</p>
+              ) : null}
+              {matchedBoat?.continuitySuggestions.length ? (
+                <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 px-4 py-3 text-sm text-slate-700">
+                  <div className="font-medium text-marine-navy">Sureklilik onerisi</div>
+                  <div className="mt-1">
+                    {matchedBoat.continuitySuggestions
+                      .slice(0, 3)
+                      .map((suggestion) => suggestion.label)
+                      .join(" | ")}
+                  </div>
+                </div>
               ) : null}
             </div>
 
@@ -288,50 +417,25 @@ export default function JobForm({ meta }: JobFormProps) {
           <CardContent className="space-y-5">
             <div className="space-y-3">
               <Label>Sorumlu teknisyen</Label>
+              {recommendedTechnicians.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                    Bu tekne icin son 90 gunde en sik gorevlendirilen teknisyenler once gosteriliyor.
+                  </div>
+                  <div className="grid gap-3">
+                    {recommendedTechnicians.map((technician) =>
+                      renderResponsibleOption(
+                        technician,
+                        matchedBoat?.continuitySuggestions.find(
+                          (suggestion) => suggestion.userId === technician.id
+                        )?.label ?? "Onerilen teknisyen"
+                      )
+                    )}
+                  </div>
+                </div>
+              ) : null}
               <div className="grid gap-3">
-                {meta.technicians.map((technician) => {
-                  const selected = selectedResponsibleId === technician.id;
-
-                  return (
-                    <label
-                      key={technician.id}
-                      className={cn(
-                        "cursor-pointer rounded-2xl border px-4 py-4 transition-all",
-                        selected
-                          ? "border-marine-navy bg-marine-navy text-white shadow-lg shadow-marine-navy/10"
-                          : "border-slate-200 bg-slate-50 hover:border-marine-ocean/40 hover:bg-white"
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="responsibleId"
-                        value={technician.id}
-                        className="sr-only"
-                        checked={selected}
-                        onChange={() => {
-                          setSelectedResponsibleId(technician.id);
-                          setSelectedSupportIds((current) =>
-                            current.filter((item) => item !== technician.id)
-                          );
-                        }}
-                      />
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="font-medium">{technician.name}</div>
-                          <div
-                            className={cn(
-                              "text-sm",
-                              selected ? "text-white/80" : "text-slate-600"
-                            )}
-                          >
-                            Sorumlu teknisyen
-                          </div>
-                        </div>
-                        {selected ? <Check className="size-5" /> : null}
-                      </div>
-                    </label>
-                  );
-                })}
+                {otherTechnicians.map((technician) => renderResponsibleOption(technician))}
               </div>
               {state.fieldErrors.responsibleId ? (
                 <p className="text-sm text-red-600">{state.fieldErrors.responsibleId}</p>
@@ -340,55 +444,20 @@ export default function JobForm({ meta }: JobFormProps) {
 
             <div className="space-y-3">
               <Label>Destek ekibi</Label>
+              {recommendedTechnicians.length > 0 ? (
+                <div className="grid gap-3">
+                  {recommendedTechnicians.map((technician) =>
+                    renderSupportOption(
+                      technician,
+                      matchedBoat?.continuitySuggestions.find(
+                        (suggestion) => suggestion.userId === technician.id
+                      )?.label ?? "Onerilen destek"
+                    )
+                  )}
+                </div>
+              ) : null}
               <div className="grid gap-3">
-                {meta.technicians.map((technician) => {
-                  const checked = selectedSupportIds.includes(technician.id);
-                  const disabled = selectedResponsibleId === technician.id;
-
-                  return (
-                    <label
-                      key={technician.id}
-                      className={cn(
-                        "flex cursor-pointer items-center justify-between rounded-2xl border px-4 py-4 transition-colors",
-                        disabled
-                          ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-                          : checked
-                            ? "border-marine-ocean bg-marine-ocean/10 text-marine-navy"
-                            : "border-slate-200 bg-slate-50 hover:border-marine-ocean/40 hover:bg-white"
-                      )}
-                    >
-                      <div>
-                        <div className="font-medium">{technician.name}</div>
-                        <div className="text-sm">
-                          {disabled
-                            ? "Sorumlu secildigi icin destekte kullanilamaz"
-                            : "Destek personeli"}
-                        </div>
-                      </div>
-                      <input
-                        type="checkbox"
-                        name="supportIds"
-                        value={technician.id}
-                        className="size-4 rounded border-slate-300"
-                        checked={checked}
-                        disabled={disabled}
-                        onChange={(event) => {
-                          if (event.target.checked) {
-                            setSelectedSupportIds((current) => [
-                              ...current,
-                              technician.id,
-                            ]);
-                            return;
-                          }
-
-                          setSelectedSupportIds((current) =>
-                            current.filter((item) => item !== technician.id)
-                          );
-                        }}
-                      />
-                    </label>
-                  );
-                })}
+                {otherTechnicians.map((technician) => renderSupportOption(technician))}
               </div>
             </div>
 

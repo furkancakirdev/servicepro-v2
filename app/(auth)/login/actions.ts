@@ -1,5 +1,6 @@
 "use server";
 
+import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
@@ -43,7 +44,7 @@ export async function login(
 
   const profile = await prisma.user.findUnique({
     where: { email },
-    select: { id: true },
+    select: { id: true, role: true },
   });
 
   if (!profile) {
@@ -55,5 +56,10 @@ export async function login(
     };
   }
 
-  redirect(safeNextPath);
+  const defaultRedirect =
+    safeNextPath === "/dashboard" && profile.role === Role.TECHNICIAN
+      ? "/my-jobs"
+      : safeNextPath;
+
+  redirect(defaultRedirect);
 }

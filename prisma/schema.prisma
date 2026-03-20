@@ -69,6 +69,8 @@ model User {
   jobScores         JobScore[]
   notifications     Notification[]
   changeLogs        EvaluationChangeLog[] @relation("ChangedBy")
+  publishedPlans    DailyPlan[]           @relation("PublishedBy")
+  sentClientAlerts  ClientNotification[]  @relation("SentBy")
 
   @@index([role])
 }
@@ -79,13 +81,20 @@ model Boat {
   type      String
   ownerName String?
   isActive  Boolean  @default(true)
+  visitCount Int     @default(0)
+  isVip      Boolean @default(false)
+  internalNotes String? @db.Text
+  homePort   String?
+  flag       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  jobs ServiceJob[]
+  jobs     ServiceJob[]
+  contacts BoatContact[]
 
   @@index([name])
   @@index([isActive])
+  @@index([isVip, visitCount])
 }
 
 model ServiceCategory {
@@ -135,6 +144,7 @@ model ServiceJob {
   evaluation     JobEvaluation?
   deliveryReport DeliveryReport?
   jobScores      JobScore[]
+  clientNotifications ClientNotification[]
 
   @@index([boatId])
   @@index([categoryId])
@@ -142,6 +152,60 @@ model ServiceJob {
   @@index([createdById])
   @@index([closedById])
   @@index([kesifJobId])
+}
+
+model BoatContact {
+  id            String   @id @default(uuid())
+  boatId        String
+  boat          Boat     @relation(fields: [boatId], references: [id], onDelete: Cascade)
+  name          String
+  role          String
+  phone         String?
+  email         String?
+  language      String   @default("TR")
+  isPrimary     Boolean  @default(false)
+  whatsappOptIn Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  notifications ClientNotification[]
+
+  @@index([boatId, isPrimary])
+  @@index([language])
+}
+
+model DailyPlan {
+  id            String   @id @default(uuid())
+  date          DateTime
+  location      String
+  publishedAt   DateTime?
+  publishedById String?
+  publishedBy   User?    @relation("PublishedBy", fields: [publishedById], references: [id], onDelete: SetNull)
+  waTemplateTR  String?  @db.Text
+  waTemplateEN  String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([date, location])
+  @@index([publishedById])
+}
+
+model ClientNotification {
+  id           String   @id @default(uuid())
+  jobId        String
+  job          ServiceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  contactId    String
+  contact      BoatContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  channel      String
+  templateLang String
+  sentAt       DateTime?
+  sentById     String?
+  sentBy       User?    @relation("SentBy", fields: [sentById], references: [id], onDelete: SetNull)
+  confirmed    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([jobId, createdAt])
+  @@index([contactId, createdAt])
+  @@index([sentById])
 }
 
 model JobAssignment {

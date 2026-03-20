@@ -2,6 +2,8 @@ import type {
   Badge,
   BadgeType,
   Boat,
+  BoatContact,
+  ClientNotification,
   DeliveryReport,
   EvaluatorType,
   HoldReason,
@@ -36,6 +38,7 @@ export type AppBadgeType = BadgeType;
 
 export type AppUser = User;
 export type AppBoat = Boat;
+export type AppBoatContact = BoatContact;
 export type AppServiceCategory = ServiceCategory;
 export type AppServiceJob = ServiceJob;
 export type AppJobAssignment = JobAssignment;
@@ -45,6 +48,7 @@ export type AppJobScore = JobScore;
 export type AppMonthlyEvaluation = MonthlyEvaluation;
 export type AppBadge = Badge;
 export type AppNotification = Notification;
+export type AppClientNotification = ClientNotification;
 
 export type ServiceJobListItem = Prisma.ServiceJobGetPayload<{
   include: {
@@ -60,7 +64,11 @@ export type ServiceJobListItem = Prisma.ServiceJobGetPayload<{
 
 export type ServiceJobDetail = Prisma.ServiceJobGetPayload<{
   include: {
-    boat: true;
+    boat: {
+      include: {
+        contacts: true;
+      };
+    };
     category: true;
     assignments: {
       include: {
@@ -68,6 +76,12 @@ export type ServiceJobDetail = Prisma.ServiceJobGetPayload<{
       };
     };
     deliveryReport: true;
+    clientNotifications: {
+      include: {
+        contact: true;
+        sentBy: true;
+      };
+    };
     evaluation: {
       include: {
         evaluator: true;

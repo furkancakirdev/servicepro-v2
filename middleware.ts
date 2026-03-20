@@ -17,6 +17,9 @@ function isProtectedPath(pathname: string) {
   return (
     pathname === "/" ||
     pathname.startsWith("/jobs") ||
+    pathname.startsWith("/dispatch") ||
+    pathname.startsWith("/boats") ||
+    pathname.startsWith("/my-jobs") ||
     pathname.startsWith("/scoreboard") ||
     pathname.startsWith("/settings") ||
     pathname.startsWith("/dashboard")

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   AlertTriangle,
   ArrowRight,
@@ -31,6 +32,11 @@ const alertToneStyles = {
 
 export default async function DashboardHomePage() {
   const currentUser = await requireAppUser();
+
+  if (currentUser.role === "TECHNICIAN") {
+    redirect("/my-jobs");
+  }
+
   const dashboard = await getDashboardData(currentUser);
   const statCards = [
     {
@@ -180,9 +186,7 @@ export default async function DashboardHomePage() {
                 Bugun benim islerim
               </CardTitle>
               <CardDescription>
-                {currentUser.role === "TECHNICIAN"
-                  ? "Size atanmis aktif isler lokasyon bazinda gruplanir."
-                  : "Sistemdeki aktif isler lokasyon bazinda gruplanir."}
+                Sistemdeki aktif isler lokasyon bazinda gruplanir.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

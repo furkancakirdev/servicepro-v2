@@ -19,14 +19,61 @@ import {
 } from "@/components/ui/sheet";
 import type { NotificationCenterData } from "@/types";
 
-const titleMap: Record<string, { eyebrow: string; title: string }> = {
-  "/": { eyebrow: "Operasyon Merkezi", title: "Dashboard" },
-  "/dashboard": { eyebrow: "Operasyon Merkezi", title: "Dashboard" },
-  "/jobs": { eyebrow: "Gunluk Is Akisi", title: "Is Listesi" },
-  "/jobs/new": { eyebrow: "Planlama", title: "Yeni Is" },
-  "/scoreboard": { eyebrow: "Performans", title: "Puan Tablosu" },
-  "/settings": { eyebrow: "Yonetim", title: "Ayarlar" },
-};
+function getHeaderCopy(pathname: string) {
+  if (pathname === "/" || pathname === "/dashboard") {
+    return { eyebrow: "Operasyon Merkezi", title: "Dashboard" };
+  }
+
+  if (pathname.startsWith("/jobs/new")) {
+    return { eyebrow: "Planlama", title: "Yeni Is" };
+  }
+
+  if (pathname.startsWith("/jobs/")) {
+    return { eyebrow: "Operasyon", title: "Is Detayi" };
+  }
+
+  if (pathname.startsWith("/jobs")) {
+    return { eyebrow: "Gunluk Is Akisi", title: "Is Listesi" };
+  }
+
+  if (pathname.startsWith("/dispatch/weekly")) {
+    return { eyebrow: "ERP Planlama", title: "Haftalik Dispatch" };
+  }
+
+  if (pathname.startsWith("/dispatch")) {
+    return { eyebrow: "ERP Planlama", title: "Dispatch Board" };
+  }
+
+  if (pathname.startsWith("/my-jobs/weekly")) {
+    return { eyebrow: "Mobil Operasyon", title: "Haftam" };
+  }
+
+  if (pathname.startsWith("/my-jobs/")) {
+    return { eyebrow: "Mobil Operasyon", title: "Is Detayi" };
+  }
+
+  if (pathname.startsWith("/my-jobs")) {
+    return { eyebrow: "Mobil Operasyon", title: "Bugunku Islerim" };
+  }
+
+  if (pathname.startsWith("/boats/")) {
+    return { eyebrow: "Filo", title: "Tekne Profili" };
+  }
+
+  if (pathname.startsWith("/boats")) {
+    return { eyebrow: "Filo", title: "Tekneler" };
+  }
+
+  if (pathname.startsWith("/scoreboard")) {
+    return { eyebrow: "Performans", title: "Puan Tablosu" };
+  }
+
+  if (pathname.startsWith("/settings")) {
+    return { eyebrow: "Yonetim", title: "Ayarlar" };
+  }
+
+  return { eyebrow: "ServicePRO", title: "Panel" };
+}
 
 type HeaderUser = {
   email: string;
@@ -51,10 +98,7 @@ export default function Header({
   notificationCenter: NotificationCenterData;
 }) {
   const pathname = usePathname() ?? "/";
-  const current = titleMap[pathname] ?? {
-    eyebrow: "ServicePRO",
-    title: "Panel",
-  };
+  const current = getHeaderCopy(pathname);
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 backdrop-blur">

@@ -38,6 +38,13 @@ export type JobFormMeta = {
     name: string;
     type: string;
     jobCount: number;
+    continuitySuggestions: Array<{
+      userId: string;
+      name: string;
+      visitCount: number;
+      lastVisitedAt: string | null;
+      label: string;
+    }>;
   }>;
   technicians: JobFilterOption[];
   categories: Array<{

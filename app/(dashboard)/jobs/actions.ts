@@ -21,6 +21,7 @@ import {
   type DeliveryReportInput,
 } from "@/lib/scoring";
 import { requireAppUser, requireRoles } from "@/lib/auth";
+import { getTechnicianSuggestionsForBoats } from "@/lib/continuity";
 import type { ServiceJobDetail, ServiceJobListItem } from "@/types";
 import { DEFAULT_ON_HOLD_DAYS, getOnHoldDefaultDays } from "@/lib/system-settings";
 
@@ -167,6 +168,9 @@ export async function getJobFormMeta(): Promise<JobFormMeta> {
       },
     }),
   ]);
+  const continuitySuggestions = await getTechnicianSuggestionsForBoats(
+    boats.map((boat) => boat.id)
+  );
 
   return {
     boats: boats
@@ -175,6 +179,7 @@ export async function getJobFormMeta(): Promise<JobFormMeta> {
         name: boat.name,
         type: boat.type,
         jobCount: boat._count.jobs,
+        continuitySuggestions: continuitySuggestions[boat.id] ?? [],
       }))
       .sort((left, right) => right.jobCount - left.jobCount || left.name.localeCompare(right.name)),
     technicians,
@@ -276,13 +281,40 @@ export async function getJobById(id: string): Promise<{
   sameBoatOpenJobs: Array<Pick<ServiceJobListItem, "id" | "status" | "createdAt"> & {
     category: { name: string; subScope: string };
   }>;
+  recentBoatHistory: Array<{
+    id: string;
+    closedAt: Date | null;
+    createdAt: Date;
+    category: {
+      name: string;
+      subScope: string;
+    };
+    assignments: Array<{
+      user: {
+        name: string;
+      };
+    }>;
+  }>;
 } | null> {
   await requireAppUser();
 
   const job = await prisma.serviceJob.findUnique({
     where: { id },
     include: {
-      boat: true,
+      boat: {
+        include: {
+          contacts: {
+            orderBy: [
+              {
+                isPrimary: "desc",
+              },
+              {
+                name: "asc",
+              },
+            ],
+          },
+        },
+      },
       category: true,
       assignments: {
         include: {
@@ -298,6 +330,15 @@ export async function getJobById(id: string): Promise<{
         ],
       },
       deliveryReport: true,
+      clientNotifications: {
+        include: {
+          contact: true,
+          sentBy: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      },
       evaluation: {
         include: {
           evaluator: true,
@@ -338,7 +379,53 @@ export async function getJobById(id: string): Promise<{
     orderBy: { createdAt: "desc" },
   });
 
-  return { job, sameBoatOpenJobs };
+  const recentBoatHistory = await prisma.serviceJob.findMany({
+    where: {
+      boatId: job.boatId,
+      id: {
+        not: id,
+      },
+      status: {
+        in: [JobStatus.TAMAMLANDI, JobStatus.KAPANDI],
+      },
+    },
+    select: {
+      id: true,
+      closedAt: true,
+      createdAt: true,
+      category: {
+        select: {
+          name: true,
+          subScope: true,
+        },
+      },
+      assignments: {
+        select: {
+          user: {
+            select: {
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          user: {
+            name: "asc",
+          },
+        },
+      },
+    },
+    orderBy: [
+      {
+        closedAt: "desc",
+      },
+      {
+        createdAt: "desc",
+      },
+    ],
+    take: 3,
+  });
+
+  return { job, sameBoatOpenJobs, recentBoatHistory };
 }
 
 export async function createJob(data: CreateJobInput) {
@@ -805,6 +892,18 @@ export async function closeJobWithEvaluation(
       });
     }
 
+    await tx.boat.update({
+      where: {
+        id: job.boatId,
+      },
+      data: {
+        visitCount: {
+          increment: 1,
+        },
+        isVip: job.boat.isVip || job.boat.visitCount + 1 >= 8,
+      },
+    });
+
     const closedJob = await tx.serviceJob.update({
       where: { id: job.id },
       data: {
@@ -890,6 +989,11 @@ export async function closeJobWithEvaluationAction(
     revalidatePath(`/jobs/${parsed.data.jobId}`);
     revalidatePath("/");
     revalidatePath("/dashboard");
+    revalidatePath("/dispatch");
+    revalidatePath("/dispatch/weekly");
+    revalidatePath("/my-jobs");
+    revalidatePath("/my-jobs/weekly");
+    revalidatePath("/boats");
     revalidatePath("/scoreboard");
 
     const responsibleScore =
@@ -1239,4 +1343,30 @@ export async function reviewScoreObjectionAction(formData: FormData) {
       error instanceof Error ? encodeURIComponent(error.message) : "score-review-failed";
     redirect(`/settings?error=${message}`);
   }
+}
+
+export async function markClientNotificationSent(input: {
+  jobId: string;
+  contactId: string;
+  templateLang: string;
+}) {
+  const actor = await requireRoles([Role.ADMIN, Role.COORDINATOR]);
+
+  const notification = await prisma.clientNotification.create({
+    data: {
+      jobId: input.jobId,
+      contactId: input.contactId,
+      channel: "WHATSAPP",
+      templateLang: input.templateLang.toUpperCase(),
+      sentAt: new Date(),
+      sentById: actor.id,
+      confirmed: true,
+    },
+  });
+
+  revalidatePath(`/jobs/${input.jobId}`);
+  revalidatePath(`/my-jobs/${input.jobId}`);
+  revalidatePath("/boats");
+
+  return notification;
 }
