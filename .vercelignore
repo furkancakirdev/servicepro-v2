@@ -1,0 +1,7 @@
+.next
+node_modules
+node_modules_corrupt_backup
+.env
+.env.local
+npm-debug.log
+output

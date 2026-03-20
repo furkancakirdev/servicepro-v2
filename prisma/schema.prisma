@@ -1,0 +1,285 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  COORDINATOR
+  TECHNICIAN
+  WORKSHOP_CHIEF
+}
+
+enum JobStatus {
+  KESIF
+  PLANLANDI
+  DEVAM_EDIYOR
+  BEKLEMEDE
+  TAMAMLANDI
+  KAPANDI
+  GARANTI
+  IPTAL
+}
+
+enum HoldReason {
+  PARCA_BEKLENIYOR
+  MUSTERI_ONAYI
+  DIS_SERVIS
+  DIGER
+}
+
+enum JobRole {
+  SORUMLU
+  DESTEK
+}
+
+enum EvaluatorType {
+  COORDINATOR
+  WORKSHOP_CHIEF
+  TECHNICAL_COORDINATOR
+}
+
+enum BadgeType {
+  SERVIS_YILDIZI
+  KALITE_USTASI
+  EKIP_OYUNCUSU
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(TECHNICIAN)
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobAssignments    JobAssignment[]
+  createdJobs       ServiceJob[]          @relation("CreatedBy")
+  closedJobs        ServiceJob[]          @relation("ClosedBy")
+  jobEvaluations    JobEvaluation[]       @relation("Evaluator")
+  monthlyEvals      MonthlyEvaluation[]   @relation("EvaluatedEmployee")
+  givenMonthlyEvals MonthlyEvaluation[]   @relation("EvaluatorUser")
+  badges            Badge[]
+  jobScores         JobScore[]
+  notifications     Notification[]
+  changeLogs        EvaluationChangeLog[] @relation("ChangedBy")
+
+  @@index([role])
+}
+
+model Boat {
+  id        String   @id @default(uuid())
+  name      String
+  type      String
+  ownerName String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobs ServiceJob[]
+
+  @@index([name])
+  @@index([isActive])
+}
+
+model ServiceCategory {
+  id         String  @id @default(uuid())
+  name       String
+  subScope   String
+  multiplier Float
+  brandHints String?
+  isActive   Boolean @default(true)
+  sortOrder  Int     @default(0)
+
+  jobs ServiceJob[]
+
+  @@unique([name, subScope])
+  @@index([isActive, sortOrder])
+}
+
+model ServiceJob {
+  id           String          @id @default(uuid())
+  boatId       String
+  boat         Boat            @relation(fields: [boatId], references: [id])
+  categoryId   String
+  category     ServiceCategory @relation(fields: [categoryId], references: [id])
+  description  String          @db.Text
+  multiplier   Float
+  status       JobStatus       @default(KESIF)
+  holdReason   HoldReason?
+  holdUntil    DateTime?
+  isWarranty   Boolean         @default(false)
+  isKesif      Boolean         @default(false)
+  kesifJobId   String?
+  createdById  String
+  createdBy    User            @relation("CreatedBy", fields: [createdById], references: [id])
+  closedById   String?
+  closedBy     User?           @relation("ClosedBy", fields: [closedById], references: [id])
+  notes        String?         @db.Text
+  location     String?
+  contactName  String?
+  contactPhone String?
+  createdAt    DateTime        @default(now())
+  startedAt    DateTime?
+  completedAt  DateTime?
+  closedAt     DateTime?
+  updatedAt    DateTime        @updatedAt
+
+  assignments    JobAssignment[]
+  evaluation     JobEvaluation?
+  deliveryReport DeliveryReport?
+  jobScores      JobScore[]
+
+  @@index([boatId])
+  @@index([categoryId])
+  @@index([status, createdAt])
+  @@index([createdById])
+  @@index([closedById])
+  @@index([kesifJobId])
+}
+
+model JobAssignment {
+  id        String     @id @default(uuid())
+  jobId     String
+  job       ServiceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      JobRole
+  createdAt DateTime   @default(now())
+
+  @@unique([jobId, userId])
+  @@index([userId, role])
+}
+
+model DeliveryReport {
+  id                 String     @id @default(uuid())
+  jobId              String     @unique
+  job                ServiceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  unitInfoScore      Int
+  photosScore        Int
+  partsListScore     Int
+  subcontractorScore Int
+  hasSubcontractor   Boolean    @default(false)
+  clientNotifyScore  Int
+  notes              String?
+  createdAt          DateTime   @default(now())
+}
+
+model JobEvaluation {
+  id          String     @id @default(uuid())
+  jobId       String     @unique
+  job         ServiceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  evaluatorId String
+  evaluator   User       @relation("Evaluator", fields: [evaluatorId], references: [id])
+  q1_unit     Int
+  q2_photos   Int
+  q3_parts    Int
+  q4_sub      Int
+  q5_notify   Int
+  baseScore   Float
+  createdAt   DateTime   @default(now())
+
+  @@index([evaluatorId, createdAt])
+}
+
+model JobScore {
+  id             String     @id @default(uuid())
+  jobId          String
+  job            ServiceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           JobRole
+  baseScore      Float
+  multiplier     Float
+  roleMultiplier Float
+  finalScore     Float
+  isKesif        Boolean    @default(false)
+  month          Int
+  year           Int
+  createdAt      DateTime   @default(now())
+
+  @@index([userId, month, year])
+  @@index([jobId])
+}
+
+model MonthlyEvaluation {
+  id               String        @id @default(uuid())
+  employeeId       String
+  employee         User          @relation("EvaluatedEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  evaluatorId      String
+  evaluatorUser    User          @relation("EvaluatorUser", fields: [evaluatorId], references: [id], onDelete: Cascade)
+  evaluatorType    EvaluatorType
+  month            Int
+  year             Int
+  wc_q1_technical  Int?
+  wc_q2_discipline Int?
+  wc_q3_growth     Int?
+  wc_notes         String?
+  tc_q1_compliance Int?
+  tc_q2_safety     Int?
+  tc_q3_represent  Int?
+  tc_q4_teamwork   Int?
+  tc_q5_growth     Int?
+  normalizedScore  Float?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@unique([employeeId, evaluatorType, month, year])
+  @@index([evaluatorId, evaluatorType, month, year])
+}
+
+model Badge {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      BadgeType
+  month     Int
+  year      Int
+  score     Float
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, type, month, year])
+  @@index([month, year, type])
+}
+
+model EvaluationChangeLog {
+  id          String   @id @default(uuid())
+  entityType  String
+  entityId    String
+  changedById String
+  changedBy   User     @relation("ChangedBy", fields: [changedById], references: [id], onDelete: Cascade)
+  reason      String
+  oldValues   Json
+  newValues   Json
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([changedById, createdAt])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead, createdAt])
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
