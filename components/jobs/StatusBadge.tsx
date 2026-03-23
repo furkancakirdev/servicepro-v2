@@ -27,7 +27,7 @@ export const statusConfig: Record<
     className: "border-emerald-200 bg-emerald-50 text-emerald-700",
   },
   KAPANDI: {
-    label: "Kapandi",
+    label: "Kapand?",
     className: "border-green-300 bg-green-100 text-green-800",
   },
   GARANTI: {

@@ -58,7 +58,7 @@ type CoordinatorRowState = {
 
 const workshopQuestions = [
   { key: "q1", label: "S1: Teknik yetkinlik" },
-  { key: "q2", label: "S2: Is disiplini" },
+  { key: "q2", label: "S2: ?? disiplini" },
   { key: "q3", label: "S3: Gelisim" },
 ] as const;
 
@@ -166,14 +166,14 @@ export default function MonthlyEvaluationSheet({
 
   const title =
     mode === "workshop"
-      ? "Aylik Personel Degerlendirmesi"
-      : "Koordinator Degerlendirmesi";
+      ? "Aylık Personel Değerlendirmesi"
+      : "Koordinatör Değerlendirmesi";
   const description =
     mode === "workshop"
-      ? "Form 2 - workshop chief aylik teknik ve disiplin degerlendirmesi"
-      : "Form 3 - teknik koordinasyon davranissal ve operasyonel degerlendirme";
+      ? "Form 2 - workshop chief ayl?k teknik ve disiplin değerlendirmesi"
+      : "Form 3 - teknik koordinasyon davranissal ve operasyonel değerlendirme";
   const triggerLabel =
-    mode === "workshop" ? "Usta Degerlendirmesi" : "Koordinator Degerlendirmesi";
+    mode === "workshop" ? "Usta Değerlendirmesi" : "Koordinatör Değerlendirmesi";
 
   const completion = useMemo(() => {
     if (mode === "workshop") {
@@ -271,7 +271,7 @@ export default function MonthlyEvaluationSheet({
 
             {actionState.success ? (
               <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                {actionState.updatedCount} personel icin degerlendirme kaydedildi.
+                {actionState.updatedCount} personel icin değerlendirme kaydedildi.
               </div>
             ) : null}
 
@@ -341,7 +341,7 @@ export default function MonthlyEvaluationSheet({
                             )
                           }
                           className="mt-3 min-h-[90px] bg-white"
-                          placeholder="Opsiyonel aylik not..."
+                          placeholder="Opsiyonel ayl?k not..."
                         />
                       </div>
                     </div>
@@ -415,3 +415,4 @@ export default function MonthlyEvaluationSheet({
     </Sheet>
   );
 }
+

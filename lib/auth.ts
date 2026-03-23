@@ -30,6 +30,13 @@ const previewUser: CurrentAppUser = {
 
 export const getCurrentAppUser = cache(async (): Promise<CurrentAppUser | null> => {
   if (!isSupabaseConfigured() || !isDatabaseConfigured()) {
+    if (process.env.NODE_ENV === "production") {
+      console.error(
+        "[AUTH] FATAL: Supabase/DB env vars missing in production. Blocking access."
+      );
+      return null;
+    }
+
     return previewUser;
   }
 
@@ -78,7 +85,7 @@ export async function requireRoles(roles: Role[]) {
   const user = await requireAppUser();
 
   if (!roles.includes(user.role)) {
-    redirect("/dashboard");
+    redirect("/");
   }
 
   return user;

@@ -25,15 +25,15 @@ function getHeaderCopy(pathname: string) {
   }
 
   if (pathname.startsWith("/jobs/new")) {
-    return { eyebrow: "Planlama", title: "Yeni Is" };
+    return { eyebrow: "Planlama", title: "Yeni ??" };
   }
 
   if (pathname.startsWith("/jobs/")) {
-    return { eyebrow: "Operasyon", title: "Is Detayi" };
+    return { eyebrow: "Operasyon", title: "?? Detayı" };
   }
 
   if (pathname.startsWith("/jobs")) {
-    return { eyebrow: "Gunluk Is Akisi", title: "Is Listesi" };
+    return { eyebrow: "Gunluk ?? Akisi", title: "?? Listesi" };
   }
 
   if (pathname.startsWith("/dispatch/weekly")) {
@@ -49,11 +49,11 @@ function getHeaderCopy(pathname: string) {
   }
 
   if (pathname.startsWith("/my-jobs/")) {
-    return { eyebrow: "Mobil Operasyon", title: "Is Detayi" };
+    return { eyebrow: "Mobil Operasyon", title: "?? Detayı" };
   }
 
   if (pathname.startsWith("/my-jobs")) {
-    return { eyebrow: "Mobil Operasyon", title: "Bugunku Islerim" };
+    return { eyebrow: "Mobil Operasyon", title: "Bugünku ??lerim" };
   }
 
   if (pathname.startsWith("/boats/")) {
@@ -69,7 +69,7 @@ function getHeaderCopy(pathname: string) {
   }
 
   if (pathname.startsWith("/settings")) {
-    return { eyebrow: "Yonetim", title: "Ayarlar" };
+    return { eyebrow: "Yönetim", title: "Ayarlar" };
   }
 
   return { eyebrow: "ServicePRO", title: "Panel" };
@@ -85,7 +85,7 @@ type HeaderUser = {
 
 const roleLabels: Record<Role, string> = {
   ADMIN: "Admin",
-  COORDINATOR: "Koordinator",
+  COORDINATOR: "Koordinatör",
   TECHNICIAN: "Teknisyen",
   WORKSHOP_CHIEF: "Usta",
 };
@@ -140,7 +140,7 @@ export default function Header({
             <div className="font-medium text-marine-navy">
               {format(new Date(), "d MMMM yyyy", { locale: tr })}
             </div>
-            <div>Sabah operasyon penceresi acik</div>
+            <div>Sabah operasyon penceresi a??k</div>
           </div>
 
           <NotificationBell notificationCenter={notificationCenter} />
@@ -171,3 +171,4 @@ export default function Header({
     </header>
   );
 }
+

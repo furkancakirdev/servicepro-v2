@@ -69,13 +69,13 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
             <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
               Operasyon
             </p>
-            <h1 className="mt-2 text-2xl font-semibold text-marine-navy">Is Listesi</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-marine-navy">İş Listesi</h1>
             <p className="mt-2 text-sm text-slate-600">
               Arama, tarih ve teknisyen filtresiyle aktif servis operasyonunu yonetin.
             </p>
           </div>
           <Link href="/jobs/new" className={primaryLinkClass}>
-            Yeni Is
+            Yeni İş
           </Link>
         </div>
 
@@ -89,7 +89,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
               name="q"
               defaultValue={query}
               className="h-12 pl-10"
-              placeholder="Tekne adi, kategori veya aciklama ara"
+              placeholder="Tekne adi, kateg?ri veya açıklama ara"
             />
           </div>
 
@@ -178,3 +178,4 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
     </div>
   );
 }
+

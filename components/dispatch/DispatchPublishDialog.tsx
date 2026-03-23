@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Check, Copy, Send } from "lucide-react";
+import { useTransition } from "react";
+import { Send } from "lucide-react";
+import { toast } from "sonner";
 
 import { publishDailyPlans } from "@/app/(dashboard)/dispatch/actions";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type DispatchPublishDialogProps = {
@@ -40,12 +41,12 @@ function PublishedState({
     )[0];
 
   if (!latestPlan?.publishedAt) {
-    return <span className="text-xs text-slate-500">Bugun henuz yayinlanmadi</span>;
+    return <span className="text-xs text-slate-500">Bug?n hen?z yay?nlanmad?.</span>;
   }
 
   return (
     <span className="text-xs text-emerald-700">
-      Son yayin: {new Date(latestPlan.publishedAt).toLocaleTimeString("tr-TR", {
+      Son yay?n: {new Date(latestPlan.publishedAt).toLocaleTimeString("tr-TR", {
         hour: "2-digit",
         minute: "2-digit",
       })}
@@ -68,18 +69,17 @@ function TemplatePanel({
         <div>
           <div className="font-medium text-marine-navy">{title}</div>
           <div className="text-sm text-slate-500">
-            Sablon panoya kopyalanir, ardindan WhatsApp grubunda paylasilabilir.
+            ?ablonu kopyalay?p do?rudan WhatsApp grubuna yap??t?rabilirsiniz.
           </div>
         </div>
         <Button type="button" variant="outline" className="gap-2" onClick={onCopy}>
-          <Copy className="size-4" />
           Kopyala
         </Button>
       </div>
       <textarea
         readOnly
         value={body}
-        className="min-h-[280px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700 outline-none"
+        className="min-h-[320px] w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700 outline-none"
       />
     </div>
   );
@@ -94,100 +94,87 @@ export default function DispatchPublishDialog({
   fieldEN,
   publishedPlans,
 }: DispatchPublishDialogProps) {
-  const [open, setOpen] = useState(false);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [publishMessage, setPublishMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  async function handleCopy(key: string, value: string) {
-    await navigator.clipboard.writeText(value);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 1500);
+
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("?ablon kopyaland? ? WhatsApp'a yap??t?rabilirsin");
+    } catch {
+      const element = document.createElement("textarea");
+      element.value = text;
+      document.body.appendChild(element);
+      element.select();
+      document.execCommand("copy");
+      document.body.removeChild(element);
+      toast.success("Kopyaland?");
+    }
   }
 
   function handlePublish() {
-    setPublishMessage(null);
     startTransition(async () => {
-      await publishDailyPlans({
-        dateIso,
-        workshopTR,
-        workshopEN,
-        fieldTR,
-        fieldEN,
-      });
-      setPublishMessage("Plan yayinlandi. Teknik ekibe push placeholder bildirimi olusturuldu.");
+      try {
+        await publishDailyPlans({
+          dateIso,
+          workshopTR,
+          workshopEN,
+          fieldTR,
+          fieldEN,
+        });
+        toast.success("Plan yay?nland?.");
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Plan yay?nlan?rken bir hata olu?tu."
+        );
+      }
     });
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog>
       <DialogTrigger
         render={
           <Button className="h-12 bg-marine-navy text-white hover:bg-marine-ocean" />
         }
       >
         <Send className="size-4" />
-        Plan Yayinla
+        Plan Yay?nla
       </DialogTrigger>
       <DialogContent className="max-w-4xl p-0 sm:max-w-4xl">
         <DialogHeader className="border-b border-slate-200 px-6 py-5">
-          <DialogTitle className="text-marine-navy">
-            Gunluk plan yayinlama merkezi
-          </DialogTitle>
+          <DialogTitle className="text-marine-navy">G?nl?k plan yay?nlama merkezi</DialogTitle>
           <DialogDescription>
-            {planDateLabel} icin atolye ve saha sablonlari hazir. Kopyalayip gruplara
-            gonderebilir, ardindan tek tusla plan yayini kaydini olusturabilirsiniz.
+            {planDateLabel} i?in Yatmarin/Netsel ve saha WhatsApp ?ablonlar? haz?r.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 px-6 py-5">
           <div className="flex items-center justify-between gap-3">
             <PublishedState publishedPlans={publishedPlans} />
-            {copiedKey ? (
-              <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">
-                <Check className="size-3.5" />
-                {copiedKey} panoya kopyalandi
-              </div>
-            ) : null}
           </div>
 
           <Tabs defaultValue="workshop" className="gap-4">
             <TabsList className="bg-slate-100">
-              <TabsTrigger value="workshop">Yatmarin / Netsel sablonu</TabsTrigger>
-              <TabsTrigger value="field">Saha sablonu</TabsTrigger>
+              <TabsTrigger value="workshop">Yatmarin / Netsel ?ablonu</TabsTrigger>
+              <TabsTrigger value="field">Saha ?ablonu</TabsTrigger>
             </TabsList>
 
             <TabsContent value="workshop" className="space-y-4">
               <TemplatePanel
-                title="Turkce atolye brifingi"
+                title="Yatmarin / Netsel ?ablonu"
                 body={workshopTR}
-                onCopy={() => handleCopy("Atolye TR", workshopTR)}
-              />
-              <TemplatePanel
-                title="English workshop briefing"
-                body={workshopEN}
-                onCopy={() => handleCopy("Workshop EN", workshopEN)}
+                onCopy={() => void copyToClipboard(workshopTR)}
               />
             </TabsContent>
 
             <TabsContent value="field" className="space-y-4">
               <TemplatePanel
-                title="Turkce saha cikisi"
+                title="Saha ?ablonu"
                 body={fieldTR}
-                onCopy={() => handleCopy("Saha TR", fieldTR)}
-              />
-              <TemplatePanel
-                title="English field briefing"
-                body={fieldEN}
-                onCopy={() => handleCopy("Field EN", fieldEN)}
+                onCopy={() => void copyToClipboard(fieldTR)}
               />
             </TabsContent>
           </Tabs>
-
-          {publishMessage ? (
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              {publishMessage}
-            </div>
-          ) : null}
 
           <div className="flex justify-end">
             <Button
@@ -196,7 +183,7 @@ export default function DispatchPublishDialog({
               onClick={handlePublish}
               disabled={isPending}
             >
-              {isPending ? "Yayinlaniyor..." : "Plan yayini kaydini olustur"}
+              {isPending ? "Yay?nlan?yor..." : "Plan? Yay?nla"}
             </Button>
           </div>
         </div>

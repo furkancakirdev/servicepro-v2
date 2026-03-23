@@ -26,9 +26,12 @@ export function createClientSupabaseClient() {
 
   if (!isConfigured || !url || !anonKey) {
     throw new Error(
-      "Supabase ayarlari eksik. .env.local icindeki NEXT_PUBLIC_SUPABASE_* degerlerini guncelle."
+      "Supabase ayarlari eksik. .env.local icindeki NEXT_PUBLIC_SUPABASE_* degerlerini güncelle."
     );
   }
 
   return createBrowserClient(url, anonKey);
 }
+
+export const createClient = createClientSupabaseClient;
+

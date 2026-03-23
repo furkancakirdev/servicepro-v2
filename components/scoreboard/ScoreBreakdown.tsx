@@ -32,21 +32,21 @@ export default function ScoreBreakdown({
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span>Is puani</span>
+            <span>?? puani</span>
             <span>%40</span>
           </div>
           <Progress value={40} />
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span>Usta degerlendirmesi</span>
+            <span>Usta değerlendirmesi</span>
             <span>%30</span>
           </div>
           <Progress value={30} />
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span>Koordinator degerlendirmesi</span>
+            <span>Koordinatör değerlendirmesi</span>
             <span>%30</span>
           </div>
           <Progress value={30} />
@@ -60,19 +60,20 @@ export default function ScoreBreakdown({
             <div className="mt-2 text-lg font-semibold text-amber-900">
               {missingWorkshopCount}
             </div>
-            <div className="text-xs text-amber-800">personelde degerlendirme bekleniyor</div>
+            <div className="text-xs text-amber-800">personelde değerlendirme bekleniyor</div>
           </div>
           <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
             <div className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
-              Koordinator formu
+              Koordinatör formu
             </div>
             <div className="mt-2 text-lg font-semibold text-amber-900">
               {missingCoordinatorCount}
             </div>
-            <div className="text-xs text-amber-800">personelde degerlendirme bekleniyor</div>
+            <div className="text-xs text-amber-800">personelde değerlendirme bekleniyor</div>
           </div>
         </div>
       </CardContent>
     </Card>
   );
 }
+

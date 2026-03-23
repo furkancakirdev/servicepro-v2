@@ -70,7 +70,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && pathname === "/login") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    const role = request.cookies.get("servicepro-role")?.value;
+    const redirectPath = role === "TECHNICIAN" ? "/my-jobs" : "/";
+    return NextResponse.redirect(new URL(redirectPath, request.url));
   }
 
   return response;

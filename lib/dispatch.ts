@@ -14,6 +14,10 @@ import { JobRole, JobStatus, Role } from "@prisma/client";
 
 import { openStatuses } from "@/lib/jobs";
 import { prisma } from "@/lib/prisma";
+import {
+  generateSahaTemplate,
+  generateYatmarinTemplate,
+} from "@/lib/wa-templates";
 
 export type DispatchTab = "YATMARIN" | "NETSEL" | "SAHA";
 
@@ -213,7 +217,7 @@ export function resolveDispatchTab(location: string | null | undefined): Dispatc
 
   if (
     normalized.includes("gocek") ||
-    normalized.includes("göcek") ||
+    normalized.includes("gÃ¶cek") ||
     normalized.includes("bodrum") ||
     normalized.includes("bozburun") ||
     normalized.includes("didim") ||
@@ -325,7 +329,7 @@ function scheduleJobs(jobs: DispatchJobCard[]) {
       id: `job-${job.id}`,
       type: "JOB",
       title: job.boatName,
-      subtitle: `${job.categoryName} • ${job.locationLabel}`,
+      subtitle: `${job.categoryName} â€¢ ${job.locationLabel}`,
       startMinutes: start - MORNING_START_MINUTES,
       durationMinutes: Math.max(end - start, 30),
       startLabel,
@@ -346,8 +350,6 @@ function buildWorkshopTemplate(params: {
   lanes: DispatchTechnicianLane[];
   continuingJobs: DispatchJobCard[];
 }) {
-  const dayTr = format(params.date, "EEEE", { locale: tr });
-  const dateTr = format(params.date, "d MMMM yyyy", { locale: tr });
   const dayEn = format(params.date, "EEEE", { locale: enUS });
   const dateEn = format(params.date, "MMM d, yyyy", { locale: enUS });
   const workshopLanes = params.lanes.filter(
@@ -357,37 +359,13 @@ function buildWorkshopTemplate(params: {
     (job) => job.dispatchTab !== "SAHA"
   );
 
-  const trBody = workshopLanes
-    .map((lane) => {
-      const lineItems = lane.scheduledJobs
-        .filter((job) => job.dispatchTab !== "SAHA")
-        .map(
-          (job) =>
-            `• ${job.startLabel} → ${job.boatName} (${job.locationLabel}) — ${job.categoryName}`
-        );
-
-      return lineItems.length > 0 ? `${lane.name}:\n${lineItems.join("\n")}` : null;
-    })
-    .filter(Boolean)
-    .join("\n\n");
-
-  const trContinuing =
-    continuingWorkshopJobs.length > 0
-      ? `\n\nDEVAM EDEN İŞLER:\n${continuingWorkshopJobs
-          .map(
-            (job) =>
-              `• ${job.boatName} — ${job.categoryName} (${job.responsibleName ?? "Atama bekleniyor"})`
-          )
-          .join("\n")}`
-      : "";
-
   const enBody = workshopLanes
     .map((lane) => {
       const lineItems = lane.scheduledJobs
         .filter((job) => job.dispatchTab !== "SAHA")
         .map(
           (job) =>
-            `• ${job.startLabel} → ${job.boatName} (${job.locationLabel}) — ${job.categoryName}`
+            `• ${job.startLabel} › ${job.boatName} (${job.locationLabel}) — ${job.categoryName}`
         );
 
       return lineItems.length > 0 ? `${lane.name}:\n${lineItems.join("\n")}` : null;
@@ -406,9 +384,25 @@ function buildWorkshopTemplate(params: {
       : "";
 
   return {
-    workshopTR: `YATMARIN / NETSEL EKIBI — ${dayTr.toUpperCase()} ${dateTr.toUpperCase()}\n\n${
-      trBody || "• Bugun planlanmis atolye isi bulunmuyor."
-    }${trContinuing}\n\nMarlin Yachting Teknik Servis`,
+    workshopTR: generateYatmarinTemplate(
+      params.date,
+      workshopLanes.map((lane) => ({
+        technicianName: lane.name,
+        jobs: lane.scheduledJobs
+          .filter((job) => job.dispatchTab !== "SAHA")
+          .map((job) => ({
+            time: job.startLabel,
+            boatName: job.boatName,
+            location: job.locationLabel,
+            description: job.categoryName,
+          })),
+      })),
+      continuingWorkshopJobs.map((job) => ({
+        boatName: job.boatName,
+        description: job.categoryName,
+        technicianName: job.responsibleName ?? "Atama bekleniyor",
+      }))
+    ),
     workshopEN: `WORKSHOP TEAM — ${dayEn.toUpperCase()} ${dateEn.toUpperCase()}\n\n${
       enBody || "• No workshop jobs scheduled for today."
     }${enContinuing}\n\nMarlin Yachting Technical Service`,
@@ -419,31 +413,11 @@ function buildFieldTemplate(params: {
   date: Date;
   lanes: DispatchTechnicianLane[];
 }) {
-  const dayTr = format(params.date, "EEEE", { locale: tr });
-  const dateTr = format(params.date, "d MMMM yyyy", { locale: tr });
   const dayEn = format(params.date, "EEEE", { locale: enUS });
   const dateEn = format(params.date, "MMM d, yyyy", { locale: enUS });
   const fieldLanes = params.lanes.filter((lane) =>
     lane.scheduledJobs.some((job) => job.dispatchTab === "SAHA")
   );
-
-  const trBody = fieldLanes
-    .map((lane) => {
-      const fieldJobs = lane.scheduledJobs.filter((job) => job.dispatchTab === "SAHA");
-
-      if (fieldJobs.length === 0) {
-        return null;
-      }
-
-      const firstJob = fieldJobs[0];
-      const travelMinutes = firstJob.travelMinutes ?? 0;
-
-      return `${lane.name} → ${firstJob.locationLabel} (${firstJob.departureLabel ?? firstJob.startLabel} çıkış, ~${travelMinutes}dk)\n${fieldJobs
-        .map((job) => `• ${job.boatName} — ${job.categoryName}`)
-        .join("\n")}\nTahmini dönüş: ${fieldJobs[fieldJobs.length - 1].returnLabel}`;
-    })
-    .filter(Boolean)
-    .join("\n\n");
 
   const enBody = fieldLanes
     .map((lane) => {
@@ -456,7 +430,7 @@ function buildFieldTemplate(params: {
       const firstJob = fieldJobs[0];
       const travelMinutes = firstJob.travelMinutes ?? 0;
 
-      return `${lane.name} → ${firstJob.locationLabel} (${firstJob.departureLabel ?? firstJob.startLabel} departure, ~${travelMinutes} min)\n${fieldJobs
+      return `${lane.name} › ${firstJob.locationLabel} (${firstJob.departureLabel ?? firstJob.startLabel} departure, ~${travelMinutes} min)\n${fieldJobs
         .map((job) => `• ${job.boatName} — ${job.categoryName}`)
         .join("\n")}\nEstimated return: ${fieldJobs[fieldJobs.length - 1].returnLabel}`;
     })
@@ -464,9 +438,47 @@ function buildFieldTemplate(params: {
     .join("\n\n");
 
   return {
-    fieldTR: `SAHA EKIBI — ${dayTr.toUpperCase()} ${dateTr.toUpperCase()}\n\n${
-      trBody || "• Bugun saha cikisi planlanmadi."
-    }\n\nMarlin Yachting Teknik Servis`,
+    fieldTR: generateSahaTemplate(
+      params.date,
+      fieldLanes
+        .map((lane) => {
+          const fieldJobs = lane.scheduledJobs.filter((job) => job.dispatchTab === "SAHA");
+
+          if (fieldJobs.length === 0) {
+            return null;
+          }
+
+          const firstJob = fieldJobs[0];
+          const lastJob = fieldJobs[fieldJobs.length - 1];
+
+          return {
+            technicianName: lane.name,
+            destination: firstJob.locationLabel,
+            departureTime: firstJob.departureLabel ?? firstJob.startLabel,
+            travelMin: firstJob.travelMinutes ?? 0,
+            returnTime: lastJob.returnLabel,
+            jobs: fieldJobs.map((job) => ({
+              time: job.startLabel,
+              boatName: job.boatName,
+              location: job.locationLabel,
+              description: job.categoryName,
+            })),
+          };
+        })
+        .filter(Boolean) as Array<{
+        technicianName: string;
+        destination: string;
+        departureTime: string;
+        travelMin: number;
+        returnTime: string;
+        jobs: Array<{
+          time: string;
+          boatName: string;
+          location: string;
+          description: string;
+        }>;
+      }>
+    ),
     fieldEN: `FIELD TEAM — ${dayEn.toUpperCase()} ${dateEn.toUpperCase()}\n\n${
       enBody || "• No field operation scheduled for today."
     }\n\nMarlin Yachting Technical Service`,
@@ -609,9 +621,9 @@ export async function getDispatchBoardData(
     warnings.push({
       id: "multi-location",
       tone: "amber",
-      title: "Coklu lokasyon aktif",
+      title: "?oklu lokasyon aktif",
       description:
-        "Ayni gun atolye ve saha operasyonu gorunuyor. Saha cikisi icin ekip ayrimi kontrol edilmeli.",
+        "Aynı gun atölye ve saha operasyonu g?runuyor. Saha ??k??i icin ekip ayrimi kontrol edilmeli.",
     });
   }
 
@@ -624,7 +636,7 @@ export async function getDispatchBoardData(
       title: "Yuksek doluluk uyarisi",
       description: `${overloadedLanes
         .map((lane) => `${lane.name} (${lane.jobCount})`)
-        .join(", ")} icin 5+ is atamasi gorunuyor.`,
+        .join(", ")} icin 5+ is atamasi g?runuyor.`,
     });
   }
 
@@ -767,3 +779,5 @@ export async function getWeeklyDispatchData(referenceDate: Date): Promise<Weekly
     technicianLoads,
   };
 }
+
+

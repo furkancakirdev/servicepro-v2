@@ -96,7 +96,7 @@ export type ServiceJobDetail = Prisma.ServiceJobGetPayload<{
 }>;
 
 export type MonthlyScoreboardEntry = {
-  user: Pick<User, "id" | "name" | "email" | "role" | "avatarUrl">;
+  user: Pick<User, "id" | "name" | "role" | "avatarUrl">;
   jobScore: number;
   workshopScore: number | null;
   coordinatorScore: number | null;
@@ -153,7 +153,7 @@ export type ScoreboardBadgeSummary = {
 
 export type TechnicianScoreboardEntry = {
   rank: number;
-  user: Pick<User, "id" | "name" | "email" | "role" | "avatarUrl">;
+  user: Pick<User, "id" | "name" | "role" | "avatarUrl">;
   rawJobScore: number;
   jobScore: number;
   workshopScore: number | null;

@@ -52,7 +52,7 @@ export default function ActivityChart({ data }: ActivityChartProps) {
             stroke="#2563eb"
             strokeWidth={2}
             fill="url(#createdGradient)"
-            name="Olusturulan"
+            name="Oluşturulan"
           />
           <Area
             type="monotone"
@@ -67,3 +67,4 @@ export default function ActivityChart({ data }: ActivityChartProps) {
     </div>
   );
 }
+

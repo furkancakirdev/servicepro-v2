@@ -112,7 +112,7 @@ export default function ClientNotificationPanel({
         contactId: selectedContact.id,
         templateLang: template.language,
       });
-      setStatusMessage("Bildirim kaydi olusturuldu.");
+      setStatusMessage("Bildirim kaydi oluşturuldu.");
     });
   }
 
@@ -121,7 +121,7 @@ export default function ClientNotificationPanel({
       {contacts.length > 0 ? (
         <div className="space-y-2">
           <label className="text-sm font-medium text-marine-navy" htmlFor="contactId">
-            Irtibat secimi
+            ?rtibat secimi
           </label>
           <select
             id="contactId"
@@ -149,7 +149,7 @@ export default function ClientNotificationPanel({
           <div className="flex flex-wrap gap-3">
             <Button type="button" variant="outline" className="gap-2" onClick={handleCopy}>
               <Copy className="size-4" />
-              {copied ? "Kopyalandi" : "Panoya kopyala"}
+              {copied ? "Kopyaland?" : "Panoya kopyala"}
             </Button>
             {waLink ? (
               <a
@@ -169,7 +169,7 @@ export default function ClientNotificationPanel({
               disabled={isPending}
             >
               <Send className="size-4" />
-              {isPending ? "Kaydediliyor..." : "Gonderildi olarak isaretle"}
+              {isPending ? "Kaydediliyor..." : "G?nderildi olarak isaretle"}
             </Button>
           </div>
         </>
@@ -187,11 +187,11 @@ export default function ClientNotificationPanel({
 
       {notifications.length > 0 ? (
         <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-          <div className="text-sm font-medium text-marine-navy">Son gonderimler</div>
+          <div className="text-sm font-medium text-marine-navy">Son g?nderimler</div>
           {notifications.map((notification) => (
             <div key={notification.id} className="flex items-center justify-between gap-3 text-sm text-slate-600">
               <span>
-                {notification.contact.name} · {notification.templateLang}
+                {notification.contact.name} Â· {notification.templateLang}
               </span>
               <span className="inline-flex items-center gap-1 text-emerald-700">
                 <Check className="size-3.5" />
@@ -206,3 +206,4 @@ export default function ClientNotificationPanel({
     </div>
   );
 }
+

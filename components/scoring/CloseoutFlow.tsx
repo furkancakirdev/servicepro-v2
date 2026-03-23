@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useFormState } from "react-dom";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { closeJobWithEvaluationAction } from "@/app/(dashboard)/jobs/actions";
 import DeliveryReportModal from "@/components/scoring/DeliveryReportModal";
@@ -13,6 +14,7 @@ import {
   initialCloseJobWithEvaluationActionState,
   type CloseJobWithEvaluationActionState,
 } from "@/lib/scoring";
+import { uploadJobPhoto } from "@/lib/storage";
 
 type CloseoutFlowProps = {
   jobId: string;
@@ -40,6 +42,12 @@ type EvaluationDraft = {
   q5_notify: number | null;
 };
 
+type DeliveryPhotos = {
+  before?: string;
+  after?: string;
+  details: string[];
+};
+
 type FlowStep = "idle" | "delivery" | "scoring" | "result";
 
 const initialDeliveryDraft: DeliveryDraft = {
@@ -60,6 +68,10 @@ const initialEvaluationDraft: EvaluationDraft = {
   q5_notify: null,
 };
 
+const initialPhotos: DeliveryPhotos = {
+  details: [],
+};
+
 const triggerButtonClass =
   "h-12 w-full bg-marine-navy text-white hover:bg-marine-ocean";
 
@@ -78,6 +90,36 @@ export default function CloseoutFlow({
   const [step, setStep] = useState<FlowStep>(startOpen ? "delivery" : "idle");
   const [delivery, setDelivery] = useState<DeliveryDraft>(initialDeliveryDraft);
   const [evaluation, setEvaluation] = useState<EvaluationDraft>(initialEvaluationDraft);
+  const [photos, setPhotos] = useState<DeliveryPhotos>(initialPhotos);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    if (!jobId) {
+      return;
+    }
+
+    try {
+      const savedDraft = localStorage.getItem(`delivery-draft-${jobId}`);
+
+      if (savedDraft) {
+        setDelivery(JSON.parse(savedDraft) as DeliveryDraft);
+      }
+    } catch {
+      // Ignore draft recovery failures.
+    }
+  }, [jobId]);
+
+  useEffect(() => {
+    if (!jobId) {
+      return;
+    }
+
+    try {
+      localStorage.setItem(`delivery-draft-${jobId}`, JSON.stringify(delivery));
+    } catch {
+      // Ignore draft persistence failures.
+    }
+  }, [delivery, jobId]);
 
   useEffect(() => {
     if (startOpen) {
@@ -90,9 +132,15 @@ export default function CloseoutFlow({
       return;
     }
 
+    try {
+      localStorage.removeItem(`delivery-draft-${jobId}`);
+    } catch {
+      // Ignore draft cleanup failures.
+    }
+
     setStep("result");
     router.refresh();
-  }, [actionState.result, actionState.success, router]);
+  }, [actionState.result, actionState.success, jobId, router]);
 
   const canStartScoring = useMemo(() => {
     const answeredDeliveryFields = [
@@ -126,6 +174,36 @@ export default function CloseoutFlow({
     normalizedEvaluation.q5_notify,
   ].every(Boolean);
 
+  async function handlePhotoUpload(
+    file: File,
+    type: "before" | "after" | "detail"
+  ) {
+    setUploading(true);
+
+    try {
+      const url = await uploadJobPhoto(jobId, file, type);
+
+      if (type === "before") {
+        setPhotos((current) => ({ ...current, before: url }));
+      } else if (type === "after") {
+        setPhotos((current) => ({ ...current, after: url }));
+      } else {
+        setPhotos((current) => ({
+          ...current,
+          details: [...current.details, url],
+        }));
+      }
+
+      toast.success("Fotoğraf yüklendi.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Fotoğraf yüklenemedi."
+      );
+    } finally {
+      setUploading(false);
+    }
+  }
+
   return (
     <>
       {step === "idle" ? (
@@ -144,7 +222,11 @@ export default function CloseoutFlow({
         boatName={boatName}
         categoryName={categoryName}
         value={delivery}
+        photos={photos}
+        uploading={uploading}
         onChange={setDelivery}
+        onPhotoUpload={handlePhotoUpload}
+        onClose={() => setStep("idle")}
         onContinue={() => {
           if (!canStartScoring) {
             return;
@@ -183,7 +265,18 @@ export default function CloseoutFlow({
             name="clientNotifyScore"
             value={delivery.clientNotifyScore ?? ""}
           />
-          <input type="hidden" name="deliveryNotes" value={delivery.notes} />
+          <input
+            type="hidden"
+            name="deliveryNotes"
+            value={JSON.stringify({
+              userNote: delivery.notes,
+              photos: {
+                before: photos.before,
+                after: photos.after,
+                details: photos.details,
+              },
+            })}
+          />
           <input type="hidden" name="q1_unit" value={normalizedEvaluation.q1_unit ?? ""} />
           <input type="hidden" name="q2_photos" value={normalizedEvaluation.q2_photos ?? ""} />
           <input type="hidden" name="q3_parts" value={normalizedEvaluation.q3_parts ?? ""} />

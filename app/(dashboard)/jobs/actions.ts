@@ -31,11 +31,11 @@ const createJobSchema = z.object({
   location: z.string().trim().optional(),
   contactName: z.string().trim().optional(),
   contactPhone: z.string().trim().optional(),
-  categoryId: z.string().uuid("Kategori secimi zorunludur."),
+  categoryId: z.string().uuid("Kateg?ri secimi zorunludur."),
   description: z
     .string()
     .trim()
-    .min(10, "Aciklama en az 10 karakter olmali."),
+    .min(10, "Açıklama en az 10 karakter olmali."),
   isWarranty: z.boolean().default(false),
   isKesif: z.boolean().default(false),
   notes: z.string().trim().optional(),
@@ -71,7 +71,7 @@ const scoreObjectionSchema = z.object({
   reason: z
     .string()
     .trim()
-    .min(10, "Itiraz nedenini en az 10 karakterle aciklayin.")
+    .min(10, "Itiraz nedenini en az 10 karakterle a??klayin.")
     .max(500, "Itiraz metni 500 karakteri gecemez."),
 });
 const reviewScoreObjectionSchema = z.object({
@@ -109,6 +109,17 @@ function optionalString(value: FormDataEntryValue | null) {
 
 function parseCheckbox(value: FormDataEntryValue | null) {
   return value === "on" || value === "true";
+}
+
+function hasAnsweredScore(value: FormDataEntryValue | string | null) {
+  const raw = String(value ?? "").trim();
+
+  if (!raw) {
+    return false;
+  }
+
+  const numericValue = Number(raw);
+  return Number.isFinite(numericValue) && numericValue >= 1 && numericValue <= 5;
 }
 
 function parseDateBoundary(value: string | undefined, endOfDay = false) {
@@ -436,7 +447,7 @@ export async function createJob(data: CreateJobInput) {
   });
 
   if (!category) {
-    throw new Error("Secilen kategori bulunamadi.");
+    throw new Error("Secilen kateg?ri bulunamadi.");
   }
 
   const responsible = await prisma.user.findFirst({
@@ -580,7 +591,7 @@ export async function createJobAction(
       error:
         error instanceof Error
           ? error.message
-          : "Is olusturulurken beklenmeyen bir hata olustu.",
+          : "?? oluşturulurken beklenmeyen bir hata olu?tu.",
       fieldErrors: {},
     };
   }
@@ -611,7 +622,7 @@ export async function updateJobStatus(
   });
 
   if (!job) {
-    throw new Error("Is kaydi bulunamadi.");
+    throw new Error("?? kaydi bulunamadi.");
   }
 
   if (!allowedTransitions[job.status].includes(newStatus)) {
@@ -619,7 +630,7 @@ export async function updateJobStatus(
   }
 
   if (newStatus === JobStatus.KAPANDI && (!job.deliveryReport || !job.evaluation)) {
-    throw new Error("Is kapatma icin teslim raporu ve Form 1 puanlama zorunlu.");
+    throw new Error("?? kapatma icin teslim raporu ve Form 1 puanlama zorunlu.");
   }
 
   const now = new Date();
@@ -734,15 +745,15 @@ export async function closeJobWithEvaluation(
   deliveryReport: DeliveryReportInput,
   evaluationAnswers: number[],
   evaluatorId: string,
-  options: CloseJobWithEvaluationOptions
+  options?: CloseJobWithEvaluationOptions
 ) {
   const actor = await requireRoles([Role.ADMIN, Role.COORDINATOR]);
 
   if (actor.id !== evaluatorId) {
-    throw new Error("Puanlamayi baslatan kullanici dogrulanamadi.");
+    throw new Error("Puanlamayi ba?latan kullanici dogrulanamadi.");
   }
 
-  const closedAt = options.closedAt ?? new Date();
+  const closedAt = options?.closedAt ?? new Date();
 
   return prisma.$transaction(async (tx) => {
     const job = await tx.serviceJob.findUnique({
@@ -761,11 +772,11 @@ export async function closeJobWithEvaluation(
     });
 
     if (!job) {
-      throw new Error("Is kaydi bulunamadi.");
+      throw new Error("?? kaydi bulunamadi.");
     }
 
     if (job.status !== JobStatus.TAMAMLANDI) {
-      throw new Error("Is kapatma akisi sadece tamamlanan islerde baslatilabilir.");
+      throw new Error("?? kapatma akisi sadece tamamlanan islerde ba?latilabilir.");
     }
 
     if (job.deliveryReport || job.evaluation || job.jobScores.length > 0) {
@@ -830,6 +841,39 @@ export async function closeJobWithEvaluation(
         });
       })
     );
+
+    if (job.isKesif && job.kesifJobId) {
+      const mainJob = await tx.serviceJob.findUnique({
+        where: { id: job.kesifJobId },
+        include: {
+          assignments: true,
+        },
+      });
+
+      if (mainJob) {
+        const kesifScore = calculateKesifScore(baseScore);
+        const kesifDate = job.createdAt;
+
+        await Promise.all(
+          mainJob.assignments.map((assignment) =>
+            tx.jobScore.create({
+              data: {
+                jobId: job.id,
+                userId: assignment.userId,
+                role: assignment.role,
+                baseScore,
+                multiplier: 0.5,
+                roleMultiplier: 1,
+                finalScore: kesifScore,
+                isKesif: true,
+                month: kesifDate.getMonth() + 1,
+                year: kesifDate.getFullYear(),
+              },
+            })
+          )
+        );
+      }
+    }
 
     const linkedKesifJobs = await tx.serviceJob.findMany({
       where: {
@@ -909,7 +953,7 @@ export async function closeJobWithEvaluation(
       data: {
         status: JobStatus.KAPANDI,
         closedAt,
-        closedById: options.closedById,
+        closedById: options?.closedById ?? actor.id,
       },
     });
 
@@ -954,9 +998,34 @@ export async function closeJobWithEvaluationAction(
   });
 
   if (!parsed.success) {
+    const hasSubcontractor = parseCheckbox(formData.get("hasSubcontractor"));
+    const deliveryAnsweredCount = [
+      formData.get("unitInfoScore"),
+      formData.get("photosScore"),
+      formData.get("partsListScore"),
+      hasSubcontractor ? formData.get("subcontractorScore") : "5",
+      formData.get("clientNotifyScore"),
+    ].filter((value) => hasAnsweredScore(value)).length;
+    const evaluationAnsweredCount = [
+      formData.get("q1_unit"),
+      formData.get("q2_photos"),
+      formData.get("q3_parts"),
+      hasSubcontractor ? formData.get("q4_sub") : "5",
+      formData.get("q5_notify"),
+    ].filter((value) => hasAnsweredScore(value)).length;
+
+    let error =
+      "Teslim raporu ve Form 1 değerlendirmesi zorunludur.";
+
+    if (deliveryAnsweredCount < 5 && evaluationAnsweredCount >= 5) {
+      error = `Lütfen önce teslim raporunu doldurun (${deliveryAnsweredCount}/5 alan tamamlandı).`;
+    } else if (deliveryAnsweredCount >= 5 && evaluationAnsweredCount < 5) {
+      error = `Lütfen Form 1 değerlendirmesini doldurun (${evaluationAnsweredCount}/5 soru yanıtlandı).`;
+    }
+
     return {
       ...initialCloseJobWithEvaluationActionState,
-      error: "Teslim raporu ve Form 1 alanlarinin tamami zorunludur.",
+      error,
     };
   }
 
@@ -1018,7 +1087,7 @@ export async function closeJobWithEvaluationAction(
       error:
         error instanceof Error
           ? error.message
-          : "Is kapatma akisi sirasinda beklenmeyen bir hata olustu.",
+          : "?? kapatma akisi sirasinda beklenmeyen bir hata olu?tu.",
     };
   }
 }
@@ -1070,7 +1139,7 @@ export async function submitScoreObjectionAction(formData: FormData) {
       }
 
       if (!isWithinObjectionWindow(job.closedAt)) {
-        throw new Error("Puan itirazi yalnizca ilk 30 gun icinde acilabilir.");
+        throw new Error("Puan itirazi yaln?zca ilk 30 gun icinde acilabilir.");
       }
 
       const isAssignedUser = job.assignments.some(
@@ -1083,7 +1152,7 @@ export async function submitScoreObjectionAction(formData: FormData) {
         actor.role === Role.WORKSHOP_CHIEF;
 
       if (!canObject) {
-        throw new Error("Bu is icin puan itirazi olusturma yetkiniz bulunmuyor.");
+        throw new Error("Bu is icin puan itirazi oluşturma yetkiniz bulunmuyor.");
       }
 
       const existingObjection = await tx.evaluationChangeLog.findFirst({
@@ -1098,7 +1167,7 @@ export async function submitScoreObjectionAction(formData: FormData) {
       });
 
       if (existingObjection && isWithinObjectionWindow(existingObjection.createdAt)) {
-        throw new Error("Bu is icin zaten acik bir puan itiraziniz bulunuyor.");
+        throw new Error("Bu is icin zaten a??k bir puan itiraziniz bulunuyor.");
       }
 
       await tx.evaluationChangeLog.create({
@@ -1139,7 +1208,7 @@ export async function submitScoreObjectionAction(formData: FormData) {
             userId: admin.id,
             type: "SCORE_OBJECTION",
             title: "Yeni puan itirazi",
-            body: `${job.boat.name} - ${job.category.name} isi icin itiraz olusturuldu.`,
+            body: `${job.boat.name} - ${job.category.name} isi icin itiraz oluşturuldu.`,
             metadata: {
               jobId: job.id,
               raisedById: actor.id,
@@ -1321,8 +1390,8 @@ export async function reviewScoreObjectionAction(formData: FormData) {
           data: uniqueRecipients.map((recipientId) => ({
             userId: recipientId,
             type: "SCORE_UPDATED",
-            title: "Puanlama guncellendi",
-            body: `Admin, ${job.id.slice(0, 8)} numarali is icin Form 1 puanlamasini guncelledi.`,
+            title: "Puanlama güncellendi",
+            body: `Admin, ${job.id.slice(0, 8)} numarali is icin Form 1 puanlamasini güncelledi.`,
             metadata: {
               jobId: job.id,
               objectionLogId: parsed.data.objectionLogId ?? null,
@@ -1370,3 +1439,4 @@ export async function markClientNotificationSent(input: {
 
   return notification;
 }
+

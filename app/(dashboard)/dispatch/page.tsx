@@ -47,15 +47,9 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
       <div className="rounded-[28px] border border-white/70 bg-white px-5 py-5 shadow-panel sm:px-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
-              ERP Planlama
-            </p>
             <h1 className="mt-2 text-2xl font-semibold text-marine-navy">
-              Dispatch Board
+              İş Dağıtım Panosu
             </h1>
-            <p className="mt-2 text-sm text-slate-600">
-              Teknisyen atama, gunluk yogunluk ve saha cikislarini tek ekranda yonetin.
-            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -71,14 +65,14 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
                 />
               </div>
               <Button type="submit" variant="outline" className="h-12">
-                Tarihi uygula
+                Bugüne Git
               </Button>
             </form>
 
             <Link href={`/dispatch/weekly?date=${dateValue}`} className="inline-flex">
               <Button variant="outline" className="h-12 gap-2">
                 <LayoutGrid className="size-4" />
-                Haftalik gorunum
+                Haftalik g?runum
               </Button>
             </Link>
 

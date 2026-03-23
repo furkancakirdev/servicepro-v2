@@ -49,16 +49,9 @@ export default async function ScoreboardPage({
       <div className="rounded-[28px] border border-white/70 bg-white px-5 py-5 shadow-panel sm:px-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
-            <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
-              Leaderboard
-            </p>
             <h1 className="mt-2 text-2xl font-semibold text-marine-navy">
               Puan Tablosu
             </h1>
-            <p className="mt-2 text-sm text-slate-500">
-              Is puanlari, aylik usta formu ve koordinator degerlendirmeleri tek tabloda
-              birlesir.
-            </p>
           </div>
 
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -113,3 +106,4 @@ export default async function ScoreboardPage({
     </div>
   );
 }
+

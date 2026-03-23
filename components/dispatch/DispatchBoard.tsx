@@ -88,7 +88,7 @@ export default function DispatchBoard({ data }: DispatchBoardProps) {
         jobId: draggedJobId,
         technicianId,
       });
-      setStatusMessage("Atama guncellendi. Timeline yenileniyor.");
+      setStatusMessage("Atama güncellendi. Timeline yenileniyor.");
       setDraggedJobId(null);
       router.refresh();
     });
@@ -144,7 +144,7 @@ export default function DispatchBoard({ data }: DispatchBoardProps) {
                     <div className="truncate font-medium text-marine-navy">{lane.name}</div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
                       <span>{lane.jobCount} is</span>
-                      <span>•</span>
+                      <span>â€¢</span>
                       <span className="truncate">{lane.locationLabel}</span>
                     </div>
                   </div>
@@ -240,14 +240,14 @@ export default function DispatchBoard({ data }: DispatchBoardProps) {
                   <JobToken
                     key={job.id}
                     title={job.boatName}
-                    subtitle={`${job.categoryName} • ${job.locationLabel}`}
+                    subtitle={`${job.categoryName} â€¢ ${job.locationLabel}`}
                     draggable
                     onDragStart={() => setDraggedJobId(job.id)}
                   />
                 ))
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                  Bugun icin atanmamis is bulunmuyor.
+                  Bugün icin atanmamis is bulunmuyor.
                 </div>
               )}
             </div>
@@ -257,3 +257,4 @@ export default function DispatchBoard({ data }: DispatchBoardProps) {
     </div>
   );
 }
+

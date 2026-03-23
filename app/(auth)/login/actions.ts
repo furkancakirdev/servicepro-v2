@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 
@@ -16,20 +17,20 @@ export async function login(
 ): Promise<LoginActionState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const nextPath = String(formData.get("next") ?? "/dashboard").trim();
+  const nextPath = String(formData.get("next") ?? "/").trim();
   const safeNextPath =
-    nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/dashboard";
+    nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/";
 
   if (!email || !password) {
     return {
-      error: "E-posta ve sifre alanlari zorunludur.",
+      error: "E-posta ve şifre alanları zorunludur.",
     };
   }
 
   if (!isSupabaseConfigured() || !isDatabaseConfigured()) {
     return {
       error:
-        "Supabase ve veritabani baglantisi henuz tanimli degil. .env.local degerlerini girdikten sonra tekrar deneyin.",
+        "Supabase ve veritabanı bağlantısı henüz tanımlı değil. `.env.local` değerlerini girdikten sonra tekrar deneyin.",
     };
   }
 
@@ -49,15 +50,22 @@ export async function login(
 
   if (!profile) {
     await supabase.auth.signOut();
+    cookies().delete("servicepro-role");
 
     return {
       error:
-        "Bu e-posta icin ServicePRO profili bulunamadi. Seed veya kullanici senkronizasyonunu kontrol edin.",
+        "Bu e-posta için ServicePRO profili bulunamadı. Seed veya kullanıcı senkronizasyonunu kontrol edin.",
     };
   }
 
+  cookies().set("servicepro-role", profile.role, {
+    path: "/",
+    sameSite: "lax",
+    httpOnly: false,
+  });
+
   const defaultRedirect =
-    safeNextPath === "/dashboard" && profile.role === Role.TECHNICIAN
+    safeNextPath === "/" && profile.role === Role.TECHNICIAN
       ? "/my-jobs"
       : safeNextPath;
 

@@ -104,5 +104,5 @@ export async function createBoatContactAction(formData: FormData) {
 
   revalidatePath("/boats");
   revalidatePath(`/boats/${parsed.boatId}`);
-  redirect(`/boats/${parsed.boatId}?contact=1`);
+  redirect(`/boats/${parsed.boatId}icontact=1`);
 }

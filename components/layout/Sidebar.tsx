@@ -21,8 +21,8 @@ function getNavigation(role?: Role): NavigationItem[] {
     return [
       {
         href: "/my-jobs",
-        label: "Bugun",
-        description: "Bugunku atamalar ve saha akisi",
+        label: "Bugün",
+        description: "Bugünkü atamalar ve saha akışı",
         icon: CalendarDays,
       },
       {
@@ -33,8 +33,8 @@ function getNavigation(role?: Role): NavigationItem[] {
       },
       {
         href: "/jobs",
-        label: "Tum Isler",
-        description: "Salt okunur genel is listesi",
+        label: "Tüm İşler",
+        description: "Salt okunur genel iş listesi",
         icon: BriefcaseBusiness,
       },
     ];
@@ -43,38 +43,38 @@ function getNavigation(role?: Role): NavigationItem[] {
   return [
     {
       href: "/dashboard",
-      label: "Dashboard",
-      description: "Genel operasyon gorunumu",
+      label: "Ana Ekran",
+      description: "Genel operasyon görünümü",
       icon: LayoutDashboard,
     },
     {
       href: "/jobs",
-      label: "Is Listesi",
-      description: "Is emirleri ve durum takibi",
+      label: "İş Listesi",
+      description: "İş emirleri ve durum takibi",
       icon: BriefcaseBusiness,
     },
     {
       href: "/dispatch",
-      label: "Dispatch",
-      description: "Gunluk ve haftalik planlama",
+      label: "İş Dağıtımı",
+      description: "Günlük ve haftalık planlama",
       icon: CalendarDays,
     },
     {
       href: "/boats",
       label: "Tekneler",
-      description: "VIP, irtibat ve servis gecmisi",
+      description: "VIP, irtibat ve servis geçmişi",
       icon: Ship,
     },
     {
       href: "/scoreboard",
       label: "Puan Tablosu",
-      description: "Aylik liderlik ve rozetler",
+      description: "Aylık liderlik ve rozetler",
       icon: Trophy,
     },
     {
       href: "/settings",
       label: "Ayarlar",
-      description: "Rol, kategori ve sistem alanlari",
+      description: "Rol, kategori ve sistem alanları",
       icon: Settings2,
     },
   ];
@@ -96,7 +96,7 @@ type SidebarUser = {
 
 const roleLabels: Record<Role, string> = {
   ADMIN: "Admin",
-  COORDINATOR: "Koordinator",
+  COORDINATOR: "Koordinatör",
   TECHNICIAN: "Teknisyen",
   WORKSHOP_CHIEF: "Usta",
 };
@@ -119,8 +119,7 @@ export function SidebarContent({
         </p>
         <h2 className="mt-3 text-2xl font-semibold text-white">ServicePRO</h2>
         <p className="mt-2 max-w-[18rem] text-sm leading-6 text-slate-300">
-          Marine servis operasyonlarini, kapanis puanlamasini ve liderlik akisini
-          tek yerde toplayan kabuk.
+          Servis yönetimi, kapanış puanlaması ve liderlik takibini tek yerden yönetin.
         </p>
       </div>
 
@@ -188,3 +187,4 @@ export default function Sidebar({ currentUser }: { currentUser?: SidebarUser }) 
     </aside>
   );
 }
+

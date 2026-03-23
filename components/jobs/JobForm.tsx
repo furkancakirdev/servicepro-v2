@@ -37,7 +37,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
       disabled={disabled || pending}
       className="h-12 w-full bg-marine-navy text-white hover:bg-marine-ocean"
     >
-      {pending ? "Kaydediliyor..." : "Isi kaydet"}
+      {pending ? "Kaydediliyor..." : "??i kaydet"}
     </Button>
   );
 }
@@ -176,7 +176,7 @@ export default function JobForm({ meta }: JobFormProps) {
           <CardHeader>
             <CardTitle className="text-marine-navy">1. Tekne bilgileri</CardTitle>
             <CardDescription>
-              Tekne, lokasyon ve irtibat bilgilerini ekleyip saha kaydini baslatin.
+              Tekne, lokasyon ve irtibat bilgilerini ekleyip saha kaydini ba?latin.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
@@ -250,7 +250,7 @@ export default function JobForm({ meta }: JobFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contactName">Irtibat kisisi</Label>
+              <Label htmlFor="contactName">?rtibat kisisi</Label>
               <Input
                 id="contactName"
                 name="contactName"
@@ -273,9 +273,9 @@ export default function JobForm({ meta }: JobFormProps) {
 
         <Card className="border-white/80 bg-white/95">
           <CardHeader>
-            <CardTitle className="text-marine-navy">2. Kategori ve kapsam</CardTitle>
+            <CardTitle className="text-marine-navy">2. Kateg?ri ve kapsam</CardTitle>
             <CardDescription>
-              Zorluk katsayisi kategori secimiyle otomatik gelir ve puanlamada aynen
+              Zorluk katsayisi kateg?ri secimiyle otomatik gelir ve puanlamada aynen
               kullanilir.
             </CardDescription>
           </CardHeader>
@@ -308,7 +308,7 @@ export default function JobForm({ meta }: JobFormProps) {
                         selected ? "text-white/80" : "text-marine-ocean"
                       )}
                     >
-                      {category.brandHints ?? "Genel kategori"}
+                      {category.brandHints ?? "Genel kateg?ri"}
                     </div>
                     <div className="mt-2 text-base font-semibold">{category.name}</div>
                     <div
@@ -336,7 +336,7 @@ export default function JobForm({ meta }: JobFormProps) {
             ) : null}
 
             <div className="space-y-2">
-              <Label htmlFor="description">Aciklama</Label>
+              <Label htmlFor="description">Açıklama</Label>
               <Textarea
                 id="description"
                 name="description"
@@ -350,12 +350,12 @@ export default function JobForm({ meta }: JobFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Ic notlar</Label>
+              <Label htmlFor="notes">?? notlar</Label>
               <Textarea
                 id="notes"
                 name="notes"
                 className="min-h-[112px]"
-                placeholder="Parca bekleniyor, ek ekipman gerekli, musteri notu gibi operasyon detaylari..."
+                placeholder="Parca bekleniyor, ek ekipman gerekli, müşteri notu gibi operasyon detaylari..."
               />
             </div>
 
@@ -372,7 +372,7 @@ export default function JobForm({ meta }: JobFormProps) {
                     Garanti isi
                   </div>
                   <p className="mt-1 text-sm text-slate-600">
-                    Is kaydi garanti kapsamindaysa puanlama ve takip akisi buna gore
+                    ?? kaydi garanti kapsamindaysa puanlama ve takip akisi buna g?re
                     ayrilir.
                   </p>
                 </div>
@@ -411,7 +411,7 @@ export default function JobForm({ meta }: JobFormProps) {
               3. Personel atama
             </CardTitle>
             <CardDescription>
-              Sorumlu teknisyen ve destek ekibini ayni kayit ekranindan belirleyin.
+              Sorumlu teknisyen ve destek ekibini aynı kayit ekranindan belirleyin.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -420,7 +420,7 @@ export default function JobForm({ meta }: JobFormProps) {
               {recommendedTechnicians.length > 0 ? (
                 <div className="space-y-3">
                   <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                    Bu tekne icin son 90 gunde en sik gorevlendirilen teknisyenler once gosteriliyor.
+                    Bu tekne icin son 90 gunde en sik g?revlendirilen teknisyenler once gosteriliyor.
                   </div>
                   <div className="grid gap-3">
                     {recommendedTechnicians.map((technician) =>
@@ -469,15 +469,15 @@ export default function JobForm({ meta }: JobFormProps) {
 
             {!canSubmit ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                Kategori veya teknisyen kaydi olmadigi icin yeni is acilamiyor.
+                Kateg?ri veya teknisyen kaydi olmadigi icin yeni is acilamiyor.
               </div>
             ) : null}
 
             <SubmitButton disabled={!canSubmit} />
 
             <p className="text-sm leading-6 text-slate-600">
-              Kayit olustuktan sonra detay sayfasindan durum gecisleri, bekletme
-              nedenleri ve ayni tekne icin acik is uyarilari yonetilir.
+              Kayit olu?tuktan sonra detay sayfasindan durum gecisleri, bekletme
+              nedenleri ve aynı tekne icin a??k is uyarilari yonetilir.
             </p>
           </CardContent>
         </Card>
@@ -485,3 +485,4 @@ export default function JobForm({ meta }: JobFormProps) {
     </form>
   );
 }
+

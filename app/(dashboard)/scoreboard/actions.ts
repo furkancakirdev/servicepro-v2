@@ -32,7 +32,7 @@ const coordinatorRowSchema = z.object({
 
 function parsePayload<T>(rawPayload: FormDataEntryValue | null, schema: z.ZodSchema<T>) {
   if (typeof rawPayload !== "string") {
-    throw new Error("Degerlendirme verisi okunamadi.");
+    throw new Error("Değerlendirme verisi okunamadi.");
   }
 
   let parsedJson: unknown;
@@ -40,7 +40,7 @@ function parsePayload<T>(rawPayload: FormDataEntryValue | null, schema: z.ZodSch
   try {
     parsedJson = JSON.parse(rawPayload);
   } catch {
-    throw new Error("Degerlendirme payload'i gecerli JSON degil.");
+    throw new Error("Değerlendirme payload'i gecerli JSON degil.");
   }
 
   return schema.parse(parsedJson);
@@ -123,7 +123,7 @@ export async function saveWorkshopEvaluationsAction(
       error:
         error instanceof Error
           ? error.message
-          : "Usta degerlendirmesi kaydedilirken beklenmeyen bir hata olustu.",
+          : "Usta değerlendirmesi kaydedilirken beklenmeyen bir hata olu?tu.",
     };
   }
 }
@@ -193,7 +193,8 @@ export async function saveCoordinatorEvaluationsAction(
       error:
         error instanceof Error
           ? error.message
-          : "Koordinator degerlendirmesi kaydedilirken beklenmeyen bir hata olustu.",
+          : "Koordinatör değerlendirmesi kaydedilirken beklenmeyen bir hata olu?tu.",
     };
   }
 }
+

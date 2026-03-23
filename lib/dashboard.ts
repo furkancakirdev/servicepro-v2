@@ -229,7 +229,7 @@ async function syncOperationalNotifications() {
       .map((recipient) => ({
         userId: recipient.id,
         type: "HOLD_REMINDER",
-        title: "Beklemedeki is hatirlatmasi",
+        title: "Beklemedeki is hatırlatmasi",
         body: `${job.boat.name} - ${job.category.name} isi icin bekleme suresi doldu.`,
         metadata: {
           jobId: job.id,
@@ -270,8 +270,8 @@ async function syncOperationalNotifications() {
           .map((recipient) => ({
             userId: recipient.id,
             type: "MISSING_WORKSHOP_EVAL",
-            title: "Aylik usta degerlendirmesi bekleniyor",
-            body: `${label} icin ${missingWorkshopCount} teknisyenin Form 2 degerlendirmesi eksik.`,
+            title: "Aylık usta değerlendirmesi bekleniyor",
+            body: `${label} icin ${missingWorkshopCount} teknisyenin Form 2 değerlendirmesi eksik.`,
             metadata: {
               month,
               year,
@@ -289,8 +289,8 @@ async function syncOperationalNotifications() {
           .map((recipient) => ({
             userId: recipient.id,
             type: "MISSING_COORDINATOR_EVAL",
-            title: "Aylik koordinator degerlendirmesi bekleniyor",
-            body: `${label} icin ${missingCoordinatorCount} teknisyenin Form 3 degerlendirmesi eksik.`,
+            title: "Aylık koordinatör değerlendirmesi bekleniyor",
+            body: `${label} icin ${missingCoordinatorCount} teknisyenin Form 3 değerlendirmesi eksik.`,
             metadata: {
               month,
               year,
@@ -518,8 +518,8 @@ export async function getDashboardData(
     alerts.push({
       id: "missing-evaluations",
       tone: "sky",
-      title: "Aylik degerlendirme eksikleri var",
-      description: `${missingWorkshopCount} usta ve ${missingCoordinatorCount} koordinator degerlendirmesi bekleniyor.`,
+      title: "Aylık değerlendirme eksikleri var",
+      description: `${missingWorkshopCount} usta ve ${missingCoordinatorCount} koordinatör değerlendirmesi bekleniyor.`,
     });
   }
 
@@ -606,3 +606,4 @@ export async function getDashboardData(
     missingCoordinatorCount,
   };
 }
+

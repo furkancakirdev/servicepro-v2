@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Role } from "@prisma/client";
+import { Role, type Prisma } from "@prisma/client";
 import {
   Anchor,
   Award,
@@ -13,7 +13,6 @@ import {
 
 import { reviewScoreObjectionAction } from "@/app/(dashboard)/jobs/actions";
 import {
-  calculateMonthlyBadgesAction,
   createCategoryAction,
   createPersonnelAction,
   saveBoatAction,
@@ -21,6 +20,7 @@ import {
   saveSystemSettingsAction,
   updatePersonnelRoleAction,
 } from "@/app/(dashboard)/settings/actions";
+import MonthlyBadgeCalculator from "@/components/settings/MonthlyBadgeCalculator";
 import {
   Card,
   CardContent,
@@ -40,6 +40,37 @@ type SettingsPageProps = {
   searchParams?: Record<string, string | string[] | undefined>;
 };
 
+type SettingsUser = Prisma.UserGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    email: true;
+    role: true;
+  };
+}>;
+
+type SettingsBoat = Prisma.BoatGetPayload<{
+  include: {
+    _count: {
+      select: {
+        jobs: true;
+      };
+    };
+  };
+}>;
+
+type SettingsCategory = Prisma.ServiceCategoryGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    subScope: true;
+    multiplier: true;
+    brandHints: true;
+    isActive: true;
+    sortOrder: true;
+  };
+}>;
+
 const yearCardStyles = [
   "border-amber-300 bg-amber-50",
   "border-slate-300 bg-slate-50",
@@ -47,7 +78,7 @@ const yearCardStyles = [
 ] as const;
 const roleLabels: Record<Role, string> = {
   ADMIN: "Admin",
-  COORDINATOR: "Koordinator",
+  COORDINATOR: "Koordinatör",
   TECHNICIAN: "Teknisyen",
   WORKSHOP_CHIEF: "Usta",
 };
@@ -74,43 +105,72 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
     takeFirstValue(searchParams?.year),
     now.getFullYear()
   );
-  const [yearlyStandings, objectionQueue, users, boats, categories, onHoldDefaultDays] =
-    await Promise.all([
-    calculateYearlyBadgeStandings(selectedYear),
-    getScoreObjectionQueue(6),
-    prisma.user.findMany({
-      orderBy: [{ role: "asc" }, { name: "asc" }],
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-      },
-    }),
-    prisma.boat.findMany({
-      include: {
-        _count: {
-          select: {
-            jobs: true,
+  let yearlyStandings: Awaited<ReturnType<typeof calculateYearlyBadgeStandings>>;
+  let objectionQueue: Awaited<ReturnType<typeof getScoreObjectionQueue>>;
+  let users: SettingsUser[];
+  let boats: SettingsBoat[];
+  let categories: SettingsCategory[];
+  let onHoldDefaultDays: Awaited<ReturnType<typeof getOnHoldDefaultDays>>;
+
+  try {
+    [
+      yearlyStandings,
+      objectionQueue,
+      users,
+      boats,
+      categories,
+      onHoldDefaultDays,
+    ] = await Promise.all([
+      calculateYearlyBadgeStandings(selectedYear),
+      getScoreObjectionQueue(6),
+      prisma.user.findMany({
+        orderBy: [{ role: "asc" }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+        },
+      }),
+      prisma.boat.findMany({
+        include: {
+          _count: {
+            select: {
+              jobs: true,
+            },
           },
         },
-      },
-      orderBy: [{ isActive: "desc" }, { name: "asc" }],
-    }),
-    prisma.serviceCategory.findMany({
-      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      select: {
-        id: true,
-        name: true,
-        subScope: true,
-        multiplier: true,
-        brandHints: true,
-        isActive: true,
-        sortOrder: true,
-      },
-    }),
-    getOnHoldDefaultDays(),
-  ]);
+        orderBy: [{ isActive: "desc" }, { name: "asc" }],
+      }),
+      prisma.serviceCategory.findMany({
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          subScope: true,
+          multiplier: true,
+          brandHints: true,
+          isActive: true,
+          sortOrder: true,
+        },
+      }),
+      getOnHoldDefaultDays(),
+    ]);
+  } catch (error) {
+    console.error("[Settings] Veri yüklenemedi:", error);
+
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
+        <p className="text-base text-slate-600">Ayarlar yüklenemedi.</p>
+        <a
+          href="/settings"
+          className="rounded-xl bg-marine-navy px-5 py-2.5 text-sm font-medium text-white hover:bg-marine-ocean"
+        >
+          Yeniden Dene
+        </a>
+      </div>
+    );
+  }
   const badgeCalculated = takeFirstValue(searchParams?.badge) === "1";
   const reviewedJobId = takeFirstValue(searchParams?.reviewed);
   const errorMessage = takeFirstValue(searchParams?.error);
@@ -118,22 +178,19 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   return (
     <div className="space-y-6">
       <div className="rounded-[28px] border border-white/70 bg-white px-5 py-5 shadow-panel sm:px-6">
-        <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
-          System
-        </p>
         <h1 className="mt-2 text-2xl font-semibold text-marine-navy">Ayarlar</h1>
       </div>
 
       {badgeCalculated ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Aylik rozet hesaplamasi tamamlandi. Dashboard, scoreboard ve bildirimler
+          Aylık rozet hesaplamas? tamamland?. Dashboard, scoreboard ve bildirimler
           yenilendi.
         </div>
       ) : null}
 
       {reviewedJobId ? (
         <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-          {reviewedJobId.slice(0, 8)} numarali is icin puanlama guncellendi ve ekip
+          {reviewedJobId.slice(0, 8)} numarali is icin puanlama güncellendi ve ekip
           bilgilendirildi.
         </div>
       ) : null}
@@ -150,7 +207,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           <TabsTrigger value="team">Personel</TabsTrigger>
           <TabsTrigger value="boats">Tekneler</TabsTrigger>
           <TabsTrigger value="categories">Kategoriler</TabsTrigger>
-          <TabsTrigger value="system">Sistem</TabsTrigger>
+          <TabsTrigger value="system">İşleyiş</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -161,7 +218,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                 Profil ayarlari
               </CardTitle>
               <CardDescription>
-                Giris yapan kullanici: {viewer.name} ({viewer.email})
+                Giriş yapan kullanici: {viewer.name} ({viewer.email})
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 sm:grid-cols-3">
@@ -198,7 +255,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                   Yeni personel kaydi
                 </CardTitle>
                 <CardDescription>
-                  Bu form veritabani kullanicisini olusturur. Supabase auth hesabi gerekiyorsa
+                  Bu form veritabani kullanicisini oluşturur. Supabase auth hesabi gerekiyorsa
                   ayrica acilmalidir.
                 </CardDescription>
               </CardHeader>
@@ -295,7 +352,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                   Yeni tekne
                 </CardTitle>
                 <CardDescription>
-                  Yeni tekne kaydi aktif olarak olusturulur ve daha sonra listeden
+                  Yeni tekne kaydi aktif olarak oluşturulur ve daha sonra listeden
                   pasife alinabilir.
                 </CardDescription>
               </CardHeader>
@@ -342,7 +399,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                   Tekne listesi
                 </CardTitle>
                 <CardDescription>
-                  Is sayisi ile birlikte mevcut tekne kayitlarini duzenleyin ve
+                  ?? say?s? ile birlikte mevcut tekne kay?tlar?n? d?zenleyin ve
                   gerekirse pasife alin.
                 </CardDescription>
               </CardHeader>
@@ -390,7 +447,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                           defaultChecked={boat.isActive}
                           className="size-4 rounded border-slate-300"
                         />
-                        Tekne aktif kayitlarda gorunsun
+                        Tekne aktif kayitlarda g?runsun
                       </label>
                       <div className="flex items-center gap-3">
                         <div className="text-xs uppercase tracking-[0.12em] text-slate-500">
@@ -416,10 +473,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-marine-navy">
                 <Tags className="size-5 text-marine-ocean" />
-                Yeni kategori
+                Yeni kateg?ri
               </CardTitle>
               <CardDescription>
-                Zorluk carpani, sira ve marka ipucu ile yeni servis kategorisi ekleyin.
+                Zorluk ?arpani, sira ve marka ipucu ile yeni servis kateg?risi ekleyin.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -468,7 +525,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                 Kategori tablosu
               </CardTitle>
               <CardDescription>
-                Carpan, sira ve aktiflik bilgilerini aninda duzenleyin.
+                ?arpan, s?ra ve aktiflik bilgilerini an?nda d?zenleyin.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -522,7 +579,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                       defaultChecked={category.isActive}
                       className="size-4 rounded border-slate-300"
                     />
-                    Aktif kategori
+                    Aktif kateg?ri
                   </label>
                 </form>
               ))}
@@ -536,52 +593,18 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-marine-navy">
                   <Settings2 className="size-5 text-marine-ocean" />
-                  Aylik rozet hesaplama
+                  Aylık rozet hesaplama
                 </CardTitle>
                 <CardDescription>
                   Ay sonu cron yerine manuel tetikleme ile rozetleri ve ilgili bildirimleri
-                  olustur.
+                  oluştur.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <form action={calculateMonthlyBadgesAction} className="space-y-4">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="month" className="mb-2 block text-sm font-medium text-marine-navy">
-                        Ay
-                      </label>
-                      <input
-                        id="month"
-                        name="month"
-                        type="number"
-                        min={1}
-                        max={12}
-                        defaultValue={now.getMonth() + 1}
-                        className={inputClassName}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="year" className="mb-2 block text-sm font-medium text-marine-navy">
-                        Yil
-                      </label>
-                      <input
-                        id="year"
-                        name="year"
-                        type="number"
-                        min={2024}
-                        max={2100}
-                        defaultValue={now.getFullYear()}
-                        className={inputClassName}
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="submit"
-                    className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-marine-navy px-4 text-sm font-medium text-white transition-colors hover:bg-marine-ocean"
-                  >
-                    Rozet Hesaplamasini Calistir
-                  </button>
-                </form>
+                <MonthlyBadgeCalculator
+                  defaultMonth={now.getMonth() + 1}
+                  defaultYear={now.getFullYear()}
+                />
 
                 <form action={saveSystemSettingsAction} className="mt-4 space-y-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                   <div>
@@ -589,7 +612,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                       htmlFor="onHoldDefaultDays"
                       className="mb-2 block text-sm font-medium text-marine-navy"
                     >
-                      Varsayilan ON_HOLD gunu
+                      Varsay?lan ON_HOLD g?n?
                     </label>
                     <input
                       id="onHoldDefaultDays"
@@ -602,7 +625,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                     />
                   </div>
                   <p className="text-sm text-slate-600">
-                    Is detayindaki bekletme formu bu degeri ilk onerilen hatirlatma gunu
+                    ?? detayındaki bekletme formu bu de?eri ilk ?nerilen hatırlatma g?n?
                     olarak kullanir.
                   </p>
                   <button
@@ -619,10 +642,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-marine-navy">
                   <CalendarClock className="size-5 text-marine-ocean" />
-                  Yil sonu puanlari
+                  Y?l sonu puanlari
                 </CardTitle>
                 <CardDescription>
-                  Yil puani = toplam rozet sayisi x 3. Ilk 3 personel altin odul sunumuyla
+                  Y?l puan? = toplam rozet say?s? x 3. ?lk 3 personel alt?n ?d?l sunumuyla
                   vurgulanir.
                 </CardDescription>
               </CardHeader>
@@ -640,7 +663,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                     type="submit"
                     className="inline-flex h-11 items-center justify-center rounded-xl border border-marine-ocean/20 px-4 text-sm font-medium text-marine-navy transition-colors hover:bg-marine-ocean/5"
                   >
-                    Yili Goster
+                    Y?li Goster
                   </button>
                 </form>
 
@@ -690,7 +713,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                   </>
                 ) : (
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-                    {selectedYear} icin henuz rozet verisi bulunmuyor.
+                    {selectedYear} icin henüz rozet verisi bulunmuyor.
                   </div>
                 )}
               </CardContent>
@@ -704,14 +727,14 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                 Puan itirazlari ve admin incelemesi
               </CardTitle>
               <CardDescription>
-                30 gun icindeki itirazlar burada listelenir. Duzenleme yapildiginda log ve
-                personel bildirimi olusturulur.
+                30 g?n i?indeki itirazlar burada listelenir. D?zenleme yap?ld???nda log ve
+                personel bildirimi oluşturulur.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {objectionQueue.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-sm text-slate-600">
-                  Incelenmeyi bekleyen puan itirazi bulunmuyor.
+                  ?ncelenmeyi bekleyen puan itiraz? bulunmuyor.
                 </div>
               ) : (
                 objectionQueue.map((item) => (
@@ -722,7 +745,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="space-y-2">
                         <div className="text-xs font-semibold uppercase tracking-[0.16em] text-marine-ocean">
-                          Is #{item.jobId.slice(0, 8)}
+                          ?? #{item.jobId.slice(0, 8)}
                         </div>
                         <h3 className="text-lg font-semibold text-marine-navy">
                           {item.boatName} - {item.categoryName}
@@ -742,7 +765,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                         href={`/jobs/${item.jobId}`}
                         className="inline-flex h-11 items-center justify-center rounded-xl border border-marine-ocean/20 bg-white px-4 text-sm font-medium text-marine-navy transition-colors hover:bg-marine-ocean/5"
                       >
-                        Is Detayini Ac
+                        ?? Detay?n? A?
                       </Link>
                     </div>
 
@@ -793,14 +816,14 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                           htmlFor={`${item.logId}-reason`}
                           className="mb-2 block text-sm font-medium text-marine-navy"
                         >
-                          Admin duzenleme notu
+                          Admin d?zenleme notu
                         </label>
                         <textarea
                           id={`${item.logId}-reason`}
                           name="reason"
                           required
                           minLength={10}
-                          placeholder="Hangi puanlar neden guncellendi?"
+                          placeholder="Hangi puanlar neden güncellendi?"
                           className={textareaClassName}
                         />
                       </div>
@@ -809,7 +832,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                         type="submit"
                         className="inline-flex h-12 items-center justify-center rounded-xl bg-marine-navy px-5 text-sm font-medium text-white transition-colors hover:bg-marine-ocean"
                       >
-                        Puanlamayi Guncelle ve Bilgilendir
+                        Puanlamayi Güncelle ve Bilgilendir
                       </button>
                     </form>
                   </div>
@@ -822,3 +845,4 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
     </div>
   );
 }
+

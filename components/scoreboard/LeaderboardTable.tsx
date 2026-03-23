@@ -24,12 +24,12 @@ type LeaderboardTableProps = {
 const badgeMeta: Record<BadgeType, { icon: typeof Star; label: string; tone: string }> = {
   SERVIS_YILDIZI: {
     icon: Star,
-    label: "Servis Yildizi",
+    label: "Servis Y?ld?z?",
     tone: "text-amber-600",
   },
   KALITE_USTASI: {
     icon: ShieldCheck,
-    label: "Kalite Ustasi",
+    label: "Kalite Ustas?",
     tone: "text-emerald-600",
   },
   EKIP_OYUNCUSU: {
@@ -42,7 +42,7 @@ const badgeMeta: Record<BadgeType, { icon: typeof Star; label: string; tone: str
 function PendingBadge() {
   return (
     <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-800">
-      Degerlendirme bekleniyor
+      DE?ERLEND?RME BEKLEN?YOR
     </span>
   );
 }
@@ -61,19 +61,16 @@ export default function LeaderboardTable({
     <>
       <div className="overflow-hidden rounded-[28px] border border-white/70 bg-white shadow-panel">
         <div className="border-b border-slate-200/80 px-6 py-5">
-          <h2 className="text-xl font-semibold text-marine-navy">Aylik siralama</h2>
-          <p className="mt-1 text-sm text-slate-500">
-            Satira tiklayarak personel detaylarini acabilirsiniz.
-          </p>
+          <h2 className="text-xl font-semibold text-marine-navy">Aylık Sıralama</h2>
         </div>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>#</TableHead>
               <TableHead>Personel</TableHead>
-              <TableHead>Is Puani</TableHead>
-              <TableHead>Usta Puani</TableHead>
-              <TableHead>Koordinator</TableHead>
+              <TableHead>İş Puanı</TableHead>
+              <TableHead>Usta Puanı</TableHead>
+              <TableHead>Koordinatör</TableHead>
               <TableHead>Toplam</TableHead>
               <TableHead>Rozetler</TableHead>
             </TableRow>
@@ -88,7 +85,6 @@ export default function LeaderboardTable({
                 <TableCell className="font-semibold text-marine-navy">{entry.rank}</TableCell>
                 <TableCell>
                   <div className="font-medium text-marine-navy">{entry.user.name}</div>
-                  <div className="text-xs text-slate-500">{entry.user.email}</div>
                 </TableCell>
                 <TableCell>{entry.jobScore.toFixed(1)}</TableCell>
                 <TableCell>
@@ -108,8 +104,8 @@ export default function LeaderboardTable({
                 <TableCell className="font-semibold text-marine-navy">
                   <div>{entry.total.toFixed(1)}</div>
                   {entry.hasMissingEval ? (
-                    <div className="text-xs font-normal text-amber-700">
-                      Eksik form nedeniyle kismi toplam
+                    <div className="mt-2">
+                      <PendingBadge />
                     </div>
                   ) : null}
                 </TableCell>

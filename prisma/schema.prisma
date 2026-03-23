@@ -114,6 +114,7 @@ model ServiceCategory {
 
 model ServiceJob {
   id           String          @id @default(uuid())
+  jobNumber    Int             @default(autoincrement())
   boatId       String
   boat         Boat            @relation(fields: [boatId], references: [id])
   categoryId   String

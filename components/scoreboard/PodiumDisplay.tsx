@@ -90,7 +90,7 @@ export default function PodiumDisplay({ entries }: PodiumDisplayProps) {
               </div>
               <div>Bu ayin toplam puani</div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
-                Is: {entry.jobScore.toFixed(1)} | Usta:{" "}
+                ??: {entry.jobScore.toFixed(1)} | Usta:{" "}
                 {entry.workshopScore?.toFixed(1) ?? "Bekleniyor"} | Koor:{" "}
                 {entry.coordinatorScore?.toFixed(1) ?? "Bekleniyor"}
               </div>

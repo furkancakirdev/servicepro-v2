@@ -2,6 +2,7 @@
 
 import { useFormState, useFormStatus } from "react-dom";
 import { Anchor, ArrowRight, LockKeyhole, Mail } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 import { login } from "@/app/(auth)/login/actions";
 import { initialLoginState } from "@/app/(auth)/login/state";
@@ -26,7 +27,7 @@ function SubmitButton() {
       className="h-12 w-full bg-marine-navy text-white hover:bg-marine-ocean"
       disabled={pending}
     >
-      {pending ? "Giris yapiliyor..." : "ServicePRO'ya Giris"}
+      {pending ? "Giriş yapılıyor..." : "ServicePRO'ya Giriş"}
       {!pending && <ArrowRight className="size-4" />}
     </Button>
   );
@@ -34,6 +35,8 @@ function SubmitButton() {
 
 export default function LoginPage() {
   const [state, formAction] = useFormState(login, initialLoginState);
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") ?? "/";
 
   return (
     <Card className="border-white/70 bg-white/90 shadow-panel backdrop-blur">
@@ -50,11 +53,13 @@ export default function LoginPage() {
           </div>
         </div>
         <CardDescription className="text-sm leading-6 text-slate-600">
-          Servis operasyonlari, dispatch ve performans akisini tek ekranda yonetin.
+          Servis operasyonları, dispatch ve performans akışını tek ekranda yönetin.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5 pt-6">
         <form action={formAction} className="space-y-4">
+          <input type="hidden" name="next" value={nextPath} />
+
           <div className="space-y-2">
             <Label htmlFor="email">E-posta</Label>
             <div className="relative">
@@ -71,7 +76,7 @@ export default function LoginPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Sifre</Label>
+            <Label htmlFor="password">Şifre</Label>
             <div className="relative">
               <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
               <Input
@@ -94,10 +99,11 @@ export default function LoginPage() {
           <SubmitButton />
         </form>
 
-        <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
-          Seed tamamlandiginda ornek hesaplar: admin@marlin.com, ismail@marlin.com
-          ve tech1@marlin.com. Varsayilan sifre: admin123.
-        </div>
+        {process.env.NODE_ENV === "development" ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-3 text-xs text-slate-500">
+            Dev: admin@marlin.com / admin123
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

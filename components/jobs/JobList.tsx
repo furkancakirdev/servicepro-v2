@@ -31,6 +31,13 @@ function getSupportCount(job: ServiceJobListItem) {
   return job.assignments.filter((assignment) => assignment.role === JobRole.DESTEK).length;
 }
 
+function getSupportNames(job: ServiceJobListItem) {
+  return job.assignments
+    .filter((assignment) => assignment.role === JobRole.DESTEK)
+    .map((assignment) => assignment.user.name)
+    .join(", ");
+}
+
 function formatJobDate(date: Date) {
   return format(date, "dd MMM yyyy HH:mm", { locale: tr });
 }
@@ -39,9 +46,9 @@ export default function JobList({ jobs }: { jobs: ServiceJobListItem[] }) {
   if (jobs.length === 0) {
     return (
       <section className="rounded-[28px] border border-dashed border-slate-300 bg-white/90 px-6 py-12 text-center shadow-panel">
-        <p className="text-lg font-semibold text-marine-navy">Filtreye uyan is bulunamadi.</p>
+        <p className="text-lg font-semibold text-marine-navy">Filtreye uyan iş bulunamadı.</p>
         <p className="mt-2 text-sm text-slate-600">
-          Arama kriterlerini temizleyip tekrar deneyin ya da yeni bir servis isi olusturun.
+          Arama kriterlerini temizleyip tekrar deneyin ya da yeni bir servis işi oluşturun.
         </p>
       </section>
     );
@@ -51,7 +58,7 @@ export default function JobList({ jobs }: { jobs: ServiceJobListItem[] }) {
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="text-sm text-slate-600">
-          Toplam <span className="font-semibold text-marine-navy">{jobs.length}</span> is
+          Toplam <span className="font-semibold text-marine-navy">{jobs.length}</span> iş
           listeleniyor.
         </div>
       </div>
@@ -73,11 +80,13 @@ export default function JobList({ jobs }: { jobs: ServiceJobListItem[] }) {
           <TableBody>
             {jobs.map((job) => {
               const supportCount = getSupportCount(job);
+              const supportNames = getSupportNames(job);
 
               return (
                 <TableRow key={job.id} className="border-slate-100">
                   <TableCell className="px-4 py-4">
                     <div className="font-medium text-marine-navy">{job.boat.name}</div>
+                    <div className="text-xs text-slate-500">İş #{job.jobNumber}</div>
                     <div className="text-xs text-slate-500">{job.boat.type}</div>
                   </TableCell>
                   <TableCell className="px-4 py-4">
@@ -89,9 +98,9 @@ export default function JobList({ jobs }: { jobs: ServiceJobListItem[] }) {
                   </TableCell>
                   <TableCell className="px-4 py-4">
                     <div className="font-medium text-slate-700">{getResponsibleLabel(job)}</div>
-                    <div className="text-xs text-slate-500">
-                      {supportCount > 0 ? `${supportCount} destek personeli` : "Destek atamasi yok"}
-                    </div>
+                    {supportCount > 0 ? (
+                      <div className="text-xs text-slate-500">{supportNames}</div>
+                    ) : null}
                   </TableCell>
                   <TableCell className="px-4 py-4">
                     <StatusBadge status={job.status} />
@@ -129,3 +138,4 @@ export default function JobList({ jobs }: { jobs: ServiceJobListItem[] }) {
     </section>
   );
 }
+

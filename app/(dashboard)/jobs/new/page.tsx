@@ -20,11 +20,11 @@ export default async function NewJobPage() {
           <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
             Yeni Kayit
           </p>
-          <h1 className="mt-2 text-2xl font-semibold text-marine-navy">Yeni Is Olustur</h1>
+          <h1 className="mt-2 text-2xl font-semibold text-marine-navy">Yeni İş Oluştur</h1>
         </div>
         <Link href="/jobs" className={secondaryLinkClass}>
           <ArrowLeft className="size-4" />
-          Is listesine don
+          İş listesine dön
         </Link>
       </div>
 
@@ -32,3 +32,4 @@ export default async function NewJobPage() {
     </div>
   );
 }
+

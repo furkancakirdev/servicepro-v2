@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   AlertTriangle,
-  ArrowRight,
   BarChart3,
   ClipboardCheck,
   Clock3,
@@ -40,89 +39,29 @@ export default async function DashboardHomePage() {
   const dashboard = await getDashboardData(currentUser);
   const statCards = [
     {
-      title: "Acik isler",
+      title: "Açık işler",
       value: dashboard.activeJobsCount,
-      description: "Planlandi, devam ediyor ve beklemede kayitlar.",
       icon: Wrench,
     },
     {
       title: "Bu ay tamamlanan",
       value: dashboard.completedThisMonthCount,
-      description: "Ayni ay icinde teslime gelen operasyonlar.",
       icon: ClipboardCheck,
     },
     {
       title: "Bekleyen puanlama",
       value: dashboard.pendingScoringCount,
-      description: "TAMAMLANDI durumundaki kapanis bekleyen isler.",
       icon: Clock3,
     },
     {
       title: "Bu ayin lideri",
       value: dashboard.leader ? `${dashboard.leader.score.toFixed(1)} puan` : "-",
-      description: dashboard.leader?.name ?? "Henuz puan kaydi yok.",
       icon: Trophy,
     },
   ] as const;
 
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-[32px] border border-white/70 bg-white shadow-panel">
-        <div className="grid gap-8 px-6 py-8 lg:grid-cols-[1.45fr_0.95fr] lg:px-8">
-          <div className="space-y-5">
-            <div className="inline-flex rounded-full border border-marine-ocean/20 bg-marine-ocean/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.26em] text-marine-ocean">
-              Gunluk Operasyon Merkezi
-            </div>
-            <div className="space-y-3">
-              <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-marine-navy sm:text-4xl">
-                Saha, puanlama ve rozet akisi artik tek bakista yonetiliyor.
-              </h1>
-              <p className="max-w-2xl text-base leading-7 text-slate-600">
-                Prompt 6 ile dashboard gercek Prisma verisine baglandi; bekleyen
-                puanlamalar, aylik liderlik ve aktif is yogunlugu artik canli olarak
-                izlenebiliyor.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/jobs"
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-marine-navy px-5 text-sm font-medium text-white transition-colors hover:bg-marine-ocean"
-              >
-                Is Listesine Git
-                <ArrowRight className="size-4" />
-              </Link>
-              <Link
-                href="/scoreboard"
-                className="inline-flex h-12 items-center justify-center rounded-lg border border-slate-200 bg-white px-5 text-sm font-medium text-marine-navy transition-colors hover:bg-slate-50"
-              >
-                Puan Tablosunu Ac
-              </Link>
-            </div>
-          </div>
-
-          <Card className="border-slate-200/80 bg-slate-950 text-white">
-            <CardHeader>
-              <CardTitle className="text-white">Operasyon snapshot</CardTitle>
-              <CardDescription className="text-slate-300">
-                Bu ayki saha temposu ve kalite akisi.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-slate-200">
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                {dashboard.pendingScoringCount} is teslim raporu ve Form 1 kapanisini bekliyor.
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                {dashboard.overdueHoldCount} beklemedeki is icin hatirlatma tetiklendi.
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                Lider: {dashboard.leader?.name ?? "Henuz puan kaydi yok"}{" "}
-                {dashboard.leader ? `(${dashboard.leader.score.toFixed(1)})` : ""}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => {
           const Icon = card.icon;
@@ -140,9 +79,6 @@ export default async function DashboardHomePage() {
                   </CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="text-sm leading-6 text-slate-600">
-                {card.description}
-              </CardContent>
             </Card>
           );
         })}
@@ -157,7 +93,7 @@ export default async function DashboardHomePage() {
                 Uyarilar
               </CardTitle>
               <CardDescription>
-                Kapanis, aylik degerlendirme ve bekleme riski olan basliklar.
+                Kapanis, ayl?k değerlendirme ve bekleme riski olan basliklar.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -183,7 +119,7 @@ export default async function DashboardHomePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-marine-navy">
                 <MapPin className="size-5 text-marine-ocean" />
-                Bugun benim islerim
+                Bugün benim islerim
               </CardTitle>
               <CardDescription>
                 Sistemdeki aktif isler lokasyon bazinda gruplanir.
@@ -242,7 +178,7 @@ export default async function DashboardHomePage() {
                 Son 30 gun aktivite
               </CardTitle>
               <CardDescription>
-                Olusturulan ve tamamlanan islerin gunluk ritmi.
+                Oluşturulan ve tamamlanan islerin gunluk ritmi.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -257,7 +193,7 @@ export default async function DashboardHomePage() {
                 Bu ay top 5
               </CardTitle>
               <CardDescription>
-                Aylik toplam puana gore mini leaderboard.
+                Aylık toplam puana g?re mini leaderboard.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -277,10 +213,10 @@ export default async function DashboardHomePage() {
                           {entry.user.name}
                         </div>
                         <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                          <span>Is puani {entry.jobScore.toFixed(1)}</span>
+                          <span>İş puanı {entry.jobScore.toFixed(1)}</span>
                           {entry.hasMissingEval ? (
                             <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700">
-                              Degerlendirme bekleniyor
+                              Değerlendirme bekleniyor
                             </Badge>
                           ) : null}
                         </div>
@@ -298,7 +234,7 @@ export default async function DashboardHomePage() {
                 ))
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-sm text-slate-600">
-                  Bu ay icin henuz leaderboard verisi bulunmuyor.
+                  Bu ay icin henüz leaderboard verisi bulunmuyor.
                 </div>
               )}
             </CardContent>
@@ -308,3 +244,4 @@ export default async function DashboardHomePage() {
     </div>
   );
 }
+

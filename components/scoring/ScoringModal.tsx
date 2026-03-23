@@ -52,12 +52,12 @@ export default function ScoringModal({
           <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-seafoam">
             Form 1
           </p>
-          <h2 className="text-3xl font-semibold">Is Degerlendirmesi</h2>
+          <h2 className="text-3xl font-semibold">İş Değerlendirmesi</h2>
           <p className="max-w-3xl text-sm leading-7 text-slate-200">
-            Koordinator teslim raporunu okuyup ayni 5 kriter uzerinden puanlama yapar.
+            Koordinatör teslim raporunu okuyup aynı 5 kriter üzerinden puanlama yapar.
           </p>
           <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white">
-            x{multiplier.toFixed(1)} Zorluk - Puanlar bu katsayiyla carpilacak
+            x{multiplier.toFixed(1)} Zorluk - Puanlar bu katsayıyla çarpılacak
           </div>
         </div>
 
@@ -65,7 +65,7 @@ export default function ScoringModal({
           <Progress value={answeredCount * 20}>
             <ProgressLabel className="text-white">Form 1 ilerlemesi</ProgressLabel>
             <ProgressValue className="text-slate-200">
-              {() => `${answeredCount}/5 soru yanitlandi`}
+              {() => `${answeredCount}/5 soru yanıtlandı`}
             </ProgressValue>
           </Progress>
         </div>
@@ -78,74 +78,74 @@ export default function ScoringModal({
 
         <div className="grid gap-4">
           <RatingScale
-            label="S1 - Unite Bilgileri"
-            description="Teslim raporunda unite bilgileri eksiksiz ve tutarli mi?"
+            label="S1 - Ünite Bilgileri"
+            description="Teslim raporunda ünite bilgileri eksiksiz ve tutarlı mı?"
             value={value.q1_unit}
             onChange={(q1_unit) => onChange({ ...value, q1_unit })}
             anchors={[
               "1 - Ciddi eksik",
-              "3 - Kismi yeterli",
-              "5 - Tam ve tutarli",
+              "3 - Kısmi yeterli",
+              "5 - Tam ve tutarlı",
             ]}
           />
 
           <RatingScale
-            label="S2 - Servis Gorselleri"
-            description="Gorseller teslim raporunu destekleyecek kadar acik ve yeterli mi?"
+            label="S2 - Servis Görselleri"
+            description="Görseller teslim raporunu destekleyecek kadar açık ve yeterli mi?"
             value={value.q2_photos}
             onChange={(q2_photos) => onChange({ ...value, q2_photos })}
             anchors={[
               "1 - Yetersiz",
-              "3 - Kismi yeterli",
-              "5 - Once, sonra ve detay net",
+              "3 - Kısmi yeterli",
+              "5 - Önce, sonra ve detay net",
             ]}
           />
 
           <RatingScale
-            label="S3 - Parca / Malzeme Listesi"
-            description="Malzeme ve parca listesi operasyonel kapanis icin yeterli mi?"
+            label="S3 - Parça / Malzeme Listesi"
+            description="Malzeme ve parça listesi operasyonel kapanış için yeterli mi?"
             value={value.q3_parts}
             onChange={(q3_parts) => onChange({ ...value, q3_parts })}
             anchors={[
               "1 - Yok",
               "3 - Ana kalemler var",
-              "5 - Tam liste, detayli",
+              "5 - Tam liste, detaylı",
             ]}
           />
 
           <RatingScale
-            label="S4 - Taseron / Dis Tedarikci"
+            label="S4 - Taşeron / Dış Tedarikçi"
             description={
               hasSubcontractor
-                ? "Taseron kaydi ve kapsam bilgisi acik sekilde yazildi mi?"
-                : "Bu iste taseron kullanilmadi. Soru otomatik olarak 5 kabul edilir."
+                ? "Taşeron kaydı ve kapsam bilgisi açık şekilde yazıldı mı?"
+                : "Bu işte taşeron kullanılmadı. Soru otomatik olarak 5 kabul edilir."
             }
             value={hasSubcontractor ? value.q4_sub : 5}
             onChange={(q4_sub) => onChange({ ...value, q4_sub })}
             anchors={[
-              "1 - Kayit yok",
-              "3 - Kismi bilgi",
-              "5 - N/A veya tam kayit",
+              "1 - Kayıt yok",
+              "3 - Kısmi bilgi",
+              "5 - N/A veya tam kayıt",
             ]}
             disabled={!hasSubcontractor}
           />
 
           <RatingScale
-            label="S5 - Musteri / Kaptan Bildirimi"
-            description="Kapanis bildirimi profesyonel ve izlenebilir sekilde yapildi mi?"
+            label="S5 - Müşteri / Kaptan Bildirimi"
+            description="Kapanış bildirimi profesyonel ve izlenebilir şekilde yapıldı mı?"
             value={value.q5_notify}
             onChange={(q5_notify) => onChange({ ...value, q5_notify })}
             anchors={[
               "1 - Bildirim yok",
-              "3 - Kismi takip var",
-              "5 - Yazili ve net kapanis",
+              "3 - Kısmi takip var",
+              "5 - Yazılı ve net kapanış",
             ]}
           />
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-[28px] border border-white/10 bg-white/5 p-5">
           <Button type="button" variant="outline" size="lg" onClick={onBack} className="h-12">
-            Teslim Raporuna Don
+            Teslim Raporuna Dön
           </Button>
           <Button
             type="submit"
@@ -153,7 +153,7 @@ export default function ScoringModal({
             disabled={!canSubmit}
             className="h-12 bg-white px-6 text-marine-navy hover:bg-slate-100"
           >
-            Puanla ve Isi Kapat
+            Puanla ve İşi Kapat
           </Button>
         </div>
       </div>

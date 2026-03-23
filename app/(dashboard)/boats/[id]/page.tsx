@@ -95,7 +95,9 @@ export default async function BoatDetailPage({
             </div>
             <h1 className="mt-2 text-3xl font-semibold text-marine-navy">{boat.name}</h1>
             <p className="mt-2 text-sm text-slate-600">
-              {boat.type} · {boat.homePort ?? "Ana marina bekleniyor"} · {boat.visitCount} ziyaret
+              {[boat.type, boat.homePort, `${boat.visitCount} ziyaret`]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
@@ -109,13 +111,13 @@ export default async function BoatDetailPage({
 
       {updated ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Tekne profili guncellendi.
+          Tekne profili g?ncellendi.
         </div>
       ) : null}
 
       {contactCreated ? (
         <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-          Yeni irtibat kaydi olusturuldu.
+          Yeni irtibat kaydi olu?turuldu.
         </div>
       ) : null}
 
@@ -125,7 +127,7 @@ export default async function BoatDetailPage({
             <CardHeader>
               <CardTitle className="text-marine-navy">Tekne bilgileri</CardTitle>
               <CardDescription>
-                Ana marina, bayrak, sahip ve operasyon notlarini guncelleyin.
+                Ana marina, bayrak, sahip ve operasyon notlarini g?ncelleyin.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -144,7 +146,7 @@ export default async function BoatDetailPage({
                   <Input id="flag" name="flag" defaultValue={boat.flag ?? ""} />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="internalNotes">Ic notlar</Label>
+                  <Label htmlFor="internalNotes">?? notlar</Label>
                   <Textarea
                     id="internalNotes"
                     name="internalNotes"
@@ -165,7 +167,7 @@ export default async function BoatDetailPage({
             <CardHeader>
               <CardTitle className="text-marine-navy">Servis gecmisi</CardTitle>
               <CardDescription>
-                Son 12 is kaydi, kategori ve gorevli ekip listesi.
+                Son 12 is kaydi, kateg?ri ve g?revli ekip listesi.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -203,7 +205,7 @@ export default async function BoatDetailPage({
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-marine-navy">
                 <Users2 className="size-5 text-marine-ocean" />
-                Irtibat kisileri
+                ?rtibat kisileri
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -238,7 +240,7 @@ export default async function BoatDetailPage({
                 ))
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-                  Henuz irtibat eklenmedi.
+                  Hen?z irtibat eklenmedi.
                 </div>
               )}
             </CardContent>
@@ -280,10 +282,10 @@ export default async function BoatDetailPage({
                 </label>
                 <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                   <input type="checkbox" name="whatsappOptIn" defaultChecked className="size-4 rounded border-slate-300" />
-                  WhatsApp iletisimi acik
+                  WhatsApp iletisimi a??k
                 </label>
                 <Button type="submit" className="h-12 w-full bg-marine-navy text-white hover:bg-marine-ocean">
-                  Irtibat kaydini ekle
+                  ?rtibat kaydini ekle
                 </Button>
               </form>
             </CardContent>

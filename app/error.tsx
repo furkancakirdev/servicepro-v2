@@ -21,10 +21,10 @@ export default function AppErrorPage({ error, reset }: AppErrorPageProps) {
           <AlertTriangle className="size-6" />
         </div>
         <h1 className="mt-6 text-3xl font-semibold text-marine-navy">
-          Beklenmeyen bir hata olustu
+          Beklenmeyen bir hata olu?tu
         </h1>
         <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
-          Sayfa yuklenirken bir sey ters gitti. Yeniden deneyebilir veya operasyon
+          Sayfa yüklenirken bir sey ters gitti. Yeniden deneyebilir veya operasyon
           merkezine donebilirsiniz.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
@@ -37,7 +37,7 @@ export default function AppErrorPage({ error, reset }: AppErrorPageProps) {
             Yenile
           </button>
           <Link
-            href="/dashboard"
+            href="/"
             className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-medium text-marine-navy transition-colors hover:bg-slate-50"
           >
             Dashboarda Don
@@ -47,3 +47,4 @@ export default function AppErrorPage({ error, reset }: AppErrorPageProps) {
     </div>
   );
 }
+

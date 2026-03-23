@@ -183,7 +183,6 @@ export async function getMonthlyScoreboard(
       select: {
         id: true,
         name: true,
-        email: true,
         role: true,
         avatarUrl: true,
       },
@@ -198,7 +197,6 @@ export async function getMonthlyScoreboard(
           select: {
             id: true,
             name: true,
-            email: true,
             role: true,
             avatarUrl: true,
           },

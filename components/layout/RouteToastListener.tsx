@@ -7,17 +7,17 @@ import { toast } from "sonner";
 function getToastMessage(key: string | null) {
   switch (key) {
     case "personnel-created":
-      return { type: "success", message: "Personel olusturuldu" };
+      return { type: "success", message: "Personel oluşturuldu" };
     case "role-updated":
-      return { type: "success", message: "Personel rolu guncellendi" };
+      return { type: "success", message: "Personel rolu güncellendi" };
     case "boat-saved":
-      return { type: "success", message: "Tekne kaydi guncellendi" };
+      return { type: "success", message: "Tekne kaydi güncellendi" };
     case "category-saved":
-      return { type: "success", message: "Kategori kaydedildi" };
+      return { type: "success", message: "Kateg?ri kaydedildi" };
     case "category-created":
-      return { type: "success", message: "Kategori olusturuldu" };
+      return { type: "success", message: "Kateg?ri oluşturuldu" };
     case "system-saved":
-      return { type: "success", message: "Sistem ayari guncellendi" };
+      return { type: "success", message: "Sistem ayari güncellendi" };
     default:
       return null;
   }
@@ -37,11 +37,11 @@ export default function RouteToastListener() {
     lastSignatureRef.current = signature;
 
     if (searchParams.get("created") === "1") {
-      toast.success("Is olusturuldu");
+      toast.success("?? oluşturuldu");
     }
 
     if (searchParams.get("updated") === "1") {
-      toast.success("Durum guncellendi");
+      toast.success("Durum güncellendi");
     }
 
     if (searchParams.get("badge") === "1") {
@@ -49,11 +49,11 @@ export default function RouteToastListener() {
     }
 
     if (searchParams.get("objection") === "1") {
-      toast.success("Puan itirazi gonderildi");
+      toast.success("Puan itirazi g?nderildi");
     }
 
     if (searchParams.get("reviewed")) {
-      toast.success("Puanlama guncellendi");
+      toast.success("Puanlama güncellendi");
     }
 
     const mappedToast = getToastMessage(searchParams.get("toast"));
@@ -75,3 +75,4 @@ export default function RouteToastListener() {
 
   return null;
 }
+

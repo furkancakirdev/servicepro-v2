@@ -27,12 +27,12 @@ const badgeMeta: Record<
   { label: string; icon: typeof Star; tone: string }
 > = {
   SERVIS_YILDIZI: {
-    label: "Servis Yildizi",
+    label: "Servis Yıldızı",
     icon: Star,
     tone: "border-amber-200 bg-amber-50 text-amber-800",
   },
   KALITE_USTASI: {
-    label: "Kalite Ustasi",
+    label: "Kalite Ustası",
     icon: ShieldCheck,
     tone: "border-emerald-200 bg-emerald-50 text-emerald-800",
   },
@@ -96,7 +96,7 @@ export default function PersonnelDetailSheet({
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <div className="text-xs uppercase tracking-[0.14em] text-slate-500">
-                    Is puani
+                    ?? puani
                   </div>
                   <div className="mt-2 text-2xl font-semibold text-marine-navy">
                     {entry.jobScore.toFixed(1)}
@@ -112,7 +112,7 @@ export default function PersonnelDetailSheet({
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <div className="text-xs uppercase tracking-[0.14em] text-slate-500">
-                    Koordinator
+                    Koordinatör
                   </div>
                   <div className="mt-2 text-2xl font-semibold text-marine-navy">
                     {entry.coordinatorScore?.toFixed(1) ?? "-"}
@@ -166,7 +166,7 @@ export default function PersonnelDetailSheet({
               <section className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                   <h3 className="text-base font-semibold text-marine-navy">
-                    Usta aylik notu
+                    Usta ayl?k notu
                   </h3>
                   {entry.workshopEvaluation ? (
                     <div className="mt-3 space-y-3 text-sm text-slate-700">
@@ -189,14 +189,14 @@ export default function PersonnelDetailSheet({
                     </div>
                   ) : (
                     <div className="mt-3 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                      Degerlendirme bekleniyor
+                      Değerlendirme bekleniyor
                     </div>
                   )}
                 </div>
 
                 <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
                   <h3 className="text-base font-semibold text-marine-navy">
-                    Koordinator aylik notu
+                    Koordinatör ayl?k notu
                   </h3>
                   {entry.coordinatorEvaluation ? (
                     <div className="mt-3 space-y-3 text-sm text-slate-700">
@@ -216,7 +216,7 @@ export default function PersonnelDetailSheet({
                     </div>
                   ) : (
                     <div className="mt-3 rounded-full border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                      Degerlendirme bekleniyor
+                      Değerlendirme bekleniyor
                     </div>
                   )}
                 </div>
@@ -244,7 +244,7 @@ export default function PersonnelDetailSheet({
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500">
-                    Bu donem henuz rozet kazanilmamis.
+                    Bu donem henüz rozet kazanilmamis.
                   </div>
                 )}
               </section>
@@ -255,3 +255,4 @@ export default function PersonnelDetailSheet({
     </Sheet>
   );
 }
+

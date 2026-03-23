@@ -53,13 +53,7 @@ export default async function BoatsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[32px] border border-white/70 bg-white px-5 py-6 shadow-panel sm:px-6">
-        <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
-          Filo Profili
-        </p>
         <h1 className="mt-2 text-3xl font-semibold text-marine-navy">Tekneler</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-          VIP durumu, ana marina, irtibat sayisi ve servis gecmisi tek listede.
-        </p>
       </section>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -85,8 +79,10 @@ export default async function BoatsPage() {
               <CardContent className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
                   <Ship className="mb-2 size-4 text-marine-ocean" />
-                  <div className="font-medium text-marine-navy">{boat.homePort ?? "Ana marina yok"}</div>
-                  <div className="mt-1">{boat.flag ?? "Bayrak girilmedi"}</div>
+                  {boat.homePort ? (
+                    <div className="font-medium text-marine-navy">{boat.homePort}</div>
+                  ) : null}
+                  {boat.flag ? <div className="mt-1">{boat.flag}</div> : null}
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
                   <Users2 className="mb-2 size-4 text-marine-ocean" />

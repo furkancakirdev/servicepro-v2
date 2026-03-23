@@ -16,7 +16,7 @@ export default function AppNotFoundPage() {
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
-            href="/dashboard"
+            href="/"
             className="inline-flex h-12 items-center justify-center rounded-xl bg-marine-navy px-5 text-sm font-medium text-white transition-colors hover:bg-marine-ocean"
           >
             Dashboarda Don
@@ -25,7 +25,7 @@ export default function AppNotFoundPage() {
             href="/jobs"
             className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-medium text-marine-navy transition-colors hover:bg-slate-50"
           >
-            Is Listesine Git
+            ?? Listesine Git
           </Link>
         </div>
       </div>

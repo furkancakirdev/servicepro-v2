@@ -61,7 +61,7 @@ export const holdReasonOptions: Array<{
   label: string;
 }> = [
   { value: HoldReason.PARCA_BEKLENIYOR, label: "Parca bekleniyor" },
-  { value: HoldReason.MUSTERI_ONAYI, label: "Musteri onayi" },
+  { value: HoldReason.MUSTERI_ONAYI, label: "Müşteri onayi" },
   { value: HoldReason.DIS_SERVIS, label: "Dis servis" },
   { value: HoldReason.DIGER, label: "Diger" },
 ];
@@ -74,3 +74,4 @@ export const openStatuses: JobStatus[] = [
   JobStatus.TAMAMLANDI,
   JobStatus.GARANTI,
 ];
+

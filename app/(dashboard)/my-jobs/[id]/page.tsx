@@ -69,7 +69,7 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
-                Mobil Is Detayi
+                Mobil ?? Detayi
               </p>
               {job.boat.isVip ? (
                 <Badge className="gap-1 bg-amber-500 text-white hover:bg-amber-500">
@@ -98,7 +98,7 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-slate-600">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-            <div className="font-medium text-marine-navy">Aciklama</div>
+            <div className="font-medium text-marine-navy">A??klama</div>
             <div className="mt-2 leading-7">{job.description}</div>
           </div>
 
@@ -127,9 +127,9 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
 
       <Card className="border-white/80 bg-white/95">
         <CardHeader>
-          <CardTitle className="text-marine-navy">Irtibat ve servis gecmisi</CardTitle>
+          <CardTitle className="text-marine-navy">?rtibat ve servis gecmisi</CardTitle>
           <CardDescription>
-            Son 3 ziyaret ve tekne irtibat akisi burada gorunur.
+            Son 3 ziyaret ve tekne irtibat akisi burada g?runur.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

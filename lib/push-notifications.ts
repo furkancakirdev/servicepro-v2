@@ -15,7 +15,7 @@ type NotificationSeed = {
 export const PUSH_INFRASTRUCTURE_PLACEHOLDER = {
   implementation: "app-level notification scaffold",
   edgeFunction: "supabase/functions/push-dispatch-placeholder",
-  morningSummary: "07:30 Europe/Istanbul",
+  morningSummary: "07:30 Europe/??tanbul",
   channels: ["WEB_PUSH_PLACEHOLDER", "EXPO_PUSH_PLACEHOLDER"],
 } as const;
 
@@ -48,7 +48,7 @@ export async function createPlanPublishedNotifications(params: {
     params.userIds.map((userId) => ({
       userId,
       type: "PLAN_PUBLISHED",
-      title: `${params.location} plani yayinlandi`,
+      title: `${params.location} plani yayınlandi`,
       body: `${dateLabel} tarihli gunluk plan hazir. My Jobs ekranindan detaylari acabilirsiniz.`,
       metadata: {
         location: params.location,
@@ -68,10 +68,11 @@ export async function createMorningSummaryNotification(params: {
       userId: params.userId,
       type: "MORNING_SUMMARY_PLACEHOLDER",
       title: "07:30 sabah ozeti",
-      body: `Bugun ${params.jobCount} isiniz var. ${params.summary}`,
+      body: `Bugün ${params.jobCount} isiniz var. ${params.summary}`,
       metadata: {
         scheduledFor: PUSH_INFRASTRUCTURE_PLACEHOLDER.morningSummary,
       },
     },
   ]);
 }
+

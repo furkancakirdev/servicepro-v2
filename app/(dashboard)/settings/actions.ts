@@ -83,26 +83,50 @@ function revalidateSettingsSurfaces() {
   revalidatePath("/settings");
 }
 
-export async function calculateMonthlyBadgesAction(formData: FormData) {
+export async function calculateMonthlyBadgesAction(
+  monthOrFormData: number | FormData,
+  yearInput?: number
+) {
   await requireRoles([Role.ADMIN]);
 
-  const parsed = badgeCalculationSchema.safeParse({
-    month: formData.get("month"),
-    year: formData.get("year"),
-  });
+  const rawInput =
+    monthOrFormData instanceof FormData
+      ? {
+          month: monthOrFormData.get("month"),
+          year: monthOrFormData.get("year"),
+        }
+      : {
+          month: monthOrFormData,
+          year: yearInput,
+        };
+
+  const parsed = badgeCalculationSchema.safeParse(rawInput);
 
   if (!parsed.success) {
-    redirect("/settings?error=invalid-badge-period");
+    if (monthOrFormData instanceof FormData) {
+      redirect("/settings?error=invalid-badge-period");
+    }
+
+    throw new Error("Geçersiz ay veya yıl seçimi.");
   }
 
   try {
-    await calculateMonthlyBadges(parsed.data.month, parsed.data.year);
+    const result = await calculateMonthlyBadges(parsed.data.month, parsed.data.year);
     revalidateSettingsSurfaces();
-    redirect(`/settings?badge=1&month=${parsed.data.month}&year=${parsed.data.year}`);
+
+    if (monthOrFormData instanceof FormData) {
+      redirect(`/settings?badge=1&month=${parsed.data.month}&year=${parsed.data.year}`);
+    }
+
+    return result;
   } catch (error) {
-    const message =
-      error instanceof Error ? encodeURIComponent(error.message) : "badge-calc-failed";
-    redirect(`/settings?error=${message}`);
+    if (monthOrFormData instanceof FormData) {
+      const message =
+        error instanceof Error ? encodeURIComponent(error.message) : "badge-calc-failed";
+      redirect(`/settings?error=${message}`);
+    }
+
+    throw error;
   }
 }
 

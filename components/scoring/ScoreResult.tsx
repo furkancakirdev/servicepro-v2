@@ -84,7 +84,7 @@ export default function ScoreResult({ result }: ScoreResultProps) {
             <div className="mt-2 text-2xl font-semibold">{result.baseScore.toFixed(1)} / 100</div>
           </div>
           <div className="rounded-[28px] border border-white/15 bg-white/10 px-5 py-4 text-center">
-            <div className="text-xs uppercase tracking-[0.14em] text-emerald-100">Zorluk carpani</div>
+            <div className="text-xs uppercase tracking-[0.14em] text-emerald-100">Zorluk ?arpani</div>
             <div className="mt-2 text-2xl font-semibold">x{result.multiplier.toFixed(1)}</div>
           </div>
           <div className="rounded-[28px] border border-white/15 bg-white/10 px-5 py-4 text-center">
@@ -123,7 +123,7 @@ export default function ScoreResult({ result }: ScoreResultProps) {
         <div className="flex flex-wrap justify-center gap-3">
           <Link href="/jobs">
             <Button size="lg" className="h-12 bg-white text-marine-navy hover:bg-slate-100">
-              Is Listesine Don
+              ?? Listesine Don
             </Button>
           </Link>
           <Link href="/dashboard">

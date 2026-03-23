@@ -25,7 +25,7 @@ export function createServerSupabaseClient() {
 
   if (!isConfigured || !url || !anonKey) {
     throw new Error(
-      "Supabase ayarlari eksik. .env.local icindeki NEXT_PUBLIC_SUPABASE_* degerlerini guncelle."
+      "Supabase ayarlari eksik. .env.local icindeki NEXT_PUBLIC_SUPABASE_* degerlerini güncelle."
     );
   }
 
@@ -40,16 +40,17 @@ export function createServerSupabaseClient() {
         try {
           cookieStore.set(name, value, options);
         } catch {
-          // Server Components içinde set denemeleri bazı render akışlarında yoksayılabilir.
+          // Server Components iÃ§inde set denemeleri bazÄ± render akÄ±ÅŸlarÄ±nda yoksayÄ±labilir.
         }
       },
       remove(name, options) {
         try {
           cookieStore.set(name, "", { ...options, maxAge: 0 });
         } catch {
-          // Server Components içinde remove denemeleri bazı render akışlarında yoksayılabilir.
+          // Server Components iÃ§inde remove denemeleri bazÄ± render akÄ±ÅŸlarÄ±nda yoksayÄ±labilir.
         }
       },
     },
   });
 }
+

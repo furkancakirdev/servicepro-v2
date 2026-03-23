@@ -13,12 +13,12 @@ const badgeMeta: Record<
   { label: string; icon: typeof Star; tone: string }
 > = {
   SERVIS_YILDIZI: {
-    label: "Servis Yildizi",
+    label: "Servis Yıldızı",
     icon: Star,
     tone: "border-amber-200 bg-amber-50 text-amber-800",
   },
   KALITE_USTASI: {
-    label: "Kalite Ustasi",
+    label: "Kalite Ustası",
     icon: ShieldCheck,
     tone: "border-emerald-200 bg-emerald-50 text-emerald-800",
   },
@@ -33,7 +33,7 @@ export default function BadgeDisplay({ badgeSummary }: BadgeDisplayProps) {
   return (
     <Card className="border-white/80 bg-white/95">
       <CardHeader>
-        <CardTitle className="text-marine-navy">Rozet gorunumu</CardTitle>
+        <CardTitle className="text-marine-navy">Rozet g?runumu</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm text-slate-600">
         {badgeSummary.map((summary) => {
@@ -54,7 +54,7 @@ export default function BadgeDisplay({ badgeSummary }: BadgeDisplayProps) {
                   ? summary.winners
                       .map((winner) => `${winner.name} (${winner.score.toFixed(1)})`)
                       .join(", ")
-                  : "Bu ay henuz kazanan yok."}
+                  : "Bu ay henüz kazanan yok."}
               </div>
             </div>
           );
@@ -63,3 +63,4 @@ export default function BadgeDisplay({ badgeSummary }: BadgeDisplayProps) {
     </Card>
   );
 }
+

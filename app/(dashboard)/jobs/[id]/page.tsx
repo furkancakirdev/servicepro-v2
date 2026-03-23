@@ -16,6 +16,7 @@ import ClientNotificationPanel from "@/components/jobs/ClientNotificationPanel";
 import { getStatusLabel } from "@/components/jobs/StatusBadge";
 import StatusBadge from "@/components/jobs/StatusBadge";
 import CloseoutFlow from "@/components/scoring/CloseoutFlow";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,6 +26,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireAppUser } from "@/lib/auth";
+import {
+  buildClientNotificationTemplate,
+  buildWhatsAppDeepLink,
+} from "@/lib/client-notifications";
 import { holdReasonOptions } from "@/lib/jobs";
 import { getOnHoldDefaultDays } from "@/lib/system-settings";
 
@@ -101,6 +106,28 @@ export default async function JobDetailPage({
   const canManageJob =
     currentUser.role === Role.ADMIN || currentUser.role === Role.COORDINATOR;
   const canSendClientNotification = canManageJob && job.boat.contacts.length > 0;
+  const primaryContact =
+    job.boat.contacts.find(
+      (contact) => contact.isPrimary && contact.whatsappOptIn && contact.phone
+    ) ??
+    job.boat.contacts.find((contact) => contact.whatsappOptIn && contact.phone) ??
+    null;
+  const primaryContactTemplate = primaryContact
+    ? buildClientNotificationTemplate({
+        boatName: job.boat.name,
+        categoryName: job.category.name,
+        date: job.startedAt ?? job.createdAt,
+        location: job.location,
+        berthDetail: job.location,
+        technicianName: responsible?.name ?? "Teknisyen",
+        contactName: primaryContact.name,
+        contactLanguage: primaryContact.language,
+      })
+    : null;
+  const primaryContactWhatsAppUrl =
+    primaryContact?.phone && primaryContactTemplate
+      ? buildWhatsAppDeepLink(primaryContact.phone, primaryContactTemplate.text)
+      : null;
   const needsMandatoryCloseout =
     job.status === JobStatus.TAMAMLANDI &&
     (!job.deliveryReport || !job.evaluation || job.jobScores.length === 0);
@@ -116,29 +143,29 @@ export default async function JobDetailPage({
 
   const timeline = [
     {
-      label: "Is olusturuldu",
-      description: "Kayit operasyon paneline eklendi.",
+      label: "İş oluşturuldu",
+      description: "İş sisteme kaydedildi.",
       date: job.createdAt,
     },
     job.startedAt
       ? {
-          label: "Saha calismasi basladi",
-          description: "Teknisyen ekip goreve basladi.",
+          label: "Saha çalışması başladı",
+          description: "Teknisyen ekip göreve başladı.",
           date: job.startedAt,
         }
       : null,
     job.holdReason
       ? {
-          label: "Is beklemeye alindi",
+          label: "İş beklemeye alındı",
           description: `${holdReasonLabelMap.get(job.holdReason as HoldReason) ?? "Bekleme"}${
-            job.holdUntil ? ` - hedef hatirlatma ${formatDateTime(job.holdUntil)}` : ""
+            job.holdUntil ? ` - hedef hat?rlatma ${formatDateTime(job.holdUntil)}` : ""
           }`,
           date: job.updatedAt,
         }
       : null,
     job.completedAt
       ? {
-          label: "Is tamamlandi",
+          label: "?? tamamland?",
           description: "Operasyonel is adimlari bitirildi.",
           date: job.completedAt,
         }
@@ -152,15 +179,15 @@ export default async function JobDetailPage({
       : null,
     job.evaluation
       ? {
-          label: "Form 1 puanlama tamamlandi",
+          label: "Form 1 puanlama tamamland?",
           description: `${job.evaluation.evaluator.name} tarafindan kaydedildi.`,
           date: job.evaluation.createdAt,
         }
       : null,
     job.closedAt
       ? {
-          label: "Is kapatildi",
-          description: "Puanlama sonrasi resmi kapanis yapildi.",
+          label: "?? kapat?ld?",
+          description: "Puanlama sonras? resmi kapan?? yap?ld?.",
           date: job.closedAt,
         }
       : null,
@@ -175,23 +202,31 @@ export default async function JobDetailPage({
         </Link>
         <StatusBadge status={job.status} />
         <DifficultyBadge multiplier={job.multiplier} />
+        {job.boat.isVip ? (
+          <Badge
+            variant="outline"
+            className="border-[#BA7517] text-[#BA7517]"
+          >
+            ★ VIP Müşteri
+          </Badge>
+        ) : null}
       </div>
 
       {created ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Is kaydi basariyla olusturuldu.
+          ?? kayd? ba?ar?yla olu?turuldu.
         </div>
       ) : null}
 
       {updated ? (
         <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-          Is durumu guncellendi.
+          ?? durumu g?ncellendi.
         </div>
       ) : null}
 
       {objectionSubmitted ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Puan itirazi kaydedildi. Admin ekibine bildirim gonderildi.
+          Puan itiraz? kaydedildi. Admin ekibine bildirim g?nderildi.
         </div>
       ) : null}
 
@@ -208,10 +243,10 @@ export default async function JobDetailPage({
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-amber-900">
                   <TriangleAlert className="size-5" />
-                  Ayni teknede acik isler var
+                  Ayn? teknede a??k i?ler var
                 </CardTitle>
                 <CardDescription className="text-amber-800">
-                  Cakisma veya tekrar kayit riskini azaltmak icin bu isleri kontrol edin.
+                  ?ak??ma veya tekrar kay?t riskini azaltmak i?in bu i?leri kontrol edin.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -239,7 +274,7 @@ export default async function JobDetailPage({
 
           <Card className="border-white/80 bg-white/95">
             <CardHeader>
-              <CardDescription>Is #{job.id.slice(0, 8)}</CardDescription>
+              <CardDescription>İş #{job.jobNumber}</CardDescription>
               <CardTitle className="text-2xl text-marine-navy">
                 {job.boat.name} - {job.category.name}
               </CardTitle>
@@ -263,11 +298,11 @@ export default async function JobDetailPage({
               </div>
 
               <div className="rounded-[24px] border border-slate-200 p-5">
-                <h2 className="text-lg font-semibold text-marine-navy">Is Aciklamasi</h2>
+                <h2 className="text-lg font-semibold text-marine-navy">İş Açıklaması</h2>
                 <p className="mt-3 text-sm leading-7 text-slate-600">{job.description}</p>
                 {job.notes ? (
                   <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    <span className="font-medium text-marine-navy">Ic not:</span> {job.notes}
+                    <span className="font-medium text-marine-navy">İş notu:</span> {job.notes}
                   </div>
                 ) : null}
               </div>
@@ -276,7 +311,7 @@ export default async function JobDetailPage({
 
           <Card className="border-white/80 bg-white/95">
             <CardHeader>
-              <CardTitle className="text-lg text-marine-navy">Personel ve timeline</CardTitle>
+              <CardTitle className="text-lg text-marine-navy">Ekip ve İş Geçmişi</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
               <div className="space-y-4">
@@ -288,7 +323,7 @@ export default async function JobDetailPage({
                   <div className="mt-3 space-y-3 text-sm text-slate-600">
                     <div>
                       <div className="font-medium text-marine-navy">Sorumlu</div>
-                      <div>{responsible ? responsible.name : "Henuz atanmadi"}</div>
+                      <div>{responsible ? responsible.name : "Hen?z atanmadi"}</div>
                     </div>
                     <div>
                       <div className="font-medium text-marine-navy">Destek</div>
@@ -306,12 +341,12 @@ export default async function JobDetailPage({
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-                  <div className="font-medium text-marine-navy">Durum ozeti</div>
+                  <div className="font-medium text-marine-navy">Durum ?zeti</div>
                   <div className="mt-2 space-y-2">
                     <div>Mevcut durum: {getStatusLabel(job.status)}</div>
                     <div>Teslim raporu: {job.deliveryReport ? "Var" : "Yok"}</div>
                     <div>Form 1 puanlama: {job.evaluation ? "Var" : "Yok"}</div>
-                    <div>Kapandi: {job.closedAt ? formatDateTime(job.closedAt) : "Hayir"}</div>
+                    <div>Kapand?: {job.closedAt ? formatDateTime(job.closedAt) : "Hay?r"}</div>
                   </div>
                 </div>
               </div>
@@ -340,7 +375,7 @@ export default async function JobDetailPage({
             <CardHeader>
               <CardTitle className="text-lg text-marine-navy">Son 3 ziyaret</CardTitle>
               <CardDescription>
-                Sureklilik takibi icin ayni teknenin son servis gecmisi.
+                Sureklilik takibi icin ayn? teknenin son servis gecmisi.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -360,7 +395,7 @@ export default async function JobDetailPage({
                 ))
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-sm text-slate-600">
-                  Bu tekne icin onceki servis gecmisi bulunmuyor.
+                  Bu tekne i?in ?nceki servis ge?mi?i bulunmuyor.
                 </div>
               )}
             </CardContent>
@@ -370,12 +405,12 @@ export default async function JobDetailPage({
         <div className="space-y-6">
           <Card className="border-white/80 bg-white/95">
             <CardHeader>
-              <CardTitle className="text-lg text-marine-navy">Operasyon ozeti</CardTitle>
+              <CardTitle className="text-lg text-marine-navy">Operasyon ?zeti</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-slate-600">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-marine-ocean">
-                  Kategori
+                  Kateg?ri
                 </div>
                 <div className="mt-2 font-medium text-marine-navy">{job.category.name}</div>
                 <div className="mt-1">{job.category.subScope}</div>
@@ -383,7 +418,7 @@ export default async function JobDetailPage({
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <div className="text-xs font-semibold uppercase tracking-[0.16em] text-marine-ocean">
-                  Zorluk carpan
+                  Zorluk ?arpan
                 </div>
                 <div className="mt-2">
                   <DifficultyBadge multiplier={job.multiplier} />
@@ -406,9 +441,9 @@ export default async function JobDetailPage({
           {job.jobScores.length > 0 ? (
             <Card className="border-white/80 bg-white/95">
               <CardHeader>
-                <CardTitle className="text-lg text-marine-navy">Kapanis puan ozeti</CardTitle>
+                <CardTitle className="text-lg text-marine-navy">Kapan?? puan ?zeti</CardTitle>
                 <CardDescription>
-                  Kaydedilen teslim raporu ve Form 1 puanlarinin personel dagilimi.
+                  Kaydedilen teslim raporu ve Form 1 puanlar?n?n personel da??l?m?.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 text-sm text-slate-600">
@@ -419,12 +454,12 @@ export default async function JobDetailPage({
                   <div className="mt-2 flex items-end justify-between gap-3">
                     <div>
                       <div className="font-medium text-marine-navy">
-                        {responsibleScore?.user.name ?? "Kayit bulunamadi"}
+                        {responsibleScore?.user.name ?? "Kay?t bulunamad?"}
                       </div>
                       <div className="text-xs uppercase tracking-[0.12em] text-slate-500">
                         {job.evaluation
                           ? `Base ${job.evaluation.baseScore.toFixed(1)} x ${job.multiplier}`
-                          : `Rol carpan ${responsibleScore?.roleMultiplier ?? 1}`}
+                          : `Rol ?arpan ${responsibleScore?.roleMultiplier ?? 1}`}
                       </div>
                     </div>
                     <div className="text-2xl font-semibold text-emerald-700">
@@ -462,7 +497,7 @@ export default async function JobDetailPage({
               <CardHeader>
                 <CardTitle className="text-lg text-marine-navy">Puanlamaya itiraz et</CardTitle>
                 <CardDescription>
-                  Kapanistan sonraki 30 gun icinde Form 1 puanlamasi icin inceleme talep
+                  Kapan??tan sonraki 30 g?n i?inde Form 1 puanlamas? i?in inceleme talep
                   edebilirsiniz.
                 </CardDescription>
               </CardHeader>
@@ -474,7 +509,7 @@ export default async function JobDetailPage({
                     required
                     minLength={10}
                     rows={4}
-                    placeholder="Neyi duzeltmemizi istediginizi kisaca aciklayin."
+                    placeholder="Neyi d?zeltmemizi istedi?inizi k?saca a??klay?n."
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition-colors focus:border-marine-ocean"
                   />
                   <Button type="submit" variant="outline" className="h-12 w-full">
@@ -489,13 +524,25 @@ export default async function JobDetailPage({
             <Card className="border-white/80 bg-white/95">
               <CardHeader>
                 <CardTitle className="text-lg text-marine-navy">
-                  Randevu bildirimi gonder
+                  Randevu bildirimi g?nder
                 </CardTitle>
-                <CardDescription>
-                  Irtibat kisinin dil tercihine gore WA sablonu hazirlanir.
+              <CardDescription>
+                  İrtibat kişinin dil tercihine göre WA şablonu hazırlanır.
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {primaryContactWhatsAppUrl ? (
+                  <div className="mb-4">
+                    <a
+                      href={primaryContactWhatsAppUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
+                    >
+                      Randevu Bildirimi G?nder
+                    </a>
+                  </div>
+                ) : null}
                 <ClientNotificationPanel
                   jobId={job.id}
                   boatName={job.boat.name}
@@ -534,16 +581,16 @@ export default async function JobDetailPage({
             <CardContent className="space-y-4 text-sm text-slate-600">
               {!canManageJob ? (
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                  Bu kaydin operasyon aksiyonlari yalnizca koordinator veya admin tarafindan
-                  yonetilebilir.
+                  Bu kaydin operasyon aksiyonlari yaln?zca koordinat?r veya admin tarafindan
+                  y?netilebilir.
                 </div>
               ) : null}
 
               {canManageJob && job.status === JobStatus.KESIF ? (
                 <>
                   <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 px-4 py-3">
-                    Kesif kaydi once randevuya alinabilir, gerekirse ayni ekrandan normal
-                    ise donusturulebilir.
+                    Kesif kaydi once randevuya alinabilir, gerekirse ayn? ekrandan normal
+                    i?e d?n??t?r?lebilir.
                   </div>
 
                   <form action={updateJobStatusAction}>
@@ -559,7 +606,7 @@ export default async function JobDetailPage({
                     <input type="hidden" name="newStatus" value={JobStatus.PLANLANDI} />
                     <input type="hidden" name="convertKesif" value="true" />
                     <Button type="submit" size="lg" variant="outline" className="h-12 w-full">
-                      Ise Donustur
+                      ??e D?n??t?r
                     </Button>
                   </form>
                 </>
@@ -570,7 +617,7 @@ export default async function JobDetailPage({
                   <input type="hidden" name="jobId" value={job.id} />
                   <input type="hidden" name="newStatus" value={JobStatus.DEVAM_EDIYOR} />
                   <Button type="submit" size="lg" className={primaryButtonClass}>
-                    Baslat
+                    Ba?lat
                   </Button>
                 </form>
               ) : null}
@@ -604,7 +651,7 @@ export default async function JobDetailPage({
                         className="mb-2 block text-sm font-medium text-marine-navy"
                         htmlFor="reminderDays"
                       >
-                        Hatirlatma gunu
+                        Hat?rlatma g?n?
                       </label>
                       <input
                         id="reminderDays"
@@ -630,7 +677,7 @@ export default async function JobDetailPage({
                       value={`/jobs/${job.id}?closeout=1&updated=1`}
                     />
                     <Button type="submit" size="lg" className={primaryButtonClass}>
-                      Tamamlandi Olarak Isaretle
+                      Tamamland? Olarak ??aretle
                     </Button>
                   </form>
                 </>
@@ -649,7 +696,7 @@ export default async function JobDetailPage({
               {canManageJob && needsMandatoryCloseout ? (
                 <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
                   <p className="text-sm text-slate-600">
-                    Is ancak zorunlu teslim raporu ve Form 1 puanlama tamamlandiktan sonra
+                    ?? ancak zorunlu teslim raporu ve Form 1 puanlama tamamland?ktan sonra
                     kapanabilir.
                   </p>
                   <CloseoutFlow
@@ -666,7 +713,7 @@ export default async function JobDetailPage({
               job.status === JobStatus.TAMAMLANDI &&
               !needsMandatoryCloseout ? (
                 <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                  Kapanis puanlama verileri kaydedildi. Is kaydi kapanis adimina hazir.
+                  Kapan?? puanlama verileri kaydedildi. ?? kayd? kapan?? ad?m?na haz?r.
                 </div>
               ) : null}
 

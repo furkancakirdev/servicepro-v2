@@ -26,10 +26,10 @@ export default async function MyJobsPage() {
               Mobil Operasyon
             </p>
             <h1 className="mt-2 text-3xl font-semibold text-marine-navy">
-              {currentUser.name} · Bugun {overview.todayJobs.length} is · {dominantTab}
+              {currentUser.name} Â· Bugün {overview.todayJobs.length} is Â· {dominantTab}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Saat sirasina gore gunluk atamalar, VIP tekneler ve rol bazli gorev dagilimi.
+              Saat sirasina g?re gunluk atamalar, VIP tekneler ve rol bazli g?rev dagilimi.
             </p>
           </div>
           <Link
@@ -46,7 +46,7 @@ export default async function MyJobsPage() {
         <CardHeader>
           <CardTitle className="text-marine-navy">Hafta ozeti</CardTitle>
           <CardDescription>
-            Pazartesi - Cumartesi mini plan. Bugun vurgulu gosterilir.
+            Pazartesi - Cumartesi mini plan. Bugün vurgulu gosterilir.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -95,7 +95,7 @@ export default async function MyJobsPage() {
                   <div className="mt-1 text-sm text-slate-600">{job.categoryName}</div>
                 </div>
                 <Badge variant="outline">
-                  {job.role === "SORUMLU" ? "Sorumlu" : "Destek"} · x{job.multiplier.toFixed(1)}
+                  {job.role === "SORUMLU" ? "Sorumlu" : "Destek"} Â· x{job.multiplier.toFixed(1)}
                 </Badge>
               </div>
 
@@ -113,10 +113,11 @@ export default async function MyJobsPage() {
           ))
         ) : (
           <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-600">
-            Bugun icin atanmis aktif isiniz bulunmuyor.
+            Bugün icin atanmis aktif isiniz bulunmuyor.
           </div>
         )}
       </div>
     </div>
   );
 }
+

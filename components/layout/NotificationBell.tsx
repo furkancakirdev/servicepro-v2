@@ -78,7 +78,7 @@ export default function NotificationBell({
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-600">
-              Henuz bir bildirim yok.
+              Henüz bir bildirim yok.
             </div>
           )}
         </div>
@@ -86,3 +86,4 @@ export default function NotificationBell({
     </Sheet>
   );
 }
+

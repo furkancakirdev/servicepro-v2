@@ -48,7 +48,7 @@ export default async function WeeklyDispatchPage({
             ERP Planlama
           </p>
           <h1 className="mt-2 text-2xl font-semibold text-marine-navy">
-            Haftalik Dispatch
+            Haftalık İş Planı
           </h1>
           <p className="mt-2 text-sm text-slate-600">
             Pazartesi - Cumartesi dagilimini ve ekip yukunu tek bakista kontrol edin.
@@ -100,11 +100,7 @@ export default async function WeeklyDispatchPage({
                             </div>
                           </div>
                         ))
-                      ) : (
-                        <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-3 text-sm text-slate-500">
-                          O gun icin atama yok.
-                        </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -130,7 +126,7 @@ export default async function WeeklyDispatchPage({
           <CardHeader>
             <CardTitle className="text-marine-navy">Teknisyen yuk cubugu</CardTitle>
             <CardDescription>
-              Haftalik toplam atama ve max kapasite gorunumu.
+              Haftalık toplam atama ve maksimum kapasite görünümü.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">

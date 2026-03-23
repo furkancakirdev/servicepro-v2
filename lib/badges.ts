@@ -1,244 +1,243 @@
 import { BadgeType, EvaluatorType, JobRole, Role } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { getMonthlyScoreboard } from "@/lib/scoreboard";
-import { normalizeMonthlyScore } from "@/lib/scoring";
 import type { YearlyBadgeStanding } from "@/types";
 
-type MonthlyBadgeWinner = {
+type MonthlyBadgeResult = {
   type: BadgeType;
-  userId: string;
+  winner: string;
   score: number;
 };
 
-type BadgeCalculationResult = {
-  month: number;
-  year: number;
-  winners: Array<MonthlyBadgeWinner & { userName: string }>;
+type BadgeScoreRow = {
+  userId: string;
+  name: string;
+  jobCount: number;
+  supportCount: number;
+  monthlyTotal: number;
+  qualityScore: number;
+  teamScore: number;
 };
 
-function getBadgeLabel(type: BadgeType) {
-  switch (type) {
-    case BadgeType.SERVIS_YILDIZI:
-      return "Servis Yildizi";
-    case BadgeType.KALITE_USTASI:
-      return "Kalite Ustasi";
-    case BadgeType.EKIP_OYUNCUSU:
-      return "Ekip Oyuncusu";
-    default:
-      return "Rozet";
+function roundScore(value: number) {
+  return Number(value.toFixed(1));
+}
+
+function assertBadgeMonth(month: unknown): asserts month is number {
+  if (typeof month !== "number" || !Number.isInteger(month)) {
+    throw new TypeError("month must be an integer.");
   }
+
+  if (month < 1 || month > 12) {
+    throw new RangeError("month must be between 1 and 12.");
+  }
+}
+
+function assertBadgeYear(year: unknown): asserts year is number {
+  if (typeof year !== "number" || !Number.isInteger(year)) {
+    throw new TypeError("year must be an integer.");
+  }
+
+  if (year < 2000) {
+    throw new RangeError("year must be 2000 or greater.");
+  }
+}
+
+async function createBadgeNotifications(
+  month: number,
+  year: number,
+  winners: Array<{ userId: string; type: BadgeType; winner: string; score: number }>
+) {
+  const badgeTypeLabels: Record<BadgeType, string> = {
+    SERVIS_YILDIZI: "Servis Yıldızı",
+    KALITE_USTASI: "Kalite Ustası",
+    EKIP_OYUNCUSU: "Ekip Oyuncusu",
+  };
+
+  const existingNotifications = await prisma.notification.findMany({
+    where: { type: "BADGE_AWARDED" },
+    select: { id: true, metadata: true },
+  });
+
+  const staleNotificationIds = existingNotifications
+    .filter((notification) => {
+      const metadata = notification.metadata as { month?: number; year?: number } | null;
+      return metadata?.month === month && metadata?.year === year;
+    })
+    .map((notification) => notification.id);
+
+  await prisma.$transaction(async (tx) => {
+    if (staleNotificationIds.length > 0) {
+      await tx.notification.deleteMany({
+        where: { id: { in: staleNotificationIds } },
+      });
+    }
+
+    if (winners.length === 0) {
+      return;
+    }
+
+    await tx.notification.createMany({
+      data: winners.map((winner) => ({
+        userId: winner.userId,
+        type: "BADGE_AWARDED",
+        title: "Yeni rozet kazandınız",
+        body: `Tebrikler! Bu ay ${badgeTypeLabels[winner.type]} rozetini kazandınız.`,
+        metadata: {
+          month,
+          year,
+          badgeType: winner.type,
+          score: winner.score,
+        },
+      })),
+    });
+  });
 }
 
 export async function calculateMonthlyBadges(
   month: number,
   year: number
-): Promise<BadgeCalculationResult> {
-  const scoreboard = await getMonthlyScoreboard(month, year);
-  const [workshopEvaluations, coordinatorEvaluations, recipientUsers, existingBadgeNotifications] =
-    await Promise.all([
-      prisma.monthlyEvaluation.findMany({
-        where: {
-          month,
-          year,
-          evaluatorType: EvaluatorType.WORKSHOP_CHIEF,
-        },
-        select: {
-          employeeId: true,
-          wc_q1_technical: true,
-        },
-      }),
-      prisma.monthlyEvaluation.findMany({
-        where: {
-          month,
-          year,
-          evaluatorType: EvaluatorType.TECHNICAL_COORDINATOR,
-        },
-        select: {
-          employeeId: true,
-          tc_q4_teamwork: true,
-        },
-      }),
-      prisma.user.findMany({
-        where: {
-          role: {
-            in: [Role.ADMIN, Role.COORDINATOR, Role.WORKSHOP_CHIEF, Role.TECHNICIAN],
+): Promise<MonthlyBadgeResult[]> {
+  assertBadgeMonth(month);
+  assertBadgeYear(year);
+
+  const employees = await prisma.user.findMany({
+    where: { role: { in: [Role.TECHNICIAN, Role.COORDINATOR] } },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0, 23, 59, 59);
+
+  const scores = await Promise.all(
+    employees.map(async (employee): Promise<BadgeScoreRow> => {
+      const [jobScores, evaluations, workshopEval, coordinatorEval] = await Promise.all([
+        prisma.jobScore.findMany({
+          where: {
+            userId: employee.id,
+            month,
+            year,
+            isKesif: false,
           },
-        },
-        select: {
-          id: true,
-          role: true,
-        },
-      }),
-      prisma.notification.findMany({
-        where: {
-          type: "BADGE_AWARDED",
-        },
-        select: {
-          id: true,
-          metadata: true,
-        },
-      }),
-    ]);
+        }),
+        prisma.jobEvaluation.findMany({
+          where: {
+            job: {
+              assignments: { some: { userId: employee.id } },
+              closedAt: { gte: startDate, lte: endDate },
+            },
+          },
+        }),
+        prisma.monthlyEvaluation.findFirst({
+          where: {
+            employeeId: employee.id,
+            evaluatorType: EvaluatorType.WORKSHOP_CHIEF,
+            month,
+            year,
+          },
+        }),
+        prisma.monthlyEvaluation.findFirst({
+          where: {
+            employeeId: employee.id,
+            evaluatorType: EvaluatorType.TECHNICAL_COORDINATOR,
+            month,
+            year,
+          },
+        }),
+      ]);
 
-  const workshopByEmployee = new Map(
-    workshopEvaluations.map((evaluation) => [evaluation.employeeId, evaluation] as const)
-  );
-  const coordinatorByEmployee = new Map(
-    coordinatorEvaluations.map((evaluation) => [evaluation.employeeId, evaluation] as const)
-  );
+      const totalJobScore = jobScores.reduce((sum, score) => sum + score.finalScore, 0);
+      const jobCount = jobScores.length;
 
-  const rawTieBreak = new Map(
-    scoreboard.entries.map((entry) => [entry.user.id, entry.rawJobScore] as const)
-  );
-  const serviceStarCandidate = scoreboard.entries[0];
+      const supportScores = jobScores.filter((score) => score.role === JobRole.DESTEK);
+      const supportCount = supportScores.length;
+      const supportTotal = supportScores.reduce((sum, score) => sum + score.finalScore, 0);
 
-  const qualityCandidates = scoreboard.entries
-    .map((entry) => {
-      const workshop = workshopByEmployee.get(entry.user.id);
-      const formJobCount = entry.jobs.length;
-      const baseAverage =
-        formJobCount > 0
-          ? entry.jobs.reduce((total, job) => total + job.baseScore, 0) / formJobCount
+      const avgForm1 =
+        evaluations.length > 0
+          ? evaluations.reduce((sum, evaluation) => sum + evaluation.baseScore, 0) /
+            evaluations.length
           : 0;
 
-      if (!workshop?.wc_q1_technical || formJobCount < 3) {
-        return null;
-      }
+      const workshopScore = workshopEval?.normalizedScore ?? null;
+      const coordinatorScore = coordinatorEval?.normalizedScore ?? null;
+
+      const theoreticalMax = jobCount * 100 * 3.0;
+      const normalizedJob =
+        theoreticalMax > 0 ? roundScore((totalJobScore / theoreticalMax) * 100) : 0;
+
+      const monthlyTotal = roundScore(
+        normalizedJob * 0.4 + (workshopScore ?? 0) * 0.3 + (coordinatorScore ?? 0) * 0.3
+      );
+
+      const workshopQ1 = workshopEval?.wc_q1_technical ?? 0;
+      const qualityScore = roundScore(avgForm1 * 0.7 + workshopQ1 * 20 * 0.3);
+
+      const normalizedSupportCount = Math.min(supportCount / 10, 1) * 100;
+      const normalizedSupportScore =
+        theoreticalMax > 0 ? (supportTotal / theoreticalMax) * 100 : 0;
+      const coordinatorQ4 = coordinatorEval?.tc_q4_teamwork ?? 0;
+      const teamScore = roundScore(
+        normalizedSupportScore * 0.5 +
+          coordinatorQ4 * 20 * 0.3 +
+          normalizedSupportCount * 0.2
+      );
 
       return {
-        userId: entry.user.id,
-        userName: entry.user.name,
-        score: Number((baseAverage * 0.7 + workshop.wc_q1_technical * 20 * 0.3).toFixed(1)),
-        tieBreak: rawTieBreak.get(entry.user.id) ?? 0,
+        userId: employee.id,
+        name: employee.name,
+        jobCount,
+        supportCount,
+        monthlyTotal,
+        qualityScore,
+        teamScore,
       };
     })
-    .filter(Boolean) as Array<{
+  );
+
+  const monthlyWinner = [...scores].sort((left, right) => right.monthlyTotal - left.monthlyTotal)[0];
+  const qualityWinner = [...scores]
+    .filter((entry) => entry.jobCount >= 3)
+    .sort((left, right) => right.qualityScore - left.qualityScore)[0];
+  const teamWinner = [...scores]
+    .filter((entry) => entry.supportCount >= 2)
+    .sort((left, right) => right.teamScore - left.teamScore)[0];
+
+  const winners = [
+    monthlyWinner
+      ? {
+          userId: monthlyWinner.userId,
+          type: BadgeType.SERVIS_YILDIZI,
+          winner: monthlyWinner.name,
+          score: monthlyWinner.monthlyTotal,
+        }
+      : null,
+    qualityWinner
+      ? {
+          userId: qualityWinner.userId,
+          type: BadgeType.KALITE_USTASI,
+          winner: qualityWinner.name,
+          score: qualityWinner.qualityScore,
+        }
+      : null,
+    teamWinner
+      ? {
+          userId: teamWinner.userId,
+          type: BadgeType.EKIP_OYUNCUSU,
+          winner: teamWinner.name,
+          score: teamWinner.teamScore,
+        }
+      : null,
+  ].filter(Boolean) as Array<{
     userId: string;
-    userName: string;
+    type: BadgeType;
+    winner: string;
     score: number;
-    tieBreak: number;
   }>;
-
-  qualityCandidates.sort(
-    (left, right) => right.score - left.score || right.tieBreak - left.tieBreak
-  );
-
-  const teamSupportRawMap = new Map(
-    scoreboard.entries.map((entry) => [
-      entry.user.id,
-      Number(
-        entry.jobs
-          .filter((job) => job.role === JobRole.DESTEK)
-          .reduce((total, job) => total + job.finalScore, 0)
-          .toFixed(1)
-      ),
-    ])
-  );
-  const teamSupportCountMap = new Map(
-    scoreboard.entries.map((entry) => [
-      entry.user.id,
-      entry.jobs.filter((job) => job.role === JobRole.DESTEK).length,
-    ])
-  );
-  const maxSupportRaw = Math.max(...teamSupportRawMap.values(), 1);
-  const maxSupportCount = Math.max(...teamSupportCountMap.values(), 1);
-
-  const teamCandidates = scoreboard.entries
-    .map((entry) => {
-      const supportCount = teamSupportCountMap.get(entry.user.id) ?? 0;
-      const coordinator = coordinatorByEmployee.get(entry.user.id);
-
-      if (!coordinator?.tc_q4_teamwork || supportCount < 2) {
-        return null;
-      }
-
-      const supportRaw = teamSupportRawMap.get(entry.user.id) ?? 0;
-      const supportNormalized = normalizeMonthlyScore(supportRaw, maxSupportRaw);
-      const supportCountNormalized = normalizeMonthlyScore(supportCount, maxSupportCount);
-
-      return {
-        userId: entry.user.id,
-        userName: entry.user.name,
-        score: Number(
-          (
-            supportNormalized * 0.5 +
-            coordinator.tc_q4_teamwork * 20 * 0.3 +
-            supportCountNormalized * 0.2
-          ).toFixed(1)
-        ),
-        tieBreak: rawTieBreak.get(entry.user.id) ?? 0,
-      };
-    })
-    .filter(Boolean) as Array<{
-    userId: string;
-    userName: string;
-    score: number;
-    tieBreak: number;
-  }>;
-
-  teamCandidates.sort(
-    (left, right) => right.score - left.score || right.tieBreak - left.tieBreak
-  );
-
-  const winners: Array<MonthlyBadgeWinner & { userName: string }> = [];
-
-  if (serviceStarCandidate) {
-    winners.push({
-      type: BadgeType.SERVIS_YILDIZI,
-      userId: serviceStarCandidate.user.id,
-      userName: serviceStarCandidate.user.name,
-      score: serviceStarCandidate.total,
-    });
-  }
-
-  if (qualityCandidates[0]) {
-    winners.push({
-      type: BadgeType.KALITE_USTASI,
-      userId: qualityCandidates[0].userId,
-      userName: qualityCandidates[0].userName,
-      score: qualityCandidates[0].score,
-    });
-  }
-
-  if (teamCandidates[0]) {
-    winners.push({
-      type: BadgeType.EKIP_OYUNCUSU,
-      userId: teamCandidates[0].userId,
-      userName: teamCandidates[0].userName,
-      score: teamCandidates[0].score,
-    });
-  }
-
-  const notificationIdsToDelete = existingBadgeNotifications
-    .filter((notification) => {
-      const metadata = notification.metadata as
-        | { month?: number; year?: number; badgeType?: string }
-        | null;
-
-      return metadata?.month === month && metadata?.year === year;
-    })
-    .map((notification) => notification.id);
-
-  const recipients = recipientUsers.filter((user) => user.role === Role.TECHNICIAN);
 
   await prisma.$transaction(async (tx) => {
-    await tx.badge.deleteMany({
-      where: {
-        month,
-        year,
-      },
-    });
-
-    if (notificationIdsToDelete.length > 0) {
-      await tx.notification.deleteMany({
-        where: {
-          id: {
-            in: notificationIdsToDelete,
-          },
-        },
-      });
-    }
+    await tx.badge.deleteMany({ where: { month, year } });
 
     for (const winner of winners) {
       await tx.badge.create({
@@ -250,35 +249,40 @@ export async function calculateMonthlyBadges(
           score: winner.score,
         },
       });
-
-      if (recipients.some((user) => user.id === winner.userId)) {
-        await tx.notification.create({
-          data: {
-            userId: winner.userId,
-            type: "BADGE_AWARDED",
-            title: "Yeni rozet kazandiniz",
-            body: `Tebrikler! Bu ay ${getBadgeLabel(winner.type)} rozeti kazandin.`,
-            metadata: {
-              month,
-              year,
-              badgeType: winner.type,
-            },
-          },
-        });
-      }
     }
   });
 
-  return {
-    month,
-    year,
-    winners,
-  };
+  await createBadgeNotifications(month, year, winners);
+
+  return winners.map(({ type, winner, score }) => ({ type, winner, score }));
+}
+
+export async function calculateYearEndRanking(year: number) {
+  assertBadgeYear(year);
+
+  const badges = await prisma.badge.findMany({ where: { year } });
+  const counts: Record<string, number> = {};
+
+  for (const badge of badges) {
+    counts[badge.userId] = (counts[badge.userId] ?? 0) + 3;
+  }
+
+  const users = await prisma.user.findMany({
+    where: { id: { in: Object.keys(counts) } },
+    select: { id: true, name: true, avatarUrl: true },
+  });
+
+  return users
+    .map((user) => ({ user, yearScore: counts[user.id] ?? 0 }))
+    .sort((left, right) => right.yearScore - left.yearScore)
+    .slice(0, 3);
 }
 
 export async function calculateYearlyBadgeStandings(
   year: number
 ): Promise<YearlyBadgeStanding[]> {
+  assertBadgeYear(year);
+
   const badges = await prisma.badge.findMany({
     where: { year },
     include: {

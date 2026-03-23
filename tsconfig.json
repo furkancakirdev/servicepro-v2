@@ -38,6 +38,7 @@
   ],
   "exclude": [
     "node_modules",
-    "node_modules_corrupt_backup"
+    "node_modules_corrupt_backup",
+    "supabase/functions/**/*"
   ]
 }

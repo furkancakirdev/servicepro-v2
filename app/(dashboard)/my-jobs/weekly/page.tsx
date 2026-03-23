@@ -39,7 +39,7 @@ export default async function MyJobsWeeklyPage({
           </div>
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
-              Haftalik gorunum
+              Haftalik g?runum
             </p>
             <h1 className="mt-1 text-2xl font-semibold text-marine-navy">Haftam</h1>
           </div>
@@ -70,13 +70,13 @@ export default async function MyJobsWeeklyPage({
             {activeDay?.label} gunu ozeti
           </CardTitle>
           <CardDescription>
-            Secili gun icin toplam {activeDay?.count ?? 0} is planli gorunuyor.
+            Secili gun icin toplam {activeDay?.count ?? 0} is planli g?runuyor.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {activeDay?.count ? (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-              Bu gunun detaylari bugunku isler ekraninda ilgili job kartlarina baglidir.
+              Bu gunun detaylari bugünku isler ekraninda ilgili job kartlarina baglidir.
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
@@ -88,3 +88,4 @@ export default async function MyJobsWeeklyPage({
     </div>
   );
 }
+
