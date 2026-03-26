@@ -14,6 +14,17 @@ User: serviceproadmin
 
 Primary workflow is now server-first. Code changes should be synced directly to this server and kept current there.
 
+## Default Rule
+
+For this repository, the expected end-of-task workflow is:
+
+1. Run local verification (`test`, `lint`, `build`) as needed for the change.
+2. Connect to the production environment through the operator-provided Sophos/SSH access.
+3. Deploy on the server with the safe live-data script unless a demo or fresh install is explicitly requested.
+4. Run the post-deploy verification commands and confirm that the app is reachable.
+
+Credentials must not be committed to the repository. Use the operator-provided credentials outside the repo when connecting.
+
 ## Scripts
 
 Safe live-data deploy:
