@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import type {
   MonthlyEvaluationFormEntry,
   MonthlyScoreboardData,
+  ScoreboardEvaluationActionLink,
   ScoreboardBadgeSummary,
   ScoreboardJobBreakdown,
   TechnicianScoreboardEntry,
@@ -18,6 +19,55 @@ export type ScoreboardMonthOption = {
   value: string;
   label: string;
 };
+
+export function summarizeMissingEvaluations(
+  entries: Array<{
+    workshopEvaluation?: unknown | null;
+    coordinatorEvaluation?: unknown | null;
+  }>
+) {
+  return {
+    missingWorkshopCount: entries.filter((entry) => entry.workshopEvaluation == null).length,
+    missingCoordinatorCount: entries.filter((entry) => entry.coordinatorEvaluation == null).length,
+  };
+}
+
+export function buildEvaluationActionLinks(input: {
+  role: Role;
+  month: number;
+  year: number;
+  missingWorkshopCount: number;
+  missingCoordinatorCount: number;
+}): ScoreboardEvaluationActionLink[] {
+  const actions: ScoreboardEvaluationActionLink[] = [];
+  const queryBase = `month=${input.month}&year=${input.year}`;
+
+  if (
+    input.missingWorkshopCount > 0 &&
+    (input.role === Role.WORKSHOP_CHIEF || input.role === Role.ADMIN)
+  ) {
+    actions.push({
+      key: "workshop",
+      label: "Usta formunu aç",
+      href: `/scoreboard?${queryBase}&openEval=workshop`,
+      count: input.missingWorkshopCount,
+    });
+  }
+
+  if (
+    input.missingCoordinatorCount > 0 &&
+    (input.role === Role.COORDINATOR || input.role === Role.ADMIN)
+  ) {
+    actions.push({
+      key: "coordinator",
+      label: "Koordinatör formunu aç",
+      href: `/scoreboard?${queryBase}&openEval=coordinator`,
+      count: input.missingCoordinatorCount,
+    });
+  }
+
+  return actions;
+}
 
 function createMonthLabel(month: number, year: number) {
   return format(new Date(year, month - 1, 1), "MMMM yyyy", { locale: tr });

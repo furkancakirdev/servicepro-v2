@@ -30,7 +30,8 @@ export default async function MyJobsPage() {
               {currentUser.name} · Bugün {overview.todayJobs.length} iş · {dominantTab}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Saat sırasına göre günlük atamalar, VIP tekneler ve rol bazlı görev dağılımı.
+              Planlanan başlangıç saatine göre günlük atamalar, VIP tekneler ve rol bazlı görev
+              dağılımı.
             </p>
           </div>
           <Link
@@ -46,9 +47,7 @@ export default async function MyJobsPage() {
       <Card className="border-white/80 bg-white/95">
         <CardHeader>
           <CardTitle className="text-marine-navy">Hafta özeti</CardTitle>
-          <CardDescription>
-            Pazartesi - Cumartesi mini plan. Bugün vurgulu gösterilir.
-          </CardDescription>
+          <CardDescription>Pazartesi - Cumartesi mini plan. Bugün vurgulu gösterilir.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {overview.weeklySummary.map((day) => (
@@ -63,7 +62,7 @@ export default async function MyJobsPage() {
             >
               <div className="text-xs uppercase tracking-[0.16em] opacity-75">{day.label}</div>
               <div className="mt-3 text-2xl font-semibold">{day.count}</div>
-              <div className="mt-1 text-sm opacity-80">is</div>
+              <div className="mt-1 text-sm opacity-80">iş</div>
             </Link>
           ))}
         </CardContent>
@@ -96,7 +95,8 @@ export default async function MyJobsPage() {
                   <div className="mt-1 text-sm text-slate-600">{job.categoryName}</div>
                 </div>
                 <Badge variant="outline">
-                  {job.role === "SORUMLU" ? "Sorumlu" : "Destek"} · x{job.multiplier.toFixed(1)}
+                  {job.role === "SORUMLU" ? "Sorumlu" : "Destek"} · x
+                  {job.multiplier.toFixed(1)}
                 </Badge>
               </div>
 
@@ -114,11 +114,10 @@ export default async function MyJobsPage() {
           ))
         ) : (
           <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-600">
-            Bugün için atanmış aktif işiniz bulunmuyor.
+            Bugün için planlanmış aktif işiniz bulunmuyor.
           </div>
         )}
       </div>
     </div>
   );
 }
-

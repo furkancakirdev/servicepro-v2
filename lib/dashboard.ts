@@ -6,7 +6,11 @@ import { JobStatus, Role } from "@prisma/client";
 
 import { activeOperationalStatuses, getJobOperationalReference } from "@/lib/jobs";
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
-import { getMonthlyScoreboard, resolveScoreboardPeriod } from "@/lib/scoreboard";
+import {
+  getMonthlyScoreboard,
+  resolveScoreboardPeriod,
+  summarizeMissingEvaluations,
+} from "@/lib/scoreboard";
 import type { CurrentAppUser } from "@/lib/auth";
 import type {
   DashboardActivityPoint,
@@ -243,12 +247,9 @@ export async function getDashboardData(
   ]);
 
   const myJobs = groupAssignedJobs(assignedJobs);
-  const missingWorkshopCount = scoreboard.entries.filter(
-    (entry) => entry.workshopEvaluation === null
-  ).length;
-  const missingCoordinatorCount = scoreboard.entries.filter(
-    (entry) => entry.coordinatorEvaluation === null
-  ).length;
+  const { missingWorkshopCount, missingCoordinatorCount } = summarizeMissingEvaluations(
+    scoreboard.entries
+  );
 
   const alerts: DashboardAlert[] = [];
 

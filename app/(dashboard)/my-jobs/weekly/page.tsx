@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarRange } from "lucide-react";
+import { CalendarRange, MapPin } from "lucide-react";
 import { Role } from "@prisma/client";
 
 import {
@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { requireRoles } from "@/lib/auth";
 import { getMyJobsOverview } from "@/lib/my-jobs";
 
@@ -60,25 +61,44 @@ export default async function MyJobsWeeklyPage({
           >
             <div className="text-xs uppercase tracking-[0.16em] opacity-80">{day.label}</div>
             <div className="mt-3 text-2xl font-semibold">{day.count}</div>
-            <div className="mt-1 text-sm opacity-80">is</div>
+            <div className="mt-1 text-sm opacity-80">iş</div>
           </Link>
         ))}
       </div>
 
       <Card className="border-white/80 bg-white/95">
         <CardHeader>
-          <CardTitle className="text-marine-navy">
-            {activeDay?.label} günü özeti
-          </CardTitle>
+          <CardTitle className="text-marine-navy">{activeDay?.label} günü özeti</CardTitle>
           <CardDescription>
             Seçili gün için toplam {activeDay?.count ?? 0} iş planlı görünüyor.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          {activeDay?.count ? (
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-              Bu günün detayları bugünkü işler ekranında ilgili iş kartlarına bağlıdır.
-            </div>
+        <CardContent className="space-y-3">
+          {activeDay?.jobs.length ? (
+            activeDay.jobs.map((job) => (
+              <Link
+                key={job.id}
+                href={`/my-jobs/${job.id}`}
+                className="block rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 transition-colors hover:border-marine-ocean/40 hover:bg-white"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold uppercase tracking-[0.14em] text-marine-ocean">
+                      {job.timeLabel}
+                    </div>
+                    <div className="mt-2 font-semibold text-marine-navy">{job.boatName}</div>
+                    <div className="mt-1 text-sm text-slate-600">{job.categoryName}</div>
+                  </div>
+                  <Badge variant="outline">
+                    {job.role === "SORUMLU" ? "Sorumlu" : "Destek"}
+                  </Badge>
+                </div>
+                <div className="mt-3 inline-flex items-center gap-2 text-sm text-slate-600">
+                  <MapPin className="size-4 text-marine-ocean" />
+                  {job.locationLabel}
+                </div>
+              </Link>
+            ))
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
               Seçili günde planlanmış iş bulunmuyor.
@@ -89,4 +109,3 @@ export default async function MyJobsWeeklyPage({
     </div>
   );
 }
-

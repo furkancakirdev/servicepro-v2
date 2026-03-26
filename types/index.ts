@@ -201,6 +201,13 @@ export type MonthlyScoreboardData = {
   evaluationRoster: MonthlyEvaluationFormEntry[];
 };
 
+export type ScoreboardEvaluationActionLink = {
+  key: "workshop" | "coordinator";
+  label: string;
+  href: string;
+  count: number;
+};
+
 export type HeaderNotificationItem = {
   id: string;
   type: string;
@@ -284,4 +291,11 @@ export type DashboardData = {
   overdueHoldCount: number;
   missingWorkshopCount: number;
   missingCoordinatorCount: number;
+};
+
+export type MyJobQualityCheck = {
+  id: string;
+  tone: "emerald" | "amber" | "rose" | "sky";
+  title: string;
+  description: string;
 };

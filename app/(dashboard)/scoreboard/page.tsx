@@ -9,9 +9,11 @@ import ScoreboardPeriodPicker from "@/components/scoreboard/ScoreboardPeriodPick
 import ScoreboardRealtime from "@/components/scoreboard/ScoreboardRealtime";
 import { requireAppUser } from "@/lib/auth";
 import {
+  buildEvaluationActionLinks,
   getMonthlyScoreboard,
   getScoreboardMonthOptions,
   resolveScoreboardPeriod,
+  summarizeMissingEvaluations,
 } from "@/lib/scoreboard";
 
 type ScoreboardPageProps = {
@@ -35,12 +37,17 @@ export default async function ScoreboardPage({
     selectedPeriod.year
   );
   const monthOptions = getScoreboardMonthOptions();
-  const missingWorkshopCount = scoreboard.entries.filter(
-    (entry) => entry.workshopScore === null
-  ).length;
-  const missingCoordinatorCount = scoreboard.entries.filter(
-    (entry) => entry.coordinatorScore === null
-  ).length;
+  const { missingWorkshopCount, missingCoordinatorCount } = summarizeMissingEvaluations(
+    scoreboard.entries
+  );
+  const openEval = takeFirstValue(searchParams?.openEval);
+  const evaluationActions = buildEvaluationActionLinks({
+    role: currentUser.role,
+    month: scoreboard.month,
+    year: scoreboard.year,
+    missingWorkshopCount,
+    missingCoordinatorCount,
+  });
 
   return (
     <div className="space-y-6">
@@ -69,6 +76,7 @@ export default async function ScoreboardPage({
                   year={scoreboard.year}
                   monthLabel={scoreboard.monthLabel}
                   roster={scoreboard.evaluationRoster}
+                  forceOpen={openEval === "workshop"}
                 />
               ) : null}
 
@@ -80,6 +88,7 @@ export default async function ScoreboardPage({
                   year={scoreboard.year}
                   monthLabel={scoreboard.monthLabel}
                   roster={scoreboard.evaluationRoster}
+                  forceOpen={openEval === "coordinator"}
                 />
               ) : null}
             </div>
@@ -96,9 +105,13 @@ export default async function ScoreboardPage({
         <div className="space-y-6">
           <ScoreBreakdown
             monthLabel={scoreboard.monthLabel}
+            month={scoreboard.month}
+            year={scoreboard.year}
+            role={currentUser.role}
             missingWorkshopCount={missingWorkshopCount}
             missingCoordinatorCount={missingCoordinatorCount}
             theoreticalMax={scoreboard.theoreticalMax}
+            actions={evaluationActions}
           />
           <BadgeDisplay badgeSummary={scoreboard.badgeSummary} />
         </div>

@@ -33,6 +33,7 @@ type MonthlyEvaluationSheetProps = {
   year: number;
   monthLabel: string;
   roster: MonthlyEvaluationFormEntry[];
+  forceOpen?: boolean;
 };
 
 type WorkshopRowState = {
@@ -138,6 +139,7 @@ export default function MonthlyEvaluationSheet({
   year,
   monthLabel,
   roster,
+  forceOpen = false,
 }: MonthlyEvaluationSheetProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -163,6 +165,12 @@ export default function MonthlyEvaluationSheet({
     setOpen(false);
     router.refresh();
   }, [actionState.success, router]);
+
+  useEffect(() => {
+    if (forceOpen) {
+      setOpen(true);
+    }
+  }, [forceOpen]);
 
   const title =
     mode === "workshop"

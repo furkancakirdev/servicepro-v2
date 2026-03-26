@@ -19,6 +19,7 @@ import {
   buildClientNotificationTemplate,
   buildWhatsAppDeepLink,
 } from "@/lib/client-notifications";
+import { getJobOperationalReference } from "@/lib/jobs";
 import { getMyJobDetail } from "@/lib/my-jobs";
 
 type MyJobDetailPageProps = {
@@ -39,9 +40,10 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
     notFound();
   }
 
-  const { job, recentVisits } = data;
-  const operationalReference = job.startedAt ?? job.createdAt;
+  const { job, recentVisits, qualityChecks, primaryContactId } = data;
+  const operationalReference = getJobOperationalReference(job);
   const primaryContact =
+    job.boat.contacts.find((contact) => contact.id === primaryContactId) ??
     job.boat.contacts.find((contact) => contact.isPrimary && contact.phone) ??
     job.boat.contacts.find((contact) => contact.phone) ??
     null;
@@ -82,7 +84,8 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
             </div>
             <h1 className="mt-2 text-3xl font-semibold text-marine-navy">{job.boat.name}</h1>
             <p className="mt-2 text-sm text-slate-600">
-              {job.category.name} · x{job.multiplier.toFixed(1)} · {job.location ?? "Lokasyon bekleniyor"}
+              {job.category.name} · x{job.multiplier.toFixed(1)} ·{" "}
+              {job.location ?? "Lokasyon bekleniyor"}
             </p>
           </div>
           <Badge variant="outline">
@@ -106,7 +109,7 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
 
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-              <div className="font-medium text-marine-navy">Saat</div>
+              <div className="font-medium text-marine-navy">Plan / operasyon saati</div>
               <div className="mt-2">
                 {format(operationalReference, "dd MMM yyyy HH:mm", { locale: tr })}
               </div>
@@ -126,6 +129,34 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
                 .join(", ") || "Destek personeli yok"}
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-white/80 bg-white/95">
+        <CardHeader>
+          <CardTitle className="text-marine-navy">Kalite kontrolleri</CardTitle>
+          <CardDescription>
+            İletişim kanalı ve ziyaret geçmişi için hızlı doğruluk sinyalleri.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2">
+          {qualityChecks.map((check) => (
+            <div
+              key={check.id}
+              className={`rounded-2xl border px-4 py-4 text-sm ${
+                check.tone === "emerald"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+                  : check.tone === "rose"
+                    ? "border-rose-200 bg-rose-50 text-rose-900"
+                    : check.tone === "amber"
+                      ? "border-amber-200 bg-amber-50 text-amber-900"
+                      : "border-sky-200 bg-sky-50 text-sky-900"
+              }`}
+            >
+              <div className="font-medium">{check.title}</div>
+              <div className="mt-1 text-xs leading-6 opacity-90">{check.description}</div>
+            </div>
+          ))}
         </CardContent>
       </Card>
 
@@ -152,7 +183,7 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
                     className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-medium text-emerald-800 transition-colors hover:bg-emerald-100"
                   >
                     <MessageCircle className="size-4" />
-                    WhatsApp ac
+                    WhatsApp aç
                   </a>
                 ) : null}
                 {primaryContact.phone ? (
@@ -181,7 +212,14 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
                 >
                   <div className="font-medium text-marine-navy">{visit.category.name}</div>
                   <div className="mt-1">
-                    {format(visit.createdAt, "dd MMM yyyy", { locale: tr })}
+                    {format(
+                      visit.actualEndAt ??
+                        visit.completedAt ??
+                        visit.plannedStartAt ??
+                        visit.createdAt,
+                      "dd MMM yyyy",
+                      { locale: tr }
+                    )}
                   </div>
                   <div className="mt-2 text-xs uppercase tracking-[0.12em] text-slate-500">
                     {visit.assignments.map((assignment) => assignment.user.name).join(", ")}
@@ -190,7 +228,7 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
               ))
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-                Bu tekne icin onceki ziyaret kaydi bulunmuyor.
+                Bu tekne için önceki ziyaret kaydı bulunmuyor.
               </div>
             )}
           </div>
@@ -200,7 +238,7 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
       <Link href={`/jobs/${job.id}?closeout=1`} className="block">
         <Button size="lg" className="h-14 w-full bg-marine-navy text-white hover:bg-marine-ocean">
           <Wrench className="mr-2 size-5" />
-          Teslim Raporu Doldur
+          Teslim raporu doldur
         </Button>
       </Link>
     </div>
