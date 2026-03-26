@@ -10,9 +10,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { requireAppUser } from "@/lib/auth";
 import {
+  DEFAULT_JOBS_PAGE_SIZE,
   getJobDateFieldLabel,
   isJobDateField,
   isJobStatusGroup,
+  normalizeJobsPagination,
   type JobDateField,
   type JobStatusGroup,
 } from "@/lib/jobs";
@@ -45,7 +47,12 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   const technicianId = takeFirstValue(searchParams?.technicianId) ?? "";
   const startDate = takeFirstValue(searchParams?.startDate) ?? "";
   const endDate = takeFirstValue(searchParams?.endDate) ?? "";
-  const currentPage = Math.max(1, Number.parseInt(takeFirstValue(searchParams?.page) ?? "1", 10) || 1);
+  const pagination = normalizeJobsPagination({
+    page: takeFirstValue(searchParams?.page),
+    pageSize: takeFirstValue(searchParams?.pageSize),
+  });
+  const currentPage = pagination.page;
+  const currentPageSize = pagination.pageSize;
   const dateFieldLabel = getJobDateFieldLabel(currentDateField);
 
   const [jobResult, technicians] = await Promise.all([
@@ -59,6 +66,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
       endDate: endDate || undefined,
       dateField: currentDateField,
       page: currentPage,
+      pageSize: currentPageSize,
     }),
     getJobFilterOptions(),
   ]);
@@ -69,12 +77,14 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
     pendingScoring: shouldFilterPendingScoring = false,
     dateField = currentDateField,
     page = 1,
+    pageSize = currentPageSize,
   }: {
     status?: JobStatus;
     statusGroup?: JobStatusGroup;
     pendingScoring?: boolean;
     dateField?: JobDateField;
     page?: number;
+    pageSize?: number;
   } = {}) => {
     const params = new URLSearchParams();
 
@@ -86,6 +96,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
     if (statusGroup) params.set("statusGroup", statusGroup);
     if (shouldFilterPendingScoring) params.set("pendingScoring", "1");
     if (dateField !== "createdAt") params.set("dateField", dateField);
+    if (pageSize !== DEFAULT_JOBS_PAGE_SIZE) params.set("pageSize", String(pageSize));
     if (page > 1) params.set("page", String(page));
 
     const serialized = params.toString();
@@ -112,7 +123,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
         </div>
 
         <form
-          className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_180px_180px_220px_auto_auto]"
+          className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_170px_170px_220px_140px_auto_auto]"
           method="get"
         >
           <input type="hidden" name="dateField" value={currentDateField} />
@@ -158,6 +169,21 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
               {technicians.map((technician) => (
                 <option key={technician.id} value={technician.id}>
                   {technician.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="relative">
+            <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-marine-ocean" />
+            <select
+              name="pageSize"
+              defaultValue={String(currentPageSize)}
+              className={cn(filterInputClass, "w-full pl-10")}
+            >
+              {[20, 50, 100].map((size) => (
+                <option key={size} value={size}>
+                  {size} kayit
                 </option>
               ))}
             </select>
@@ -242,7 +268,15 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
         page={jobResult.page}
         pageSize={jobResult.pageSize}
         totalPages={jobResult.totalPages}
-        buildPageHref={(page) => buildJobsHref({ status: currentStatus, statusGroup: currentStatusGroup, pendingScoring, dateField: currentDateField, page })}
+        buildPageHref={(page) =>
+          buildJobsHref({
+            status: currentStatus,
+            statusGroup: currentStatusGroup,
+            pendingScoring,
+            dateField: currentDateField,
+            page,
+            pageSize: currentPageSize,
+          })}
       />
     </div>
   );

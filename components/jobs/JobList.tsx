@@ -23,6 +23,8 @@ import type { ServiceJobListItem } from "@/types";
 
 const actionLinkClass =
   "inline-flex h-9 items-center justify-center rounded-lg border border-marine-ocean/20 bg-white px-3 text-sm font-medium text-marine-navy transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5";
+const paginationLinkClass =
+  "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5";
 
 function getResponsibleLabel(job: ServiceJobListItem) {
   return (
@@ -47,6 +49,31 @@ function formatJobDate(date: Date) {
   return format(date, "dd MMM yyyy HH:mm", { locale: tr });
 }
 
+function getVisiblePages(page: number, totalPages: number) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const windowStart = Math.max(2, page - 1);
+  const windowEnd = Math.min(totalPages - 1, page + 1);
+  const pages: Array<number | "ellipsis"> = [1];
+
+  if (windowStart > 2) {
+    pages.push("ellipsis");
+  }
+
+  for (let current = windowStart; current <= windowEnd; current += 1) {
+    pages.push(current);
+  }
+
+  if (windowEnd < totalPages - 1) {
+    pages.push("ellipsis");
+  }
+
+  pages.push(totalPages);
+  return pages;
+}
+
 type JobListProps = {
   jobs: ServiceJobListItem[];
   dateField: JobDateField;
@@ -69,6 +96,48 @@ export default function JobList({
   const dateFieldLabel = getJobDateFieldLabel(dateField);
   const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
+  const visiblePages = getVisiblePages(page, totalPages);
+
+  const pagination = totalPages > 1 ? (
+    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+      <Link
+        href={buildPageHref(Math.max(1, page - 1))}
+        aria-disabled={page <= 1}
+        className={`${paginationLinkClass} aria-disabled:pointer-events-none aria-disabled:opacity-50`}
+      >
+        Önceki
+      </Link>
+
+      {visiblePages.map((entry, index) =>
+        entry === "ellipsis" ? (
+          <span key={`ellipsis-${index}`} className="px-1 text-slate-400">
+            ...
+          </span>
+        ) : (
+          <Link
+            key={entry}
+            href={buildPageHref(entry)}
+            aria-current={entry === page ? "page" : undefined}
+            className={`${paginationLinkClass} ${
+              entry === page
+                ? "border-marine-navy bg-marine-navy text-white hover:bg-marine-ocean hover:text-white"
+                : ""
+            }`}
+          >
+            {entry}
+          </Link>
+        )
+      )}
+
+      <Link
+        href={buildPageHref(Math.min(totalPages, page + 1))}
+        aria-disabled={page >= totalPages}
+        className={`${paginationLinkClass} aria-disabled:pointer-events-none aria-disabled:opacity-50`}
+      >
+        Sonraki
+      </Link>
+    </div>
+  ) : null;
 
   if (jobs.length === 0) {
     return (
@@ -89,27 +158,7 @@ export default function JobList({
           <span className="font-semibold text-marine-navy">{rangeStart}</span>-
           <span className="font-semibold text-marine-navy">{rangeEnd}</span> arasi listeleniyor.
         </div>
-        {totalPages > 1 ? (
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <Link
-              href={buildPageHref(Math.max(1, page - 1))}
-              aria-disabled={page <= 1}
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 font-medium text-slate-700 transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5 aria-disabled:pointer-events-none aria-disabled:opacity-50"
-            >
-              Onceki
-            </Link>
-            <span>
-              Sayfa {page} / {totalPages}
-            </span>
-            <Link
-              href={buildPageHref(Math.min(totalPages, page + 1))}
-              aria-disabled={page >= totalPages}
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 font-medium text-slate-700 transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5 aria-disabled:pointer-events-none aria-disabled:opacity-50"
-            >
-              Sonraki
-            </Link>
-          </div>
-        ) : null}
+        {pagination}
       </div>
 
       <div className="hidden overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-panel lg:block">
@@ -184,6 +233,8 @@ export default function JobList({
           <JobCard key={job.id} job={job} dateField={dateField} />
         ))}
       </div>
+
+      {pagination ? <div className="flex justify-end">{pagination}</div> : null}
     </section>
   );
 }
