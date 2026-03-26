@@ -72,9 +72,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       <div className="space-y-5">
         <div className="px-1">
           <p className="max-w-3xl text-sm leading-6 text-slate-600">
-            Personel, kategori, tekne ve sistem davranislarini tek merkezden yonetin.
-            Bu alan, operasyonu bozmayacak sekilde hizli guncelleme ve audit takibi icin
-            duzenlendi.
+            Personel, kategori, tekne ve sistem davranışlarını tek merkezden yönetin.
+            Bu alan, operasyonu bozmayacak şekilde hızlı güncelleme ve audit takibi için
+            düzenlendi.
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                 value="system"
                 className="h-11 rounded-xl px-4 text-sm font-semibold text-slate-600 data-[active]:bg-white data-[active]:text-marine-navy data-[active]:shadow-sm"
               >
-                Isleyis
+                İşleyiş
               </TabsTrigger>
             </TabsList>
 
@@ -152,11 +152,11 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       </div>
     );
   } catch (error) {
-    console.error("[Settings] Veri yuklenemedi:", error);
+    console.error("[Settings] Veri yüklenemedi:", error);
 
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
-        <p className="text-base text-slate-600">Ayarlar yuklenemedi.</p>
+        <p className="text-base text-slate-600">Ayarlar yüklenemedi.</p>
         <a
           href="/settings"
           className="rounded-xl bg-marine-navy px-5 py-2.5 text-sm font-medium text-white hover:bg-marine-ocean"
