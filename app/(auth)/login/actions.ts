@@ -1,13 +1,12 @@
 "use server";
 
 import { AuthError } from "next-auth";
-import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 
 import type { LoginActionState } from "@/app/(auth)/login/state";
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { getPostLoginRedirectPath } from "@/lib/auth-flows";
 import { signIn } from "@/lib/next-auth";
-import { getRoleHomePath } from "@/lib/route-access";
 
 export async function login(
   _prevState: LoginActionState,
@@ -45,11 +44,14 @@ export async function login(
 
   const profile = await prisma.user.findUnique({
     where: { email },
-    select: { role: true },
+    select: { role: true, mustChangePassword: true },
   });
 
-  const defaultRedirect =
-    safeNextPath === "/" ? getRoleHomePath(profile?.role) : safeNextPath;
+  const defaultRedirect = getPostLoginRedirectPath({
+    safeNextPath,
+    role: profile?.role,
+    mustChangePassword: profile?.mustChangePassword,
+  });
 
   redirect(defaultRedirect);
 }

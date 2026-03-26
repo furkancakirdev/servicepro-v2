@@ -35,7 +35,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { SettingsBoat, SettingsCategory, SettingsUser } from "@/lib/settings";
+import type {
+  SettingsAuditLog,
+  SettingsBoat,
+  SettingsCategory,
+  SettingsUser,
+} from "@/lib/settings";
 import { MAX_ON_HOLD_DAYS } from "@/lib/system-settings";
 import type { AppUser, ScoreObjectionQueueItem, YearlyBadgeStanding } from "@/types";
 
@@ -45,6 +50,7 @@ type ViewerProps = {
 
 type TeamTabProps = {
   users: SettingsUser[];
+  personnelAuditLogs: SettingsAuditLog[];
 };
 
 type BoatsTabProps = {
@@ -61,7 +67,68 @@ type SystemTabProps = {
   onHoldDefaultDays: number;
   yearlyStandings: YearlyBadgeStanding[];
   objectionQueue: ScoreObjectionQueueItem[];
+  systemAuditLogs: SettingsAuditLog[];
 };
+
+function formatAuditDate(value: Date) {
+  return new Intl.DateTimeFormat("tr-TR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringifyAuditValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") {
+    return "Boş";
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Evet" : "Hayır";
+  }
+
+  if (typeof value === "number") {
+    return String(value);
+  }
+
+  if (typeof value === "string") {
+    return settingsRoleLabels[value as Role] ?? value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => stringifyAuditValue(entry)).join(", ");
+  }
+
+  if (isRecord(value)) {
+    return Object.entries(value)
+      .map(([key, entry]) => `${key}: ${stringifyAuditValue(entry)}`)
+      .join(" | ");
+  }
+
+  return String(value);
+}
+
+function buildAuditSummary(log: SettingsAuditLog) {
+  const oldValues = isRecord(log.oldValues) ? log.oldValues : {};
+  const newValues = isRecord(log.newValues) ? log.newValues : {};
+
+  if (log.entityType === "USER_CREATE") {
+    return `Yeni rol: ${stringifyAuditValue(newValues.role)} | Aktivasyon: ${stringifyAuditValue(newValues.mustChangePassword)}`;
+  }
+
+  if (log.entityType === "USER_ROLE") {
+    return `Rol: ${stringifyAuditValue(oldValues.role)} -> ${stringifyAuditValue(newValues.role)}`;
+  }
+
+  if (log.entityType === "SYSTEM_SETTING") {
+    return `Değer: ${stringifyAuditValue(oldValues.value)} -> ${stringifyAuditValue(newValues.value)}`;
+  }
+
+  return `Eski: ${stringifyAuditValue(oldValues)} | Yeni: ${stringifyAuditValue(newValues)}`;
+}
 
 export function SettingsProfileTab({ viewer }: ViewerProps) {
   return (
@@ -101,7 +168,7 @@ export function SettingsProfileTab({ viewer }: ViewerProps) {
   );
 }
 
-export function SettingsTeamTab({ users }: TeamTabProps) {
+export function SettingsTeamTab({ users, personnelAuditLogs }: TeamTabProps) {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
       <Card className="border-white/80 bg-white/95">
@@ -111,8 +178,8 @@ export function SettingsTeamTab({ users }: TeamTabProps) {
             Yeni personel kaydı
           </CardTitle>
           <CardDescription>
-            Bu form uygulama kullanıcısını oluşturur. Gerekirse auth hesabı ayrıca
-            açılmalıdır.
+            Bu form güvenli geçici parola üretir. Yeni kullanıcı ilk girişte parola
+            aktivasyon akışına yönlendirilir.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -178,7 +245,10 @@ export function SettingsTeamTab({ users }: TeamTabProps) {
             <Users2 className="size-5 text-marine-ocean" />
             Personel listesi
           </CardTitle>
-          <CardDescription>Rol değişikliği anında kaydedilir.</CardDescription>
+          <CardDescription>
+            Rol değişiklikleri audit log sistemine yazılır. Aktivasyon bekleyen hesaplar ayrıca
+            işaretlenir.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {users.map((user) => (
@@ -190,8 +260,20 @@ export function SettingsTeamTab({ users }: TeamTabProps) {
               <input type="hidden" name="tab" value="team" />
               <input type="hidden" name="userId" value={user.id} />
               <div>
-                <div className="font-medium text-marine-navy">{user.name}</div>
+                <div className="flex flex-wrap items-center gap-2 font-medium text-marine-navy">
+                  <span>{user.name}</span>
+                  {user.mustChangePassword ? (
+                    <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-amber-800">
+                      Aktivasyon bekliyor
+                    </span>
+                  ) : null}
+                </div>
                 <div className="text-sm text-slate-600">{user.email}</div>
+                {user.mustChangePassword && user.tempPasswordIssuedAt ? (
+                  <div className="mt-1 text-xs text-slate-500">
+                    Geçici parola tarihi: {formatAuditDate(user.tempPasswordIssuedAt)}
+                  </div>
+                ) : null}
               </div>
               <select name="role" defaultValue={user.role} className={settingsInputClassName}>
                 {Object.entries(settingsRoleLabels).map(([role, label]) => (
@@ -208,6 +290,56 @@ export function SettingsTeamTab({ users }: TeamTabProps) {
               </button>
             </form>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card className="border-white/80 bg-white/95 xl:col-span-2">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-marine-navy">
+            <ShieldCheck className="size-5 text-marine-ocean" />
+            Personel audit geçmişi
+          </CardTitle>
+          <CardDescription>
+            Kullanıcı oluşturma ve rol değişikliği kayıtları burada raporlanır.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {personnelAuditLogs.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+              Henüz personel audit kaydı bulunmuyor.
+            </div>
+          ) : (
+            personnelAuditLogs.map((log) => (
+              <div
+                key={log.id}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-marine-navy">
+                      {log.entityType === "USER_CREATE"
+                        ? "Kullanıcı oluşturuldu"
+                        : "Rol değişikliği"}
+                    </div>
+                    <div className="mt-1 text-sm text-slate-600">{log.reason}</div>
+                  </div>
+                  <div className="text-xs uppercase tracking-[0.12em] text-slate-500">
+                    {formatAuditDate(log.createdAt)}
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="rounded-xl bg-white px-3 py-3 text-sm text-slate-700">
+                    <span className="font-medium text-marine-navy">İşlem özeti:</span>{" "}
+                    {buildAuditSummary(log)}
+                  </div>
+                  <div className="rounded-xl bg-white px-3 py-3 text-sm text-slate-700">
+                    <span className="font-medium text-marine-navy">Değiştiren:</span>{" "}
+                    {log.changedBy.name} ({log.changedBy.email})
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
     </div>
@@ -542,6 +674,7 @@ export function SettingsSystemTab({
   onHoldDefaultDays,
   yearlyStandings,
   objectionQueue,
+  systemAuditLogs,
 }: SystemTabProps) {
   return (
     <div className="space-y-6">
@@ -591,7 +724,7 @@ export function SettingsSystemTab({
               <button
                 type="submit"
                 className="inline-flex h-11 items-center justify-center rounded-xl border border-marine-ocean/20 bg-white px-4 text-sm font-medium text-marine-navy transition-colors hover:bg-marine-ocean/5"
-              >
+            >
                 Sistem Ayarını Kaydet
               </button>
             </form>
@@ -605,8 +738,8 @@ export function SettingsSystemTab({
               Yıl sonu puanları
             </CardTitle>
             <CardDescription>
-              Yıl puanı toplam rozet sayısına göre hesaplanır. İlk üç personel özel
-              olarak vurgulanır.
+              Yıl puanı toplam rozet sayısına göre hesaplanır. İlk üç personel özel olarak
+              vurgulanır.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -678,6 +811,53 @@ export function SettingsSystemTab({
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-white/80 bg-white/95">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-marine-navy">
+            <Settings2 className="size-5 text-marine-ocean" />
+            Sistem ayarı audit geçmişi
+          </CardTitle>
+          <CardDescription>
+            Ayar değişikliklerinde eski/yeni değer, değiştiren kullanıcı ve zaman damgası
+            burada saklanır.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {systemAuditLogs.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
+              Henüz sistem ayarı audit kaydı bulunmuyor.
+            </div>
+          ) : (
+            systemAuditLogs.map((log) => (
+              <div
+                key={log.id}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+              >
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-marine-navy">{log.entityId}</div>
+                    <div className="mt-1 text-sm text-slate-600">{log.reason}</div>
+                  </div>
+                  <div className="text-xs uppercase tracking-[0.12em] text-slate-500">
+                    {formatAuditDate(log.createdAt)}
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="rounded-xl bg-white px-3 py-3 text-sm text-slate-700">
+                    <span className="font-medium text-marine-navy">Değer değişimi:</span>{" "}
+                    {buildAuditSummary(log)}
+                  </div>
+                  <div className="rounded-xl bg-white px-3 py-3 text-sm text-slate-700">
+                    <span className="font-medium text-marine-navy">Değiştiren:</span>{" "}
+                    {log.changedBy.name} ({log.changedBy.email})
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-white/80 bg-white/95">
         <CardHeader>

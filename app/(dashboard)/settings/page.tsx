@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { Role } from "@prisma/client";
 
 import SettingsAlerts from "@/components/settings/SettingsAlerts";
@@ -11,7 +12,12 @@ import {
 import { parseSettingsTab } from "@/components/settings/shared";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { requireRoles } from "@/lib/auth";
-import { getSettingsPageData } from "@/lib/settings";
+import {
+  type PersonnelActivationFlash,
+  getSettingsPageData,
+} from "@/lib/settings";
+
+const SETTINGS_PERSONNEL_FLASH_COOKIE = "settings-personnel-activation";
 
 type SettingsPageProps = {
   searchParams?: Record<string, string | string[] | undefined>;
@@ -28,6 +34,7 @@ function parseSelectedYear(value: string | undefined, fallback: number) {
 
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const viewer = await requireRoles([Role.ADMIN]);
+  const cookieStore = await cookies();
   const now = new Date();
   const selectedYear = parseSelectedYear(
     takeFirstValue(searchParams?.year),
@@ -43,11 +50,26 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       boats,
       categories,
       onHoldDefaultDays,
+      personnelAuditLogs,
+      systemAuditLogs,
     } = await getSettingsPageData(selectedYear);
     const badgeCalculated = takeFirstValue(searchParams?.badge) === "1";
     const reviewedJobId = takeFirstValue(searchParams?.reviewed);
     const errorMessage = takeFirstValue(searchParams?.error);
     const toastKey = takeFirstValue(searchParams?.toast);
+    const personnelActivation = (() => {
+      const raw = cookieStore.get(SETTINGS_PERSONNEL_FLASH_COOKIE)?.value;
+
+      if (!raw) {
+        return null;
+      }
+
+      try {
+        return JSON.parse(raw) as PersonnelActivationFlash;
+      } catch {
+        return null;
+      }
+    })();
 
     return (
       <div className="space-y-6">
@@ -59,6 +81,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           badgeCalculated={badgeCalculated}
           reviewedJobId={reviewedJobId}
           errorMessage={errorMessage}
+          personnelActivation={personnelActivation}
           toastKey={toastKey}
         />
 
@@ -76,7 +99,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </TabsContent>
 
           <TabsContent value="team">
-            <SettingsTeamTab users={users} />
+            <SettingsTeamTab users={users} personnelAuditLogs={personnelAuditLogs} />
           </TabsContent>
 
           <TabsContent value="boats">
@@ -94,6 +117,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               onHoldDefaultDays={onHoldDefaultDays}
               yearlyStandings={yearlyStandings}
               objectionQueue={objectionQueue}
+              systemAuditLogs={systemAuditLogs}
             />
           </TabsContent>
         </Tabs>

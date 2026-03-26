@@ -59,6 +59,9 @@ model User {
   email     String   @unique
   name      String
   password  String?
+  mustChangePassword Boolean @default(false)
+  tempPasswordIssuedAt DateTime?
+  passwordChangedAt DateTime?
   role      Role     @default(TECHNICIAN)
   avatarUrl String?
   createdAt DateTime @default(now())

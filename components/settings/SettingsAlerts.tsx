@@ -1,3 +1,5 @@
+import type { PersonnelActivationFlash } from "@/lib/settings";
+
 const toastMessages: Record<string, string> = {
   "personnel-created": "Personel kaydı oluşturuldu.",
   "role-updated": "Personel rolü güncellendi.",
@@ -5,12 +7,14 @@ const toastMessages: Record<string, string> = {
   "category-created": "Yeni kategori eklendi.",
   "category-saved": "Kategori bilgileri güncellendi.",
   "system-saved": "Sistem ayarları kaydedildi.",
+  "password-updated": "Parola güncellendi. Yeni parolanız ile tekrar giriş yapın.",
 };
 
 type SettingsAlertsProps = {
   badgeCalculated: boolean;
   reviewedJobId?: string;
   errorMessage?: string;
+  personnelActivation?: PersonnelActivationFlash | null;
   toastKey?: string;
 };
 
@@ -18,6 +22,7 @@ export default function SettingsAlerts({
   badgeCalculated,
   reviewedJobId,
   errorMessage,
+  personnelActivation,
   toastKey,
 }: SettingsAlertsProps) {
   const successMessage = toastKey ? toastMessages[toastKey] : undefined;
@@ -27,6 +32,24 @@ export default function SettingsAlerts({
       {successMessage ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           {successMessage}
+        </div>
+      ) : null}
+
+      {personnelActivation ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-950">
+          <div className="font-semibold">Geçici parola üretildi</div>
+          <div className="mt-2 leading-6">
+            <span className="font-medium">{personnelActivation.name}</span> için güvenli
+            aktivasyon akışı başlatıldı. Kullanıcı:
+            <span className="ml-1 font-medium">{personnelActivation.email}</span>
+          </div>
+          <div className="mt-3 rounded-xl border border-amber-300/70 bg-white px-3 py-3 font-mono text-sm text-slate-900">
+            {personnelActivation.temporaryPassword}
+          </div>
+          <div className="mt-2 text-xs uppercase tracking-[0.12em] text-amber-900/80">
+            Bu parola yalnızca ilk giriş için kullanılmalı; kullanıcı girişte yeni parola
+            oluşturmaya zorlanır.
+          </div>
         </div>
       ) : null}
 

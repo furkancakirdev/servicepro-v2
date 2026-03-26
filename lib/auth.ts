@@ -12,6 +12,7 @@ export type CurrentAppUser = {
   name: string;
   role: Role;
   avatarUrl: string | null;
+  mustChangePassword: boolean;
   isPreview: boolean;
 };
 
@@ -28,6 +29,7 @@ export const getCurrentAppUser = cache(async (): Promise<CurrentAppUser | null> 
     name: session.user.name ?? "",
     role: session.user.role,
     avatarUrl: session.user.avatarUrl ?? null,
+    mustChangePassword: session.user.mustChangePassword ?? false,
     isPreview: false,
   };
 });

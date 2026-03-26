@@ -39,6 +39,8 @@ function SubmitButton() {
 function LoginCard({ nextPath }: { nextPath: string }) {
   const [state, formAction] = useActionStateCompat(login, initialLoginState);
   const [showPassword, setShowPassword] = useState(false);
+  const searchParams = useSearchParams();
+  const toast = searchParams.get("toast");
 
   return (
     <Card className="border-white/70 bg-white/90 shadow-panel backdrop-blur">
@@ -59,6 +61,12 @@ function LoginCard({ nextPath }: { nextPath: string }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5 pt-6">
+        {toast === "password-updated" ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            Parolanız güncellendi. Yeni şifrenizle tekrar giriş yapabilirsiniz.
+          </div>
+        ) : null}
+
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="next" value={nextPath} />
 

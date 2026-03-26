@@ -1,8 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { requireRoles } from "@/lib/auth";
@@ -10,10 +12,17 @@ import { calculateMonthlyBadges } from "@/lib/badges";
 import { parseSettingsTab, type SettingsTabValue } from "@/components/settings/shared";
 import { prisma } from "@/lib/prisma";
 import {
+  buildRoleAuditLogPayload,
+  buildSystemSettingAuditLogPayload,
+  generateTemporaryPassword,
+} from "@/lib/settings-audit";
+import {
   DEFAULT_ON_HOLD_DAYS,
   MAX_ON_HOLD_DAYS,
   SYSTEM_SETTING_KEYS,
 } from "@/lib/system-settings";
+
+const SETTINGS_PERSONNEL_FLASH_COOKIE = "settings-personnel-activation";
 
 const monthSchema = z.coerce.number().int().min(1).max(12);
 const yearSchema = z.coerce.number().int().min(2024).max(2100);
@@ -167,8 +176,9 @@ export async function calculateMonthlyBadgesAction(
 }
 
 export async function createPersonnelAction(formData: FormData) {
-  await requireRoles([Role.ADMIN]);
+  const actor = await requireRoles([Role.ADMIN]);
   const redirectContext = getSettingsRedirectContext(formData, "team");
+  const cookieStore = await cookies();
 
   const parsed = createPersonnelSchema.safeParse({
     name: formData.get("name"),
@@ -194,9 +204,49 @@ export async function createPersonnelAction(formData: FormData) {
       throw new Error("Bu e-posta ile kayıtlı bir kullanıcı zaten var.");
     }
 
-    await prisma.user.create({
-      data: parsed.data,
+    const temporaryPassword = generateTemporaryPassword();
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+
+    await prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          ...parsed.data,
+          password: hashedPassword,
+          mustChangePassword: true,
+          tempPasswordIssuedAt: new Date(),
+        },
+      });
+
+      await tx.evaluationChangeLog.create({
+        data: {
+          entityType: "USER_CREATE",
+          entityId: createdUser.id,
+          changedById: actor.id,
+          reason: `Kullanici olusturuldu: ${createdUser.name} <${createdUser.email}>`,
+          oldValues: {},
+          newValues: {
+            email: createdUser.email,
+            role: createdUser.role,
+            mustChangePassword: true,
+          },
+        },
+      });
     });
+
+    cookieStore.set(
+      SETTINGS_PERSONNEL_FLASH_COOKIE,
+      JSON.stringify({
+        name: parsed.data.name,
+        email: parsed.data.email,
+        temporaryPassword,
+      }),
+      {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/settings",
+        maxAge: 60 * 10,
+      }
+    );
 
     revalidateSettingsSurfaces();
     redirect(buildSettingsUrl(redirectContext, { toast: "personnel-created" }));
@@ -208,7 +258,7 @@ export async function createPersonnelAction(formData: FormData) {
 }
 
 export async function updatePersonnelRoleAction(formData: FormData) {
-  await requireRoles([Role.ADMIN]);
+  const actor = await requireRoles([Role.ADMIN]);
   const redirectContext = getSettingsRedirectContext(formData, "team");
 
   const parsed = updateRoleSchema.safeParse({
@@ -221,13 +271,44 @@ export async function updatePersonnelRoleAction(formData: FormData) {
   }
 
   try {
-    await prisma.user.update({
-      where: {
-        id: parsed.data.userId,
-      },
-      data: {
-        role: parsed.data.role,
-      },
+    await prisma.$transaction(async (tx) => {
+      const currentUser = await tx.user.findUnique({
+        where: {
+          id: parsed.data.userId,
+        },
+        select: {
+          id: true,
+          role: true,
+          name: true,
+          email: true,
+        },
+      });
+
+      if (!currentUser) {
+        throw new Error("Rol guncellenecek personel bulunamadi.");
+      }
+
+      if (currentUser.role !== parsed.data.role) {
+        await tx.evaluationChangeLog.create({
+          data: buildRoleAuditLogPayload({
+            userId: currentUser.id,
+            changedById: actor.id,
+            previousRole: currentUser.role,
+            nextRole: parsed.data.role,
+            userEmail: currentUser.email,
+            userName: currentUser.name,
+          }),
+        });
+      }
+
+      await tx.user.update({
+        where: {
+          id: parsed.data.userId,
+        },
+        data: {
+          role: parsed.data.role,
+        },
+      });
     });
 
     revalidateSettingsSurfaces();
@@ -365,7 +446,7 @@ export async function createCategoryAction(formData: FormData) {
 }
 
 export async function saveSystemSettingsAction(formData: FormData) {
-  await requireRoles([Role.ADMIN]);
+  const actor = await requireRoles([Role.ADMIN]);
   const redirectContext = getSettingsRedirectContext(formData, "system");
 
   const parsed = saveSystemSettingsSchema.safeParse({
@@ -377,17 +458,38 @@ export async function saveSystemSettingsAction(formData: FormData) {
   }
 
   try {
-    await prisma.systemSetting.upsert({
-      where: {
-        key: SYSTEM_SETTING_KEYS.onHoldDefaultDays,
-      },
-      update: {
-        value: String(parsed.data.onHoldDefaultDays),
-      },
-      create: {
-        key: SYSTEM_SETTING_KEYS.onHoldDefaultDays,
-        value: String(parsed.data.onHoldDefaultDays),
-      },
+    const nextValue = String(parsed.data.onHoldDefaultDays);
+
+    await prisma.$transaction(async (tx) => {
+      const existing = await tx.systemSetting.findUnique({
+        where: {
+          key: SYSTEM_SETTING_KEYS.onHoldDefaultDays,
+        },
+      });
+
+      await tx.systemSetting.upsert({
+        where: {
+          key: SYSTEM_SETTING_KEYS.onHoldDefaultDays,
+        },
+        update: {
+          value: nextValue,
+        },
+        create: {
+          key: SYSTEM_SETTING_KEYS.onHoldDefaultDays,
+          value: nextValue,
+        },
+      });
+
+      if (existing?.value !== nextValue) {
+        await tx.evaluationChangeLog.create({
+          data: buildSystemSettingAuditLogPayload({
+            key: SYSTEM_SETTING_KEYS.onHoldDefaultDays,
+            changedById: actor.id,
+            previousValue: existing?.value ?? null,
+            nextValue,
+          }),
+        });
+      }
     });
 
     revalidateSettingsSurfaces();
