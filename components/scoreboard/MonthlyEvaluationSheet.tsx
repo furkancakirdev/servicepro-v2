@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useFormState } from "react-dom";
 import { CheckCircle2, ClipboardCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -24,6 +23,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { useActionStateCompat } from "@/lib/use-action-state-compat";
 import { cn } from "@/lib/utils";
 import type { MonthlyEvaluationFormEntry } from "@/types";
 
@@ -143,7 +143,7 @@ export default function MonthlyEvaluationSheet({
   const [open, setOpen] = useState(false);
   const action =
     mode === "workshop" ? saveWorkshopEvaluationsAction : saveCoordinatorEvaluationsAction;
-  const [actionState, formAction] = useFormState<MonthlyEvaluationActionState, FormData>(
+  const [actionState, formAction] = useActionStateCompat<MonthlyEvaluationActionState, FormData>(
     action,
     initialMonthlyEvaluationActionState
   );

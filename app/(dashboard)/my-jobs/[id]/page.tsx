@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Crown, MessageCircle, Phone, Wrench } from "lucide-react";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { Role } from "@prisma/client";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { requireAppUser } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import {
   buildClientNotificationTemplate,
   buildWhatsAppDeepLink,
@@ -27,7 +28,7 @@ type MyJobDetailPageProps = {
 };
 
 export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) {
-  const currentUser = await requireAppUser();
+  const currentUser = await requireRoles([Role.TECHNICIAN]);
   const data = await getMyJobDetail({
     jobId: params.id,
     currentUserId: currentUser.id,
@@ -39,6 +40,7 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
   }
 
   const { job, recentVisits } = data;
+  const operationalReference = job.startedAt ?? job.createdAt;
   const primaryContact =
     job.boat.contacts.find((contact) => contact.isPrimary && contact.phone) ??
     job.boat.contacts.find((contact) => contact.phone) ??
@@ -47,7 +49,7 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
     ? buildClientNotificationTemplate({
         boatName: job.boat.name,
         categoryName: job.category.name,
-        date: job.createdAt,
+        date: operationalReference,
         location: job.location,
         berthDetail: job.location,
         technicianName:
@@ -69,7 +71,7 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
           <div>
             <div className="flex items-center gap-2">
               <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
-                Mobil ?? Detayi
+                Mobil İş Detayı
               </p>
               {job.boat.isVip ? (
                 <Badge className="gap-1 bg-amber-500 text-white hover:bg-amber-500">
@@ -98,14 +100,16 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-slate-600">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-            <div className="font-medium text-marine-navy">A??klama</div>
+            <div className="font-medium text-marine-navy">Açıklama</div>
             <div className="mt-2 leading-7">{job.description}</div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
               <div className="font-medium text-marine-navy">Saat</div>
-              <div className="mt-2">{format(job.createdAt, "dd MMM yyyy HH:mm", { locale: tr })}</div>
+              <div className="mt-2">
+                {format(operationalReference, "dd MMM yyyy HH:mm", { locale: tr })}
+              </div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
               <div className="font-medium text-marine-navy">Lokasyon</div>
@@ -127,9 +131,9 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
 
       <Card className="border-white/80 bg-white/95">
         <CardHeader>
-          <CardTitle className="text-marine-navy">?rtibat ve servis gecmisi</CardTitle>
+          <CardTitle className="text-marine-navy">İrtibat ve servis geçmişi</CardTitle>
           <CardDescription>
-            Son 3 ziyaret ve tekne irtibat akisi burada g?runur.
+            Son 3 ziyaret ve tekne irtibat akışı burada görünür.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -164,7 +168,7 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-              Kayitli telefonlu irtibat bulunmuyor.
+              Kayıtlı telefonlu irtibat bulunmuyor.
             </div>
           )}
 

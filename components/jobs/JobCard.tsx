@@ -7,6 +7,11 @@ import { tr } from "date-fns/locale";
 import DifficultyBadge from "@/components/jobs/DifficultyBadge";
 import StatusBadge from "@/components/jobs/StatusBadge";
 import {
+  getJobDateFieldLabel,
+  getJobDateValue,
+  type JobDateField,
+} from "@/lib/jobs";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -36,7 +41,15 @@ function formatJobDate(date: Date) {
   return format(date, "dd MMM yyyy - HH:mm", { locale: tr });
 }
 
-export default function JobCard({ job }: { job: ServiceJobListItem }) {
+export default function JobCard({
+  job,
+  dateField,
+}: {
+  job: ServiceJobListItem;
+  dateField: JobDateField;
+}) {
+  const dateFieldLabel = getJobDateFieldLabel(dateField);
+
   return (
     <Card className="border-white/80 bg-white/95">
       <CardHeader className="space-y-4">
@@ -64,7 +77,9 @@ export default function JobCard({ job }: { job: ServiceJobListItem }) {
           </div>
           <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
             <CalendarDays className="size-4 text-marine-ocean" />
-            <span>{formatJobDate(job.createdAt)}</span>
+            <span>
+              {dateFieldLabel}: {formatJobDate(getJobDateValue(job, dateField))}
+            </span>
           </div>
         </div>
 
@@ -73,7 +88,7 @@ export default function JobCard({ job }: { job: ServiceJobListItem }) {
             Detay
           </Link>
           {job.status === JobStatus.TAMAMLANDI ? (
-            <Link href={`/jobs/${job.id}`} className={actionLinkClass}>
+            <Link href={`/jobs/${job.id}?closeout=1`} className={actionLinkClass}>
               Kapat
             </Link>
           ) : null}

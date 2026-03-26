@@ -1,7 +1,8 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
-import { Anchor, ArrowRight, LockKeyhole, Mail } from "lucide-react";
+import { Suspense, useState } from "react";
+import { useFormStatus } from "react-dom";
+import { Anchor, ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 
 import { login } from "@/app/(auth)/login/actions";
@@ -16,6 +17,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useActionStateCompat } from "@/lib/use-action-state-compat";
+import Link from "next/link";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -33,10 +36,9 @@ function SubmitButton() {
   );
 }
 
-export default function LoginPage() {
-  const [state, formAction] = useFormState(login, initialLoginState);
-  const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") ?? "/";
+function LoginCard({ nextPath }: { nextPath: string }) {
+  const [state, formAction] = useActionStateCompat(login, initialLoginState);
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
     <Card className="border-white/70 bg-white/90 shadow-panel backdrop-blur">
@@ -71,6 +73,9 @@ export default function LoginPage() {
                 placeholder="ornek@marlin.com"
                 className="h-12 pl-10"
                 autoComplete="email"
+                inputMode="email"
+                required
+                aria-invalid={Boolean(state.error)}
               />
             </div>
           </div>
@@ -82,16 +87,27 @@ export default function LoginPage() {
               <Input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
-                className="h-12 pl-10"
+                className="h-12 pl-10 pr-11"
                 autoComplete="current-password"
+                required
+                minLength={6}
+                aria-invalid={Boolean(state.error)}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition-colors hover:text-marine-navy"
+                aria-label={showPassword ? "Şifreyi gizle" : "Şifreyi göster"}
+              >
+                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
             </div>
           </div>
 
           {state.error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="animate-in fade-in slide-in-from-top-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 duration-200">
               {state.error}
             </div>
           ) : null}
@@ -99,12 +115,31 @@ export default function LoginPage() {
           <SubmitButton />
         </form>
 
-        {process.env.NODE_ENV === "development" ? (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/80 px-4 py-3 text-xs text-slate-500">
-            Dev: admin@marlin.com / admin123
-          </div>
-        ) : null}
+        <div className="flex items-center justify-between gap-3 text-xs text-slate-500">
+          <span>Girişte sorun yaşıyorsanız destek ekibiyle iletişime geçin.</span>
+          <Link
+            href="/forgot-password"
+            className="font-medium text-marine-navy transition-colors hover:text-marine-ocean"
+          >
+            Şifremi Unuttum
+          </Link>
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+function LoginPageContent() {
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next") ?? "/";
+
+  return <LoginCard nextPath={nextPath} />;
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginCard nextPath="/" />}>
+      <LoginPageContent />
+    </Suspense>
   );
 }

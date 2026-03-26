@@ -1,0 +1,13 @@
+.git
+.github
+.next
+node_modules
+node_modules_corrupt_backup
+npm-debug.log
+Dockerfile*
+docker-compose*.yml
+.env
+.env.local
+.env.*.local
+tsconfig.tsbuildinfo
+*.log

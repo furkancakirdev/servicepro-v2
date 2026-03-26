@@ -12,14 +12,7 @@ export const prisma =
 
 export function isDatabaseConfigured() {
   const url = process.env.DATABASE_URL;
-  const directUrl = process.env.DIRECT_URL;
-
-  return (
-    Boolean(url) &&
-    Boolean(directUrl) &&
-    !url?.includes("your_supabase_pooler_url") &&
-    !directUrl?.includes("your_supabase_direct_url")
-  );
+  return Boolean(url) && !url?.includes("your_database_url");
 }
 
 if (process.env.NODE_ENV !== "production") {

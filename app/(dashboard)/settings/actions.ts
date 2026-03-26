@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { requireRoles } from "@/lib/auth";
 import { calculateMonthlyBadges } from "@/lib/badges";
+import { parseSettingsTab, type SettingsTabValue } from "@/components/settings/shared";
 import { prisma } from "@/lib/prisma";
 import {
   DEFAULT_ON_HOLD_DAYS,
@@ -73,6 +74,41 @@ function parseCheckbox(value: FormDataEntryValue | null) {
   return value === "on" || value === "true";
 }
 
+function parseSettingsYear(value: FormDataEntryValue | null) {
+  const parsed = yearSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+function getSettingsRedirectContext(
+  formData: FormData,
+  fallbackTab: SettingsTabValue
+) {
+  return {
+    tab: parseSettingsTab(optionalString(formData.get("tab")), fallbackTab),
+    year: parseSettingsYear(formData.get("year")),
+  };
+}
+
+function buildSettingsUrl(
+  context: { tab: SettingsTabValue; year?: number },
+  params: Record<string, string | number | undefined> = {}
+) {
+  const searchParams = new URLSearchParams();
+  searchParams.set("tab", context.tab);
+
+  if (context.year) {
+    searchParams.set("year", String(context.year));
+  }
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined) {
+      searchParams.set(key, String(value));
+    }
+  }
+
+  return `/settings?${searchParams.toString()}`;
+}
+
 function revalidateSettingsSurfaces() {
   revalidatePath("/");
   revalidatePath("/dashboard");
@@ -132,6 +168,7 @@ export async function calculateMonthlyBadgesAction(
 
 export async function createPersonnelAction(formData: FormData) {
   await requireRoles([Role.ADMIN]);
+  const redirectContext = getSettingsRedirectContext(formData, "team");
 
   const parsed = createPersonnelSchema.safeParse({
     name: formData.get("name"),
@@ -140,7 +177,7 @@ export async function createPersonnelAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect("/settings?error=invalid-personnel");
+    redirect(buildSettingsUrl(redirectContext, { error: "invalid-personnel" }));
   }
 
   try {
@@ -154,7 +191,7 @@ export async function createPersonnelAction(formData: FormData) {
     });
 
     if (existingUser) {
-      throw new Error("Bu email ile kayitli bir kullanici zaten var.");
+      throw new Error("Bu e-posta ile kayıtlı bir kullanıcı zaten var.");
     }
 
     await prisma.user.create({
@@ -162,16 +199,17 @@ export async function createPersonnelAction(formData: FormData) {
     });
 
     revalidateSettingsSurfaces();
-    redirect("/settings?toast=personnel-created");
+    redirect(buildSettingsUrl(redirectContext, { toast: "personnel-created" }));
   } catch (error) {
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "personnel-create-failed";
-    redirect(`/settings?error=${message}`);
+    redirect(buildSettingsUrl(redirectContext, { error: message }));
   }
 }
 
 export async function updatePersonnelRoleAction(formData: FormData) {
   await requireRoles([Role.ADMIN]);
+  const redirectContext = getSettingsRedirectContext(formData, "team");
 
   const parsed = updateRoleSchema.safeParse({
     userId: formData.get("userId"),
@@ -179,7 +217,7 @@ export async function updatePersonnelRoleAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect("/settings?error=invalid-role-update");
+    redirect(buildSettingsUrl(redirectContext, { error: "invalid-role-update" }));
   }
 
   try {
@@ -193,16 +231,17 @@ export async function updatePersonnelRoleAction(formData: FormData) {
     });
 
     revalidateSettingsSurfaces();
-    redirect("/settings?toast=role-updated");
+    redirect(buildSettingsUrl(redirectContext, { toast: "role-updated" }));
   } catch (error) {
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "role-update-failed";
-    redirect(`/settings?error=${message}`);
+    redirect(buildSettingsUrl(redirectContext, { error: message }));
   }
 }
 
 export async function saveBoatAction(formData: FormData) {
   await requireRoles([Role.ADMIN]);
+  const redirectContext = getSettingsRedirectContext(formData, "boats");
 
   const parsed = saveBoatSchema.safeParse({
     boatId: optionalString(formData.get("boatId")),
@@ -213,7 +252,7 @@ export async function saveBoatAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect("/settings?error=invalid-boat");
+    redirect(buildSettingsUrl(redirectContext, { error: "invalid-boat" }));
   }
 
   try {
@@ -241,16 +280,17 @@ export async function saveBoatAction(formData: FormData) {
     }
 
     revalidateSettingsSurfaces();
-    redirect("/settings?toast=boat-saved");
+    redirect(buildSettingsUrl(redirectContext, { toast: "boat-saved" }));
   } catch (error) {
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "boat-save-failed";
-    redirect(`/settings?error=${message}`);
+    redirect(buildSettingsUrl(redirectContext, { error: message }));
   }
 }
 
 export async function saveCategoryAction(formData: FormData) {
   await requireRoles([Role.ADMIN]);
+  const redirectContext = getSettingsRedirectContext(formData, "categories");
 
   const parsed = saveCategorySchema.safeParse({
     categoryId: formData.get("categoryId"),
@@ -263,7 +303,7 @@ export async function saveCategoryAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect("/settings?error=invalid-category");
+    redirect(buildSettingsUrl(redirectContext, { error: "invalid-category" }));
   }
 
   try {
@@ -282,16 +322,17 @@ export async function saveCategoryAction(formData: FormData) {
     });
 
     revalidateSettingsSurfaces();
-    redirect("/settings?toast=category-saved");
+    redirect(buildSettingsUrl(redirectContext, { toast: "category-saved" }));
   } catch (error) {
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "category-save-failed";
-    redirect(`/settings?error=${message}`);
+    redirect(buildSettingsUrl(redirectContext, { error: message }));
   }
 }
 
 export async function createCategoryAction(formData: FormData) {
   await requireRoles([Role.ADMIN]);
+  const redirectContext = getSettingsRedirectContext(formData, "categories");
 
   const parsed = createCategorySchema.safeParse({
     name: formData.get("name"),
@@ -302,7 +343,7 @@ export async function createCategoryAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect("/settings?error=invalid-new-category");
+    redirect(buildSettingsUrl(redirectContext, { error: "invalid-new-category" }));
   }
 
   try {
@@ -315,23 +356,24 @@ export async function createCategoryAction(formData: FormData) {
     });
 
     revalidateSettingsSurfaces();
-    redirect("/settings?toast=category-created");
+    redirect(buildSettingsUrl(redirectContext, { toast: "category-created" }));
   } catch (error) {
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "category-create-failed";
-    redirect(`/settings?error=${message}`);
+    redirect(buildSettingsUrl(redirectContext, { error: message }));
   }
 }
 
 export async function saveSystemSettingsAction(formData: FormData) {
   await requireRoles([Role.ADMIN]);
+  const redirectContext = getSettingsRedirectContext(formData, "system");
 
   const parsed = saveSystemSettingsSchema.safeParse({
     onHoldDefaultDays: formData.get("onHoldDefaultDays") ?? DEFAULT_ON_HOLD_DAYS,
   });
 
   if (!parsed.success) {
-    redirect("/settings?error=invalid-system-settings");
+    redirect(buildSettingsUrl(redirectContext, { error: "invalid-system-settings" }));
   }
 
   try {
@@ -349,10 +391,10 @@ export async function saveSystemSettingsAction(formData: FormData) {
     });
 
     revalidateSettingsSurfaces();
-    redirect("/settings?toast=system-saved");
+    redirect(buildSettingsUrl(redirectContext, { toast: "system-saved" }));
   } catch (error) {
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "system-settings-save-failed";
-    redirect(`/settings?error=${message}`);
+    redirect(buildSettingsUrl(redirectContext, { error: message }));
   }
 }

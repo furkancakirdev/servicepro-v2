@@ -5,10 +5,7 @@ import { AlertTriangle, GripHorizontal, MapPin, MoveRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { reassignDispatchJob } from "@/app/(dashboard)/dispatch/actions";
-import type {
-  DispatchBoardData,
-  DispatchTimelineBlock,
-} from "@/lib/dispatch";
+import type { DispatchBoardData, DispatchTimelineBlock } from "@/lib/dispatch";
 
 const blockToneStyles: Record<DispatchTimelineBlock["tone"], string> = {
   blue: "border-sky-200 bg-[#E6F1FB] text-sky-900",
@@ -143,8 +140,8 @@ export default function DispatchBoard({ data }: DispatchBoardProps) {
                   <div className="min-w-0">
                     <div className="truncate font-medium text-marine-navy">{lane.name}</div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                      <span>{lane.jobCount} is</span>
-                      <span>â€¢</span>
+                      <span>{lane.jobCount} iş</span>
+                      <span>•</span>
                       <span className="truncate">{lane.locationLabel}</span>
                     </div>
                   </div>
@@ -212,7 +209,8 @@ export default function DispatchBoard({ data }: DispatchBoardProps) {
                       })
                     ) : (
                       <div className="flex h-full items-center px-3 text-sm text-slate-400">
-                        Bu satir su anda bos. Kirmizi kartlari surukleyip buraya birakabilirsiniz.
+                        Bu satır şu anda boş. Kırmızı kartları sürükleyip buraya
+                        bırakabilirsiniz.
                       </div>
                     )}
                   </div>
@@ -224,14 +222,14 @@ export default function DispatchBoard({ data }: DispatchBoardProps) {
           <div className="rounded-[28px] border border-rose-200 bg-white p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <div className="font-semibold text-rose-900">Atanmamis isler</div>
+                <div className="font-semibold text-rose-900">Atanmamış işler</div>
                 <div className="text-sm text-rose-700">
-                  Kirmizi kartlari ilgili teknisyen satirina tasiyarak atama yapin.
+                  Kırmızı kartları ilgili teknisyen satırına taşıyarak atama yapın.
                 </div>
               </div>
               <div className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700">
                 <MoveRight className="size-3.5" />
-                Surukle ve birak
+                Sürükle ve bırak
               </div>
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -240,14 +238,14 @@ export default function DispatchBoard({ data }: DispatchBoardProps) {
                   <JobToken
                     key={job.id}
                     title={job.boatName}
-                    subtitle={`${job.categoryName} â€¢ ${job.locationLabel}`}
+                    subtitle={`${job.categoryName} • ${job.locationLabel}`}
                     draggable
                     onDragStart={() => setDraggedJobId(job.id)}
                   />
                 ))
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                  Bugün icin atanmamis is bulunmuyor.
+                  Bugün için atanmamış iş bulunmuyor.
                 </div>
               )}
             </div>
@@ -257,4 +255,3 @@ export default function DispatchBoard({ data }: DispatchBoardProps) {
     </div>
   );
 }
-

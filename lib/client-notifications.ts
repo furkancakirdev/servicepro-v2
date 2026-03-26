@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 
+import type { BoatContactLanguage } from "@/lib/boat-contacts";
 import {
   generateClientNotificationEN,
   generateClientNotificationTR,
@@ -14,16 +15,15 @@ export type ClientNotificationTemplateInput = {
   berthDetail?: string | null | undefined;
   technicianName: string;
   contactName: string;
-  contactLanguage: string;
+  contactLanguage: BoatContactLanguage;
 };
 
 function normalizePhone(phone: string) {
   return phone.replace(/[^\d]/g, "");
 }
 
-function resolveLanguage(language: string) {
-  const normalized = language.trim().toUpperCase();
-  return normalized === "EN" ? "EN" : "TR";
+function resolveLanguage(language: BoatContactLanguage) {
+  return language === "EN" ? "EN" : "TR";
 }
 
 export function buildClientNotificationTemplate(

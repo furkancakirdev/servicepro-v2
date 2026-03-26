@@ -3,9 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -50,10 +49,16 @@ enum BadgeType {
   EKIP_OYUNCUSU
 }
 
+enum ContactLanguage {
+  TR
+  EN
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
   name      String
+  password  String?
   role      Role     @default(TECHNICIAN)
   avatarUrl String?
   createdAt DateTime @default(now())
@@ -136,9 +141,15 @@ model ServiceJob {
   contactName  String?
   contactPhone String?
   createdAt    DateTime        @default(now())
+  dispatchDate DateTime?
+  plannedStartAt DateTime?
+  plannedEndAt DateTime?
   startedAt    DateTime?
+  actualStartAt DateTime?
   completedAt  DateTime?
+  actualEndAt DateTime?
   closedAt     DateTime?
+  slaHours     Int?
   updatedAt    DateTime        @updatedAt
 
   assignments    JobAssignment[]
@@ -150,9 +161,14 @@ model ServiceJob {
   @@index([boatId])
   @@index([categoryId])
   @@index([status, createdAt])
+  @@index([status, plannedStartAt])
+  @@index([dispatchDate, status])
   @@index([createdById])
   @@index([closedById])
   @@index([kesifJobId])
+  @@index([plannedEndAt])
+  @@index([actualStartAt])
+  @@index([actualEndAt])
 }
 
 model BoatContact {
@@ -163,7 +179,7 @@ model BoatContact {
   role          String
   phone         String?
   email         String?
-  language      String   @default("TR")
+  language      ContactLanguage @default(TR)
   isPrimary     Boolean  @default(false)
   whatsappOptIn Boolean  @default(true)
   createdAt     DateTime @default(now())

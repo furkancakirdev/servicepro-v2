@@ -1,12 +1,13 @@
 import Link from "next/link";
+import { format, isValid, parseISO, startOfDay } from "date-fns";
 import { CalendarDays, LayoutGrid } from "lucide-react";
 import { Role } from "@prisma/client";
 
 import DispatchBoard from "@/components/dispatch/DispatchBoard";
 import DispatchPublishDialog from "@/components/dispatch/DispatchPublishDialog";
 import { Button } from "@/components/ui/button";
-import { getDispatchBoardData, type DispatchTab } from "@/lib/dispatch";
 import { requireRoles } from "@/lib/auth";
+import { getDispatchBoardData, type DispatchTab } from "@/lib/dispatch";
 
 type DispatchPageProps = {
   searchParams?: Record<string, string | string[] | undefined>;
@@ -27,8 +28,8 @@ function parseDispatchDate(input?: string) {
     return new Date();
   }
 
-  const parsed = new Date(input);
-  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  const parsed = parseISO(input);
+  return isValid(parsed) ? startOfDay(parsed) : new Date();
 }
 
 export default async function DispatchPage({ searchParams }: DispatchPageProps) {
@@ -40,13 +41,16 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
     ? (tab as DispatchTab)
     : "YATMARIN";
   const data = await getDispatchBoardData(date, selectedTab);
-  const dateValue = data.dateValue;
+  const todayValue = format(new Date(), "yyyy-MM-dd");
 
   return (
     <div className="space-y-6">
       <div className="rounded-[28px] border border-white/70 bg-white px-5 py-5 shadow-panel sm:px-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
+            <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
+              Operasyon Planlama
+            </p>
             <h1 className="mt-2 text-2xl font-semibold text-marine-navy">
               İş Dağıtım Panosu
             </h1>
@@ -60,19 +64,25 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
                 <input
                   type="date"
                   name="date"
-                  defaultValue={dateValue}
+                  defaultValue={data.dateValue}
                   className="h-12 rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-700 outline-none transition-colors focus:border-marine-ocean/40 focus:ring-2 focus:ring-marine-ocean/10"
                 />
               </div>
               <Button type="submit" variant="outline" className="h-12">
-                Bugüne Git
+                Tarihi uygula
               </Button>
             </form>
 
-            <Link href={`/dispatch/weekly?date=${dateValue}`} className="inline-flex">
+            <Link href={`/dispatch?date=${todayValue}&tab=${selectedTab}`} className="inline-flex">
+              <Button variant="outline" className="h-12">
+                Bugüne git
+              </Button>
+            </Link>
+
+            <Link href={`/dispatch/weekly?date=${data.dateValue}`} className="inline-flex">
               <Button variant="outline" className="h-12 gap-2">
                 <LayoutGrid className="size-4" />
-                Haftalik g?runum
+                Haftalık görünüm
               </Button>
             </Link>
 
@@ -95,7 +105,7 @@ export default async function DispatchPage({ searchParams }: DispatchPageProps) 
             return (
               <Link
                 key={option.value}
-                href={`/dispatch?date=${dateValue}&tab=${option.value}`}
+                href={`/dispatch?date=${data.dateValue}&tab=${option.value}`}
                 className={`rounded-full border px-4 py-2 text-sm transition-colors ${
                   isActive
                     ? "border-marine-navy bg-marine-navy text-white"

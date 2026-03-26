@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CalendarRange, Crown, MapPin } from "lucide-react";
+import { Role } from "@prisma/client";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -9,11 +10,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { requireAppUser } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { getMyJobsOverview } from "@/lib/my-jobs";
 
 export default async function MyJobsPage() {
-  const currentUser = await requireAppUser();
+  const currentUser = await requireRoles([Role.TECHNICIAN]);
   const overview = await getMyJobsOverview(currentUser.id);
   const dominantTab = overview.todayJobs[0]?.dispatchTab ?? "YATMARIN";
 
@@ -26,10 +27,10 @@ export default async function MyJobsPage() {
               Mobil Operasyon
             </p>
             <h1 className="mt-2 text-3xl font-semibold text-marine-navy">
-              {currentUser.name} Â· Bugün {overview.todayJobs.length} is Â· {dominantTab}
+              {currentUser.name} · Bugün {overview.todayJobs.length} iş · {dominantTab}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Saat sirasina g?re gunluk atamalar, VIP tekneler ve rol bazli g?rev dagilimi.
+              Saat sırasına göre günlük atamalar, VIP tekneler ve rol bazlı görev dağılımı.
             </p>
           </div>
           <Link
@@ -37,16 +38,16 @@ export default async function MyJobsPage() {
             className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-marine-ocean/20 bg-white px-5 text-sm font-medium text-marine-navy transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5"
           >
             <CalendarRange className="size-4" />
-            Haftami ac
+            Haftamı aç
           </Link>
         </div>
       </section>
 
       <Card className="border-white/80 bg-white/95">
         <CardHeader>
-          <CardTitle className="text-marine-navy">Hafta ozeti</CardTitle>
+          <CardTitle className="text-marine-navy">Hafta özeti</CardTitle>
           <CardDescription>
-            Pazartesi - Cumartesi mini plan. Bugün vurgulu gosterilir.
+            Pazartesi - Cumartesi mini plan. Bugün vurgulu gösterilir.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -95,7 +96,7 @@ export default async function MyJobsPage() {
                   <div className="mt-1 text-sm text-slate-600">{job.categoryName}</div>
                 </div>
                 <Badge variant="outline">
-                  {job.role === "SORUMLU" ? "Sorumlu" : "Destek"} Â· x{job.multiplier.toFixed(1)}
+                  {job.role === "SORUMLU" ? "Sorumlu" : "Destek"} · x{job.multiplier.toFixed(1)}
                 </Badge>
               </div>
 
@@ -113,7 +114,7 @@ export default async function MyJobsPage() {
           ))
         ) : (
           <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-600">
-            Bugün icin atanmis aktif isiniz bulunmuyor.
+            Bugün için atanmış aktif işiniz bulunmuyor.
           </div>
         )}
       </div>

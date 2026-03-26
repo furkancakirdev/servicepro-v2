@@ -1,0 +1,17 @@
+name: NAS Deploy
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger NAS Deploy
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.NAS_DEPLOY_WEBHOOK }}" \
+            -H "Authorization: Bearer ${{ secrets.NAS_DEPLOY_TOKEN }}"

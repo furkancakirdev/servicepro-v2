@@ -1,11 +1,10 @@
 "use client";
 
-import { format } from "date-fns";
-import { tr } from "date-fns/locale";
 import { PanelLeft } from "lucide-react";
 import { usePathname } from "next/navigation";
 import type { Role } from "@prisma/client";
 
+import LogoutButton from "@/components/layout/LogoutButton";
 import NotificationBell from "@/components/layout/NotificationBell";
 import { SidebarContent } from "@/components/layout/Sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -25,19 +24,19 @@ function getHeaderCopy(pathname: string) {
   }
 
   if (pathname.startsWith("/jobs/new")) {
-    return { eyebrow: "Planlama", title: "Yeni ??" };
+    return { eyebrow: "Planlama", title: "Yeni İş" };
   }
 
   if (pathname.startsWith("/jobs/")) {
-    return { eyebrow: "Operasyon", title: "?? Detayı" };
+    return { eyebrow: "Operasyon", title: "İş Detayı" };
   }
 
   if (pathname.startsWith("/jobs")) {
-    return { eyebrow: "Gunluk ?? Akisi", title: "?? Listesi" };
+    return { eyebrow: "Günlük İş Akışı", title: "İş Listesi" };
   }
 
   if (pathname.startsWith("/dispatch/weekly")) {
-    return { eyebrow: "ERP Planlama", title: "Haftalik Dispatch" };
+    return { eyebrow: "ERP Planlama", title: "Haftalık Dispatch" };
   }
 
   if (pathname.startsWith("/dispatch")) {
@@ -49,11 +48,11 @@ function getHeaderCopy(pathname: string) {
   }
 
   if (pathname.startsWith("/my-jobs/")) {
-    return { eyebrow: "Mobil Operasyon", title: "?? Detayı" };
+    return { eyebrow: "Mobil Operasyon", title: "İş Detayı" };
   }
 
   if (pathname.startsWith("/my-jobs")) {
-    return { eyebrow: "Mobil Operasyon", title: "Bugünku ??lerim" };
+    return { eyebrow: "Mobil Operasyon", title: "Bugünkü İşlerim" };
   }
 
   if (pathname.startsWith("/boats/")) {
@@ -93,9 +92,13 @@ const roleLabels: Record<Role, string> = {
 export default function Header({
   currentUser,
   notificationCenter,
+  todayLabel,
+  operationsStatus,
 }: {
   currentUser: HeaderUser;
   notificationCenter: NotificationCenterData;
+  todayLabel: string;
+  operationsStatus: string;
 }) {
   const pathname = usePathname() ?? "/";
   const current = getHeaderCopy(pathname);
@@ -115,11 +118,11 @@ export default function Header({
               }
             >
               <PanelLeft className="size-4" />
-              <span className="sr-only">Navigasyonu ac</span>
+              <span className="sr-only">Navigasyonu aç</span>
             </SheetTrigger>
             <SheetContent side="left" className="w-[86vw] max-w-sm bg-marine-navy p-0 text-white">
               <SheetHeader className="border-b border-white/10">
-                <SheetTitle className="text-white">ServicePRO menu</SheetTitle>
+                <SheetTitle className="text-white">ServicePRO menü</SheetTitle>
               </SheetHeader>
               <SidebarContent compact currentUser={currentUser} />
             </SheetContent>
@@ -129,21 +132,18 @@ export default function Header({
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-marine-ocean">
               {current.eyebrow}
             </p>
-            <h1 className="mt-1 text-2xl font-semibold text-marine-navy">
-              {current.title}
-            </h1>
+            <h1 className="mt-1 text-2xl font-semibold text-marine-navy">{current.title}</h1>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="hidden rounded-2xl border border-slate-200 bg-white px-4 py-2 text-right text-sm text-slate-600 lg:block">
-            <div className="font-medium text-marine-navy">
-              {format(new Date(), "d MMMM yyyy", { locale: tr })}
-            </div>
-            <div>Sabah operasyon penceresi a??k</div>
+            <div className="font-medium text-marine-navy">{todayLabel}</div>
+            <div>{operationsStatus}</div>
           </div>
 
           <NotificationBell notificationCenter={notificationCenter} />
+          <LogoutButton compact className="hidden sm:inline-flex" />
 
           <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2">
             <Avatar size="lg" className="bg-marine-navy text-white">
@@ -171,4 +171,3 @@ export default function Header({
     </header>
   );
 }
-

@@ -7,6 +7,11 @@ import DifficultyBadge from "@/components/jobs/DifficultyBadge";
 import JobCard from "@/components/jobs/JobCard";
 import StatusBadge from "@/components/jobs/StatusBadge";
 import {
+  getJobDateFieldLabel,
+  getJobDateValue,
+  type JobDateField,
+} from "@/lib/jobs";
+import {
   Table,
   TableBody,
   TableCell,
@@ -42,13 +47,35 @@ function formatJobDate(date: Date) {
   return format(date, "dd MMM yyyy HH:mm", { locale: tr });
 }
 
-export default function JobList({ jobs }: { jobs: ServiceJobListItem[] }) {
+type JobListProps = {
+  jobs: ServiceJobListItem[];
+  dateField: JobDateField;
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  buildPageHref: (page: number) => string;
+};
+
+export default function JobList({
+  jobs,
+  dateField,
+  totalCount,
+  page,
+  pageSize,
+  totalPages,
+  buildPageHref,
+}: JobListProps) {
+  const dateFieldLabel = getJobDateFieldLabel(dateField);
+  const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
+
   if (jobs.length === 0) {
     return (
       <section className="rounded-[28px] border border-dashed border-slate-300 bg-white/90 px-6 py-12 text-center shadow-panel">
-        <p className="text-lg font-semibold text-marine-navy">Filtreye uyan iş bulunamadı.</p>
+        <p className="text-lg font-semibold text-marine-navy">Filtreye uyan is bulunamadi.</p>
         <p className="mt-2 text-sm text-slate-600">
-          Arama kriterlerini temizleyip tekrar deneyin ya da yeni bir servis işi oluşturun.
+          Arama kriterlerini temizleyip tekrar deneyin ya da yeni bir servis isi olusturun.
         </p>
       </section>
     );
@@ -56,11 +83,33 @@ export default function JobList({ jobs }: { jobs: ServiceJobListItem[] }) {
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div className="text-sm text-slate-600">
-          Toplam <span className="font-semibold text-marine-navy">{jobs.length}</span> iş
-          listeleniyor.
+          Toplam <span className="font-semibold text-marine-navy">{totalCount}</span> isten{" "}
+          <span className="font-semibold text-marine-navy">{rangeStart}</span>-
+          <span className="font-semibold text-marine-navy">{rangeEnd}</span> arasi listeleniyor.
         </div>
+        {totalPages > 1 ? (
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <Link
+              href={buildPageHref(Math.max(1, page - 1))}
+              aria-disabled={page <= 1}
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 font-medium text-slate-700 transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+            >
+              Onceki
+            </Link>
+            <span>
+              Sayfa {page} / {totalPages}
+            </span>
+            <Link
+              href={buildPageHref(Math.min(totalPages, page + 1))}
+              aria-disabled={page >= totalPages}
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 font-medium text-slate-700 transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5 aria-disabled:pointer-events-none aria-disabled:opacity-50"
+            >
+              Sonraki
+            </Link>
+          </div>
+        ) : null}
       </div>
 
       <div className="hidden overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-panel lg:block">
@@ -72,7 +121,7 @@ export default function JobList({ jobs }: { jobs: ServiceJobListItem[] }) {
               <TableHead className="px-4 py-4">Zorluk</TableHead>
               <TableHead className="px-4 py-4">Personel</TableHead>
               <TableHead className="px-4 py-4">Durum</TableHead>
-              <TableHead className="px-4 py-4">Tarih</TableHead>
+              <TableHead className="px-4 py-4">{dateFieldLabel}</TableHead>
               <TableHead className="px-4 py-4">Lokasyon</TableHead>
               <TableHead className="px-4 py-4 text-right">Aksiyon</TableHead>
             </TableRow>
@@ -86,7 +135,7 @@ export default function JobList({ jobs }: { jobs: ServiceJobListItem[] }) {
                 <TableRow key={job.id} className="border-slate-100">
                   <TableCell className="px-4 py-4">
                     <div className="font-medium text-marine-navy">{job.boat.name}</div>
-                    <div className="text-xs text-slate-500">İş #{job.jobNumber}</div>
+                    <div className="text-xs text-slate-500">Is #{job.jobNumber}</div>
                     <div className="text-xs text-slate-500">{job.boat.type}</div>
                   </TableCell>
                   <TableCell className="px-4 py-4">
@@ -106,7 +155,7 @@ export default function JobList({ jobs }: { jobs: ServiceJobListItem[] }) {
                     <StatusBadge status={job.status} />
                   </TableCell>
                   <TableCell className="px-4 py-4 text-slate-600">
-                    {formatJobDate(job.createdAt)}
+                    {formatJobDate(getJobDateValue(job, dateField))}
                   </TableCell>
                   <TableCell className="px-4 py-4 text-slate-600">
                     {job.location ?? "Lokasyon bekleniyor"}
@@ -117,7 +166,7 @@ export default function JobList({ jobs }: { jobs: ServiceJobListItem[] }) {
                         Detay
                       </Link>
                       {job.status === JobStatus.TAMAMLANDI ? (
-                        <Link href={`/jobs/${job.id}`} className={actionLinkClass}>
+                        <Link href={`/jobs/${job.id}?closeout=1`} className={actionLinkClass}>
                           Kapat
                         </Link>
                       ) : null}
@@ -132,10 +181,9 @@ export default function JobList({ jobs }: { jobs: ServiceJobListItem[] }) {
 
       <div className="grid gap-4 lg:hidden">
         {jobs.map((job) => (
-          <JobCard key={job.id} job={job} />
+          <JobCard key={job.id} job={job} dateField={dateField} />
         ))}
       </div>
     </section>
   );
 }
-

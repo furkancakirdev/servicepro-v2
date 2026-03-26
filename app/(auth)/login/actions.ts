@@ -1,73 +1,55 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { AuthError } from "next-auth";
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 
-import { prisma, isDatabaseConfigured } from "@/lib/prisma";
-import {
-  createServerSupabaseClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
 import type { LoginActionState } from "@/app/(auth)/login/state";
+import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { signIn } from "@/lib/next-auth";
+import { getRoleHomePath } from "@/lib/route-access";
 
 export async function login(
   _prevState: LoginActionState,
   formData: FormData
 ): Promise<LoginActionState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   const nextPath = String(formData.get("next") ?? "/").trim();
   const safeNextPath =
     nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/";
 
   if (!email || !password) {
+    return { error: "E-posta ve şifre alanları zorunludur." };
+  }
+
+  if (!isDatabaseConfigured()) {
     return {
-      error: "E-posta ve şifre alanları zorunludur.",
+      error: "Veritabanı bağlantısı henüz tanımlı değil. Yeni NAS değişkenlerini girip tekrar deneyin.",
     };
   }
 
-  if (!isSupabaseConfigured() || !isDatabaseConfigured()) {
-    return {
-      error:
-        "Supabase ve veritabanı bağlantısı henüz tanımlı değil. `.env.local` değerlerini girdikten sonra tekrar deneyin.",
-    };
-  }
+  try {
+    await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return { error: "E-posta veya şifre hatalı." };
+    }
 
-  const supabase = createServerSupabaseClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-  if (error) {
-    return {
-      error: error.message,
-    };
+    return { error: "Giriş sırasında bir hata oluştu." };
   }
 
   const profile = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, role: true },
-  });
-
-  if (!profile) {
-    await supabase.auth.signOut();
-    cookies().delete("servicepro-role");
-
-    return {
-      error:
-        "Bu e-posta için ServicePRO profili bulunamadı. Seed veya kullanıcı senkronizasyonunu kontrol edin.",
-    };
-  }
-
-  cookies().set("servicepro-role", profile.role, {
-    path: "/",
-    sameSite: "lax",
-    httpOnly: false,
+    select: { role: true },
   });
 
   const defaultRedirect =
-    safeNextPath === "/" && profile.role === Role.TECHNICIAN
-      ? "/my-jobs"
-      : safeNextPath;
+    safeNextPath === "/" ? getRoleHomePath(profile?.role) : safeNextPath;
 
   redirect(defaultRedirect);
 }

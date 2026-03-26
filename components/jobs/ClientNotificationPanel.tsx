@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Check, Copy, MessageCircle, Send } from "lucide-react";
 
 import { markClientNotificationSent } from "@/app/(dashboard)/jobs/actions";
+import type { BoatContactLanguage } from "@/lib/boat-contacts";
 import {
   buildClientNotificationTemplate,
   buildWhatsAppDeepLink,
@@ -16,7 +17,7 @@ type BoatContactItem = {
   role: string;
   phone: string | null;
   email: string | null;
-  language: string;
+  language: BoatContactLanguage;
   isPrimary: boolean;
   whatsappOptIn: boolean;
 };
@@ -112,7 +113,7 @@ export default function ClientNotificationPanel({
         contactId: selectedContact.id,
         templateLang: template.language,
       });
-      setStatusMessage("Bildirim kaydi oluşturuldu.");
+      setStatusMessage("Bildirim kaydı oluşturuldu.");
     });
   }
 
@@ -121,7 +122,7 @@ export default function ClientNotificationPanel({
       {contacts.length > 0 ? (
         <div className="space-y-2">
           <label className="text-sm font-medium text-marine-navy" htmlFor="contactId">
-            ?rtibat secimi
+            İrtibat seçimi
           </label>
           <select
             id="contactId"
@@ -149,7 +150,7 @@ export default function ClientNotificationPanel({
           <div className="flex flex-wrap gap-3">
             <Button type="button" variant="outline" className="gap-2" onClick={handleCopy}>
               <Copy className="size-4" />
-              {copied ? "Kopyaland?" : "Panoya kopyala"}
+              {copied ? "Kopyalandı" : "Panoya kopyala"}
             </Button>
             {waLink ? (
               <a
@@ -159,7 +160,7 @@ export default function ClientNotificationPanel({
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
               >
                 <MessageCircle className="size-4" />
-                WhatsApp ac
+                WhatsApp aç
               </a>
             ) : null}
             <Button
@@ -169,13 +170,13 @@ export default function ClientNotificationPanel({
               disabled={isPending}
             >
               <Send className="size-4" />
-              {isPending ? "Kaydediliyor..." : "G?nderildi olarak isaretle"}
+              {isPending ? "Kaydediliyor..." : "Gönderildi olarak işaretle"}
             </Button>
           </div>
         </>
       ) : (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-          WhatsApp icin telefonlu bir irtibat secin.
+          WhatsApp için telefonlu bir irtibat seçin.
         </div>
       )}
 
@@ -187,11 +188,14 @@ export default function ClientNotificationPanel({
 
       {notifications.length > 0 ? (
         <div className="space-y-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-          <div className="text-sm font-medium text-marine-navy">Son g?nderimler</div>
+          <div className="text-sm font-medium text-marine-navy">Son gönderimler</div>
           {notifications.map((notification) => (
-            <div key={notification.id} className="flex items-center justify-between gap-3 text-sm text-slate-600">
+            <div
+              key={notification.id}
+              className="flex items-center justify-between gap-3 text-sm text-slate-600"
+            >
               <span>
-                {notification.contact.name} Â· {notification.templateLang}
+                {notification.contact.name} · {notification.templateLang}
               </span>
               <span className="inline-flex items-center gap-1 text-emerald-700">
                 <Check className="size-3.5" />
@@ -206,4 +210,3 @@ export default function ClientNotificationPanel({
     </div>
   );
 }
-

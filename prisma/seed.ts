@@ -6,15 +6,15 @@ import {
   PrismaClient,
   Role,
 } from "@prisma/client";
-import { createClient } from "@supabase/supabase-js";
+import bcrypt from "bcryptjs";
 
-import { serviceCategoriesSeed } from "../lib/categories";
+import { serviceCategoriesSeed } from "../lib/categories.ts";
 import {
   calculateJobScore,
   calculateMonthlyTotal,
   normalizeMonthlyEval,
   normalizeMonthlyScore,
-} from "../lib/scoring";
+} from "../lib/scoring.ts";
 
 const prisma = new PrismaClient();
 
@@ -84,115 +84,7 @@ function daysAgo(value: number) {
   return date;
 }
 
-async function seedSupabaseAuthUsers() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  const hasConfig =
-    Boolean(url) &&
-    Boolean(anonKey) &&
-    !url?.includes("your_supabase_url") &&
-    !anonKey?.includes("your_supabase_anon_key");
-
-  if (!hasConfig || !url || !anonKey) {
-    console.log("Supabase auth seed skipped: env values are placeholders.");
-    return;
-  }
-
-  if (serviceRoleKey && !serviceRoleKey.includes("your_supabase_service_role_key")) {
-    const adminClient = createClient(url, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    const { data: listedUsers, error: listError } = await adminClient.auth.admin.listUsers({
-      page: 1,
-      perPage: 200,
-    });
-
-    if (listError) {
-      throw listError;
-    }
-
-    for (const user of seedUsers) {
-      const existing = listedUsers.users.find((entry) => entry.email === user.email);
-
-      if (existing) {
-        const { error } = await adminClient.auth.admin.updateUserById(existing.id, {
-          password: user.password,
-          email_confirm: true,
-          user_metadata: {
-            full_name: user.name,
-            role: user.role,
-          },
-        });
-
-        if (error) {
-          throw error;
-        }
-
-        continue;
-      }
-
-      const { error } = await adminClient.auth.admin.createUser({
-        email: user.email,
-        password: user.password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: user.name,
-          role: user.role,
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-    }
-
-    console.log("Supabase auth users synced with service role.");
-    return;
-  }
-
-  const publicClient = createClient(url, anonKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-
-  for (const user of seedUsers) {
-    const { error } = await publicClient.auth.signUp({
-      email: user.email,
-      password: user.password,
-      options: {
-        data: {
-          full_name: user.name,
-          role: user.role,
-        },
-      },
-    });
-
-    if (error?.status === 429 || /rate limit/i.test(error?.message ?? "")) {
-      console.warn(
-        "Supabase public sign-up rate limit reached. Continuing with database seed only."
-      );
-      return;
-    }
-
-    if (error && !/already registered/i.test(error.message)) {
-      throw error;
-    }
-  }
-
-  console.log("Supabase auth users seeded with public sign-up flow.");
-}
-
 async function main() {
-  await seedSupabaseAuthUsers();
-
   await prisma.notification.deleteMany();
   await prisma.evaluationChangeLog.deleteMany();
   await prisma.badge.deleteMany();
@@ -206,12 +98,17 @@ async function main() {
   await prisma.boat.deleteMany();
   await prisma.user.deleteMany();
 
-  await prisma.user.createMany({
-    data: seedUsers.map(({ email, name, role }) => ({
+  const hashedUsers = await Promise.all(
+    seedUsers.map(async ({ email, name, role, password }) => ({
       email,
       name,
       role,
-    })),
+      password: await bcrypt.hash(password, 12),
+    }))
+  );
+
+  await prisma.user.createMany({
+    data: hashedUsers,
   });
 
   await prisma.boat.createMany({

@@ -2,12 +2,20 @@ import Link from "next/link";
 import { Filter, Search, SlidersHorizontal } from "lucide-react";
 import { JobStatus } from "@prisma/client";
 
-import { Button } from "@/components/ui/button";
+import { getJobFilterOptions, getJobs } from "@/app/(dashboard)/jobs/actions";
+import { takeFirstValue } from "@/components/jobs/detail/shared";
 import JobList from "@/components/jobs/JobList";
 import { getStatusLabel } from "@/components/jobs/StatusBadge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getJobFilterOptions, getJobs } from "@/app/(dashboard)/jobs/actions";
 import { requireAppUser } from "@/lib/auth";
+import {
+  getJobDateFieldLabel,
+  isJobDateField,
+  isJobStatusGroup,
+  type JobDateField,
+  type JobStatusGroup,
+} from "@/lib/jobs";
 import { cn } from "@/lib/utils";
 
 type JobsPageProps = {
@@ -19,10 +27,6 @@ const primaryLinkClass =
 const filterInputClass =
   "h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition-colors focus:border-marine-ocean/40 focus:ring-2 focus:ring-marine-ocean/10";
 
-function takeFirstValue(value?: string | string[]) {
-  return Array.isArray(value) ? value[0] : value;
-}
-
 function isJobStatus(value?: string): value is JobStatus {
   return value ? Object.values(JobStatus).includes(value as JobStatus) : false;
 }
@@ -31,24 +35,47 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
   await requireAppUser();
 
   const rawStatus = takeFirstValue(searchParams?.status);
+  const rawStatusGroup = takeFirstValue(searchParams?.statusGroup);
+  const rawDateField = takeFirstValue(searchParams?.dateField);
+  const pendingScoring = takeFirstValue(searchParams?.pendingScoring) === "1";
   const currentStatus = isJobStatus(rawStatus) ? rawStatus : undefined;
+  const currentStatusGroup = isJobStatusGroup(rawStatusGroup) ? rawStatusGroup : undefined;
+  const currentDateField = isJobDateField(rawDateField) ? rawDateField : "createdAt";
   const query = takeFirstValue(searchParams?.q) ?? "";
   const technicianId = takeFirstValue(searchParams?.technicianId) ?? "";
   const startDate = takeFirstValue(searchParams?.startDate) ?? "";
   const endDate = takeFirstValue(searchParams?.endDate) ?? "";
+  const currentPage = Math.max(1, Number.parseInt(takeFirstValue(searchParams?.page) ?? "1", 10) || 1);
+  const dateFieldLabel = getJobDateFieldLabel(currentDateField);
 
-  const [jobs, technicians] = await Promise.all([
+  const [jobResult, technicians] = await Promise.all([
     getJobs({
       status: currentStatus,
+      statusGroup: currentStatusGroup,
+      pendingScoring,
       query,
       technicianId: technicianId || undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
+      dateField: currentDateField,
+      page: currentPage,
     }),
     getJobFilterOptions(),
   ]);
 
-  const buildStatusHref = (status?: JobStatus) => {
+  const buildJobsHref = ({
+    status,
+    statusGroup,
+    pendingScoring: shouldFilterPendingScoring = false,
+    dateField = currentDateField,
+    page = 1,
+  }: {
+    status?: JobStatus;
+    statusGroup?: JobStatusGroup;
+    pendingScoring?: boolean;
+    dateField?: JobDateField;
+    page?: number;
+  } = {}) => {
     const params = new URLSearchParams();
 
     if (query) params.set("q", query);
@@ -56,6 +83,10 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
     if (startDate) params.set("startDate", startDate);
     if (endDate) params.set("endDate", endDate);
     if (status) params.set("status", status);
+    if (statusGroup) params.set("statusGroup", statusGroup);
+    if (shouldFilterPendingScoring) params.set("pendingScoring", "1");
+    if (dateField !== "createdAt") params.set("dateField", dateField);
+    if (page > 1) params.set("page", String(page));
 
     const serialized = params.toString();
     return serialized ? `/jobs?${serialized}` : "/jobs";
@@ -69,13 +100,14 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
             <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
               Operasyon
             </p>
-            <h1 className="mt-2 text-2xl font-semibold text-marine-navy">İş Listesi</h1>
+            <h1 className="mt-2 text-2xl font-semibold text-marine-navy">Is Listesi</h1>
             <p className="mt-2 text-sm text-slate-600">
-              Arama, tarih ve teknisyen filtresiyle aktif servis operasyonunu yonetin.
+              Arama, {dateFieldLabel.toLowerCase()} ve teknisyen filtresiyle operasyon akisini
+              yonetin.
             </p>
           </div>
           <Link href="/jobs/new" className={primaryLinkClass}>
-            Yeni İş
+            Yeni Is
           </Link>
         </div>
 
@@ -83,13 +115,15 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           className="grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_180px_180px_220px_auto_auto]"
           method="get"
         >
+          <input type="hidden" name="dateField" value={currentDateField} />
+
           <div className="relative lg:col-span-2">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
             <Input
               name="q"
               defaultValue={query}
               className="h-12 pl-10"
-              placeholder="Tekne adi, kateg?ri veya açıklama ara"
+              placeholder="Tekne adi, kategori veya aciklama ara"
             />
           </div>
 
@@ -147,23 +181,36 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
 
         <div className="flex flex-wrap gap-2">
           <Link
-            href={buildStatusHref()}
+            href={buildJobsHref()}
             className={cn(
               "rounded-full border px-4 py-2 text-sm transition-colors",
-              !currentStatus
+              !currentStatus && !currentStatusGroup && !pendingScoring
                 ? "border-marine-navy bg-marine-navy text-white"
                 : "border-slate-200 bg-slate-50 text-slate-600 hover:border-marine-ocean/40 hover:text-marine-navy"
             )}
           >
-            Tum
+            Tumu
+          </Link>
+          <Link
+            href={buildJobsHref({ statusGroup: "ACTIVE" })}
+            className={cn(
+              "rounded-full border px-4 py-2 text-sm transition-colors",
+              currentStatusGroup === "ACTIVE"
+                ? "border-marine-navy bg-marine-navy text-white"
+                : "border-slate-200 bg-slate-50 text-slate-600 hover:border-marine-ocean/40 hover:text-marine-navy"
+            )}
+          >
+            Aktif operasyon
           </Link>
           {Object.values(JobStatus).map((status) => (
             <Link
               key={status}
-              href={buildStatusHref(status)}
+              href={buildJobsHref({ status })}
               className={cn(
                 "rounded-full border px-4 py-2 text-sm transition-colors",
-                currentStatus === status
+                currentStatus === status &&
+                  !(pendingScoring && status === JobStatus.TAMAMLANDI) &&
+                  !currentStatusGroup
                   ? "border-marine-navy bg-marine-navy text-white"
                   : "border-slate-200 bg-slate-50 text-slate-600 hover:border-marine-ocean/40 hover:text-marine-navy"
               )}
@@ -171,11 +218,32 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
               {getStatusLabel(status)}
             </Link>
           ))}
+          <Link
+            href={buildJobsHref({
+              status: JobStatus.TAMAMLANDI,
+              pendingScoring: true,
+            })}
+            className={cn(
+              "rounded-full border px-4 py-2 text-sm transition-colors",
+              pendingScoring
+                ? "border-marine-navy bg-marine-navy text-white"
+                : "border-slate-200 bg-slate-50 text-slate-600 hover:border-marine-ocean/40 hover:text-marine-navy"
+            )}
+          >
+            Bekleyen puanlama
+          </Link>
         </div>
       </div>
 
-      <JobList jobs={jobs} />
+      <JobList
+        jobs={jobResult.items}
+        dateField={currentDateField}
+        totalCount={jobResult.totalCount}
+        page={jobResult.page}
+        pageSize={jobResult.pageSize}
+        totalPages={jobResult.totalPages}
+        buildPageHref={(page) => buildJobsHref({ status: currentStatus, statusGroup: currentStatusGroup, pendingScoring, dateField: currentDateField, page })}
+      />
     </div>
   );
 }
-

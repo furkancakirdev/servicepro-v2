@@ -2,18 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { HoldReason, JobRole, JobStatus, Role } from "@prisma/client";
+import { HoldReason, JobRole, JobStatus, Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 
 import {
+  activeOperationalStatuses,
   boatTypeOptions,
+  normalizeJobSchedule,
+  normalizeJobsPagination,
   openStatuses,
   type CreateJobFormState,
   type JobFiltersInput,
   type JobFormMeta,
 } from "@/lib/jobs";
-import { prisma } from "@/lib/prisma";
 import {
+  buildJobScoreWriteRows,
   calculateJobScore,
   calculateKesifScore,
   initialCloseJobWithEvaluationActionState,
@@ -22,24 +25,28 @@ import {
 } from "@/lib/scoring";
 import { requireAppUser, requireRoles } from "@/lib/auth";
 import { getTechnicianSuggestionsForBoats } from "@/lib/continuity";
-import type { ServiceJobDetail, ServiceJobListItem } from "@/types";
+import { prisma } from "@/lib/prisma";
 import { DEFAULT_ON_HOLD_DAYS, getOnHoldDefaultDays } from "@/lib/system-settings";
+import type { PaginatedJobsResult, ServiceJobDetail, ServiceJobListItem } from "@/types";
 
 const createJobSchema = z.object({
-  boatName: z.string().trim().min(2, "Tekne adi zorunludur."),
+  boatName: z.string().trim().min(2, "Tekne adı zorunludur."),
   boatType: z.enum(boatTypeOptions),
   location: z.string().trim().optional(),
   contactName: z.string().trim().optional(),
   contactPhone: z.string().trim().optional(),
-  categoryId: z.string().uuid("Kateg?ri secimi zorunludur."),
+  categoryId: z.string().uuid("Kategori seçimi zorunludur."),
   description: z
     .string()
     .trim()
-    .min(10, "Açıklama en az 10 karakter olmali."),
+    .min(10, "Açıklama en az 10 karakter olmalı."),
   isWarranty: z.boolean().default(false),
   isKesif: z.boolean().default(false),
   notes: z.string().trim().optional(),
-  responsibleId: z.string().uuid("Sorumlu teknisyen secimi zorunludur."),
+  responsibleId: z.string().uuid("Sorumlu teknisyen seçimi zorunludur."),
+  plannedStartAt: z.string().trim().min(1, "Planlanan baslangic zamani zorunludur."),
+  plannedEndAt: z.string().trim().optional(),
+  slaHours: z.number().int().min(1, "SLA suresi en az 1 saat olmalidir.").optional(),
   supportIds: z.array(z.string().uuid()).default([]),
 });
 
@@ -71,8 +78,8 @@ const scoreObjectionSchema = z.object({
   reason: z
     .string()
     .trim()
-    .min(10, "Itiraz nedenini en az 10 karakterle a??klayin.")
-    .max(500, "Itiraz metni 500 karakteri gecemez."),
+    .min(10, "İtiraz nedenini en az 10 karakterle açıklayın.")
+    .max(500, "İtiraz metni 500 karakteri geçemez."),
 });
 const reviewScoreObjectionSchema = z.object({
   jobId: z.string().uuid(),
@@ -80,8 +87,8 @@ const reviewScoreObjectionSchema = z.object({
   reason: z
     .string()
     .trim()
-    .min(10, "Duzenleme nedeni en az 10 karakter olmali.")
-    .max(500, "Duzenleme notu 500 karakteri gecemez."),
+    .min(10, "Düzenleme nedeni en az 10 karakter olmalı.")
+    .max(500, "Düzenleme notu 500 karakteri geçemez."),
   q1_unit: scoreFieldSchema,
   q2_photos: scoreFieldSchema,
   q3_parts: scoreFieldSchema,
@@ -90,6 +97,7 @@ const reviewScoreObjectionSchema = z.object({
 });
 
 type CreateJobInput = z.infer<typeof createJobSchema>;
+const CLOSEOUT_LATENCY_TARGET_P95_MS = 1500;
 
 const allowedTransitions: Record<JobStatus, JobStatus[]> = {
   [JobStatus.KESIF]: [JobStatus.PLANLANDI],
@@ -105,6 +113,16 @@ const allowedTransitions: Record<JobStatus, JobStatus[]> = {
 function optionalString(value: FormDataEntryValue | null) {
   const raw = String(value ?? "").trim();
   return raw.length > 0 ? raw : undefined;
+}
+
+function optionalInteger(value: FormDataEntryValue | null) {
+  const raw = String(value ?? "").trim();
+
+  if (!raw) {
+    return undefined;
+  }
+
+  return Number.parseInt(raw, 10);
 }
 
 function parseCheckbox(value: FormDataEntryValue | null) {
@@ -210,81 +228,167 @@ export async function getJobFilterOptions() {
   return technicians;
 }
 
-export async function getJobs(filters: JobFiltersInput = {}): Promise<ServiceJobListItem[]> {
+export async function getJobs(filters: JobFiltersInput = {}): Promise<PaginatedJobsResult> {
   await requireAppUser();
 
   const normalizedQuery = filters.query?.trim();
   const startDate = parseDateBoundary(filters.startDate);
   const endDate = parseDateBoundary(filters.endDate, true);
+  const effectiveDateField = filters.dateField ?? "createdAt";
+  const effectiveStatus = filters.pendingScoring ? JobStatus.TAMAMLANDI : filters.status;
+  const effectiveStatuses =
+    !effectiveStatus && filters.statusGroup === "ACTIVE" ? activeOperationalStatuses : undefined;
+  const pagination = normalizeJobsPagination({
+    page: filters.page,
+    pageSize: filters.pageSize,
+  });
+  const range =
+    startDate || endDate
+      ? {
+          ...(startDate ? { gte: startDate } : {}),
+          ...(endDate ? { lte: endDate } : {}),
+        }
+      : null;
+  let dateRangeFilter: Prisma.ServiceJobWhereInput = {};
 
-  return prisma.serviceJob.findMany({
-    where: {
-      ...(filters.status ? { status: filters.status } : {}),
-      ...(filters.technicianId
-        ? {
-            assignments: {
-              some: {
-                userId: filters.technicianId,
-              },
-            },
-          }
-        : {}),
-      ...(normalizedQuery
-        ? {
-            OR: [
-              {
-                description: {
-                  contains: normalizedQuery,
-                  mode: "insensitive",
-                },
-              },
-              {
-                boat: {
-                  name: {
-                    contains: normalizedQuery,
-                    mode: "insensitive",
-                  },
-                },
-              },
-              {
-                category: {
-                  name: {
-                    contains: normalizedQuery,
-                    mode: "insensitive",
-                  },
-                },
-              },
-            ],
-          }
-        : {}),
-      ...((startDate || endDate)
-        ? {
-            createdAt: {
-              ...(startDate ? { gte: startDate } : {}),
-              ...(endDate ? { lte: endDate } : {}),
-            },
-          }
-        : {}),
-    },
-    include: {
-      boat: true,
-      category: true,
-      assignments: {
-        include: {
-          user: true,
+  if (range) {
+    switch (effectiveDateField) {
+      case "plannedStartAt":
+        dateRangeFilter = { plannedStartAt: range };
+        break;
+      case "plannedEndAt":
+        dateRangeFilter = { plannedEndAt: range };
+        break;
+      case "startedAt":
+        dateRangeFilter = {
+          OR: [{ actualStartAt: range }, { actualStartAt: null, startedAt: range }],
+        };
+        break;
+      case "actualStartAt":
+        dateRangeFilter = { actualStartAt: range };
+        break;
+      case "completedAt":
+        dateRangeFilter = {
+          OR: [{ actualEndAt: range }, { actualEndAt: null, completedAt: range }],
+        };
+        break;
+      case "actualEndAt":
+        dateRangeFilter = { actualEndAt: range };
+        break;
+      case "closedAt":
+        dateRangeFilter = { closedAt: range };
+        break;
+      case "createdAt":
+      default:
+        dateRangeFilter = { createdAt: range };
+        break;
+    }
+  }
+
+  const compositeFilters: Prisma.ServiceJobWhereInput[] = [];
+
+  if (normalizedQuery) {
+    compositeFilters.push({
+      OR: [
+        {
+          description: {
+            contains: normalizedQuery,
+            mode: "insensitive",
+          },
         },
-        orderBy: [
-          { role: "asc" },
-          {
-            user: {
-              name: "asc",
+        {
+          boat: {
+            name: {
+              contains: normalizedQuery,
+              mode: "insensitive",
             },
           },
-        ],
+        },
+        {
+          category: {
+            name: {
+              contains: normalizedQuery,
+              mode: "insensitive",
+            },
+          },
+        },
+      ],
+    });
+  }
+
+  if (Object.keys(dateRangeFilter).length > 0) {
+    compositeFilters.push(dateRangeFilter);
+  }
+
+  const where: Prisma.ServiceJobWhereInput = {
+    ...(effectiveStatus
+      ? { status: effectiveStatus }
+      : effectiveStatuses
+        ? {
+            status: {
+              in: effectiveStatuses,
+            },
+          }
+        : {}),
+    ...(filters.pendingScoring
+      ? {
+          deliveryReport: {
+            is: null,
+          },
+          evaluation: {
+            is: null,
+          },
+          jobScores: {
+            none: {},
+          },
+        }
+      : {}),
+    ...(filters.technicianId
+      ? {
+          assignments: {
+            some: {
+              userId: filters.technicianId,
+            },
+          },
+        }
+      : {}),
+    ...(compositeFilters.length > 0 ? { AND: compositeFilters } : {}),
+  };
+
+  const [items, totalCount] = await prisma.$transaction([
+    prisma.serviceJob.findMany({
+      where,
+      include: {
+        boat: true,
+        category: true,
+        assignments: {
+          include: {
+            user: true,
+          },
+          orderBy: [
+            { role: "asc" },
+            {
+              user: {
+                name: "asc",
+              },
+            },
+          ],
+        },
       },
-    },
-    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
-  });
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+      skip: pagination.skip,
+      take: pagination.take,
+    }),
+    prisma.serviceJob.count({ where }),
+  ]);
+
+  return {
+    items,
+    totalCount,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    totalPages: Math.max(1, Math.ceil(totalCount / pagination.pageSize)),
+  };
 }
 
 export async function getJobById(id: string): Promise<{
@@ -441,13 +545,18 @@ export async function getJobById(id: string): Promise<{
 
 export async function createJob(data: CreateJobInput) {
   const actor = await requireRoles([Role.ADMIN, Role.COORDINATOR]);
+  const schedule = normalizeJobSchedule({
+    plannedStartAt: data.plannedStartAt,
+    plannedEndAt: data.plannedEndAt,
+    slaHours: data.slaHours,
+  });
 
   const category = await prisma.serviceCategory.findUnique({
     where: { id: data.categoryId },
   });
 
   if (!category) {
-    throw new Error("Secilen kateg?ri bulunamadi.");
+    throw new Error("Seçilen kategori bulunamadı.");
   }
 
   const responsible = await prisma.user.findFirst({
@@ -458,7 +567,7 @@ export async function createJob(data: CreateJobInput) {
   });
 
   if (!responsible) {
-    throw new Error("Sorumlu teknisyen bulunamadi.");
+    throw new Error("Sorumlu teknisyen bulunamad?.");
   }
 
   const supportIds = [...new Set(data.supportIds)].filter(
@@ -476,7 +585,7 @@ export async function createJob(data: CreateJobInput) {
     : [];
 
   if (supportTechnicians.length !== supportIds.length) {
-    throw new Error("Destek ekibindeki kullanicilardan biri bulunamadi.");
+    throw new Error("Destek ekibindeki kullanıcılardan biri bulunamadı.");
   }
 
   const existingBoat = await prisma.boat.findFirst({
@@ -509,6 +618,8 @@ export async function createJob(data: CreateJobInput) {
       });
 
   const status = data.isKesif ? JobStatus.KESIF : JobStatus.PLANLANDI;
+  const dispatchDate = new Date(schedule.plannedStartAt.getTime());
+  dispatchDate.setHours(0, 0, 0, 0);
 
   return prisma.$transaction(async (tx) => {
     const job = await tx.serviceJob.create({
@@ -525,6 +636,10 @@ export async function createJob(data: CreateJobInput) {
         contactName: data.contactName,
         contactPhone: data.contactPhone,
         notes: data.notes,
+        dispatchDate,
+        plannedStartAt: schedule.plannedStartAt,
+        plannedEndAt: schedule.plannedEndAt,
+        slaHours: schedule.slaHours,
       },
     });
 
@@ -545,6 +660,7 @@ export async function createJob(data: CreateJobInput) {
 
     return job;
   });
+
 }
 
 export async function createJobAction(
@@ -562,6 +678,9 @@ export async function createJobAction(
     isWarranty: parseCheckbox(formData.get("isWarranty")),
     isKesif: parseCheckbox(formData.get("isKesif")),
     notes: optionalString(formData.get("notes")),
+    plannedStartAt: formData.get("plannedStartAt"),
+    plannedEndAt: optionalString(formData.get("plannedEndAt")),
+    slaHours: optionalInteger(formData.get("slaHours")),
     responsibleId: formData.get("responsibleId"),
     supportIds: formData.getAll("supportIds").map(String),
     nextPath: formData.get("nextPath"),
@@ -571,13 +690,16 @@ export async function createJobAction(
     const flattened = parsed.error.flatten().fieldErrors;
 
     return {
-      error: "Lutfen zorunlu alanlari kontrol edin.",
+      error: "Lütfen zorunlu alanları kontrol edin.",
       fieldErrors: {
         boatName: flattened.boatName?.[0],
         boatType: flattened.boatType?.[0],
         categoryId: flattened.categoryId?.[0],
         description: flattened.description?.[0],
         responsibleId: flattened.responsibleId?.[0],
+        plannedStartAt: flattened.plannedStartAt?.[0],
+        plannedEndAt: flattened.plannedEndAt?.[0],
+        slaHours: flattened.slaHours?.[0],
       },
     };
   }
@@ -591,7 +713,7 @@ export async function createJobAction(
       error:
         error instanceof Error
           ? error.message
-          : "?? oluşturulurken beklenmeyen bir hata olu?tu.",
+          : "İş oluşturulurken beklenmeyen bir hata oluştu.",
       fieldErrors: {},
     };
   }
@@ -622,15 +744,15 @@ export async function updateJobStatus(
   });
 
   if (!job) {
-    throw new Error("?? kaydi bulunamadi.");
+    throw new Error("İş kaydı bulunamadı.");
   }
 
   if (!allowedTransitions[job.status].includes(newStatus)) {
-    throw new Error("Bu durum gecisi desteklenmiyor.");
+    throw new Error("Bu durum geçişi desteklenmiyor.");
   }
 
   if (newStatus === JobStatus.KAPANDI && (!job.deliveryReport || !job.evaluation)) {
-    throw new Error("?? kapatma icin teslim raporu ve Form 1 puanlama zorunlu.");
+    throw new Error("İş kapatma için teslim raporu ve Form 1 puanlama zorunlu.");
   }
 
   const now = new Date();
@@ -646,6 +768,7 @@ export async function updateJobStatus(
       ...(newStatus === JobStatus.DEVAM_EDIYOR
         ? {
             startedAt: job.startedAt ?? now,
+            actualStartAt: job.actualStartAt ?? job.startedAt ?? now,
             holdReason: null,
             holdUntil: null,
           }
@@ -659,6 +782,7 @@ export async function updateJobStatus(
       ...(newStatus === JobStatus.TAMAMLANDI
         ? {
             completedAt: now,
+            actualEndAt: now,
           }
         : {}),
       ...(newStatus === JobStatus.KAPANDI
@@ -674,6 +798,7 @@ export async function updateJobStatus(
         : {}),
     },
   });
+
 }
 
 export async function updateJobStatusAction(formData: FormData) {
@@ -750,12 +875,14 @@ export async function closeJobWithEvaluation(
   const actor = await requireRoles([Role.ADMIN, Role.COORDINATOR]);
 
   if (actor.id !== evaluatorId) {
-    throw new Error("Puanlamayi ba?latan kullanici dogrulanamadi.");
+    throw new Error("Puanlamayı başlatan kullanıcı doğrulanamadı.");
   }
 
   const closedAt = options?.closedAt ?? new Date();
+  const closeoutStartedAt = Date.now();
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
+    // Performance target: keep the closeout transaction under CLOSEOUT_LATENCY_TARGET_P95_MS at p95.
     const job = await tx.serviceJob.findUnique({
       where: { id: jobId },
       include: {
@@ -772,19 +899,19 @@ export async function closeJobWithEvaluation(
     });
 
     if (!job) {
-      throw new Error("?? kaydi bulunamadi.");
+      throw new Error("İş kaydı bulunamadı.");
     }
 
     if (job.status !== JobStatus.TAMAMLANDI) {
-      throw new Error("?? kapatma akisi sadece tamamlanan islerde ba?latilabilir.");
+      throw new Error("İş kapatma akışı sadece tamamlanan işlerde başlatılabilir.");
     }
 
     if (job.deliveryReport || job.evaluation || job.jobScores.length > 0) {
-      throw new Error("Bu is icin teslim raporu veya puanlama zaten kaydedilmis.");
+      throw new Error("Bu iş için teslim raporu veya puanlama zaten kaydedilmiş.");
     }
 
     if (job.assignments.length === 0) {
-      throw new Error("Puanlama icin en az bir teknisyen atamasi gerekli.");
+      throw new Error("Puanlama için en az bir teknisyen ataması gerekli.");
     }
 
     const deliveryReportRecord = await tx.deliveryReport.create({
@@ -817,30 +944,26 @@ export async function closeJobWithEvaluation(
       },
     });
 
-    const jobScoreRecords = await Promise.all(
-      job.assignments.map((assignment) => {
-        const roleMultiplier = assignment.role === JobRole.SORUMLU ? 1 : 0.4;
-        const score = calculateJobScore(evaluationAnswers, job.multiplier, roleMultiplier);
-
-        return tx.jobScore.create({
-          data: {
-            jobId: job.id,
-            userId: assignment.userId,
-            role: assignment.role,
-            baseScore: score.baseScore,
-            multiplier: job.multiplier,
-            roleMultiplier,
-            finalScore: score.finalScore,
-            isKesif: job.isKesif,
-            month: closedAt.getMonth() + 1,
-            year: closedAt.getFullYear(),
-          },
-          include: {
-            user: true,
-          },
-        });
-      })
+    const assignmentNameMap = new Map(
+      job.assignments.map((assignment) => [assignment.userId, assignment.user.name])
     );
+    const jobScoreRecords = buildJobScoreWriteRows({
+      jobId: job.id,
+      assignments: job.assignments.map((assignment) => ({
+        userId: assignment.userId,
+        role: assignment.role,
+      })),
+      baseScore,
+      multiplier: job.multiplier,
+      isKesif: job.isKesif,
+      scoreDate: closedAt,
+    });
+
+    if (jobScoreRecords.length > 0) {
+      await tx.jobScore.createMany({
+        data: jobScoreRecords,
+      });
+    }
 
     if (job.isKesif && job.kesifJobId) {
       const mainJob = await tx.serviceJob.findUnique({
@@ -854,24 +977,26 @@ export async function closeJobWithEvaluation(
         const kesifScore = calculateKesifScore(baseScore);
         const kesifDate = job.createdAt;
 
-        await Promise.all(
-          mainJob.assignments.map((assignment) =>
-            tx.jobScore.create({
-              data: {
-                jobId: job.id,
-                userId: assignment.userId,
-                role: assignment.role,
-                baseScore,
-                multiplier: 0.5,
-                roleMultiplier: 1,
-                finalScore: kesifScore,
-                isKesif: true,
-                month: kesifDate.getMonth() + 1,
-                year: kesifDate.getFullYear(),
-              },
-            })
-          )
+        const mainJobScoreRows: Prisma.JobScoreCreateManyInput[] = mainJob.assignments.map(
+          (assignment) => ({
+            jobId: job.id,
+            userId: assignment.userId,
+            role: assignment.role,
+            baseScore,
+            multiplier: 0.5,
+            roleMultiplier: 1,
+            finalScore: kesifScore,
+            isKesif: true,
+            month: kesifDate.getMonth() + 1,
+            year: kesifDate.getFullYear(),
+          })
         );
+
+        if (mainJobScoreRows.length > 0) {
+          await tx.jobScore.createMany({
+            data: mainJobScoreRows,
+          });
+        }
       }
     }
 
@@ -899,37 +1024,35 @@ export async function closeJobWithEvaluation(
       },
     });
 
-    for (const kesifJob of linkedKesifJobs) {
-      if (kesifJob.jobScores.length > 0) {
-        continue;
-      }
+    const retroBaseScore = calculateKesifScore(baseScore);
+    const retroKesifJobs = linkedKesifJobs.filter((kesifJob) => kesifJob.jobScores.length === 0);
+    const retroKesifScoreRows = retroKesifJobs.flatMap((kesifJob) =>
+      buildJobScoreWriteRows({
+        jobId: kesifJob.id,
+        assignments: kesifJob.assignments.map((assignment) => ({
+          userId: assignment.userId,
+          role: assignment.role,
+        })),
+        baseScore: retroBaseScore,
+        multiplier: 1,
+        isKesif: true,
+        scoreDate: kesifJob.createdAt,
+      })
+    );
 
-      const retroBaseScore = calculateKesifScore(baseScore);
+    if (retroKesifScoreRows.length > 0) {
+      await tx.jobScore.createMany({
+        data: retroKesifScoreRows,
+      });
+    }
 
-      await Promise.all(
-        kesifJob.assignments.map((assignment) => {
-          const roleMultiplier = assignment.role === JobRole.SORUMLU ? 1 : 0.4;
-          const finalScore = Number((retroBaseScore * roleMultiplier).toFixed(1));
-
-          return tx.jobScore.create({
-            data: {
-              jobId: kesifJob.id,
-              userId: assignment.userId,
-              role: assignment.role,
-              baseScore: retroBaseScore,
-              multiplier: 1,
-              roleMultiplier,
-              finalScore,
-              isKesif: true,
-              month: kesifJob.createdAt.getMonth() + 1,
-              year: kesifJob.createdAt.getFullYear(),
-            },
-          });
-        })
-      );
-
-      await tx.serviceJob.update({
-        where: { id: kesifJob.id },
+    if (retroKesifJobs.length > 0) {
+      await tx.serviceJob.updateMany({
+        where: {
+          id: {
+            in: retroKesifJobs.map((kesifJob) => kesifJob.id),
+          },
+        },
         data: {
           kesifJobId: job.id,
         },
@@ -963,7 +1086,7 @@ export async function closeJobWithEvaluation(
       evaluation: evaluationRecord,
       scores: jobScoreRecords.map((score) => ({
         userId: score.userId,
-        userName: score.user.name,
+        userName: assignmentNameMap.get(score.userId) ?? "Teknisyen",
         role: score.role,
         roleMultiplier: score.roleMultiplier,
         finalScore: score.finalScore,
@@ -972,6 +1095,16 @@ export async function closeJobWithEvaluation(
       multiplier: job.multiplier,
     };
   });
+
+  const closeoutDurationMs = Date.now() - closeoutStartedAt;
+
+  if (closeoutDurationMs > CLOSEOUT_LATENCY_TARGET_P95_MS) {
+    console.warn(
+      `[jobs.closeout] p95 target exceeded for ${jobId}: ${closeoutDurationMs}ms > ${CLOSEOUT_LATENCY_TARGET_P95_MS}ms`
+    );
+  }
+
+  return result;
 }
 
 export async function closeJobWithEvaluationAction(
@@ -1087,7 +1220,7 @@ export async function closeJobWithEvaluationAction(
       error:
         error instanceof Error
           ? error.message
-          : "?? kapatma akisi sirasinda beklenmeyen bir hata olu?tu.",
+          : "İş kapatma akışı sırasında beklenmeyen bir hata oluştu.",
     };
   }
 }
@@ -1135,11 +1268,11 @@ export async function submitScoreObjectionAction(formData: FormData) {
       });
 
       if (!job?.evaluation || !job.closedAt) {
-        throw new Error("Itiraz icin kapatilmis ve puanlanmis bir is gerekli.");
+        throw new Error("İtiraz için kapatılmış ve puanlanmış bir iş gerekli.");
       }
 
       if (!isWithinObjectionWindow(job.closedAt)) {
-        throw new Error("Puan itirazi yaln?zca ilk 30 gun icinde acilabilir.");
+        throw new Error("Puan itirazı yalnızca ilk 30 gün içinde açılabilir.");
       }
 
       const isAssignedUser = job.assignments.some(
@@ -1152,7 +1285,7 @@ export async function submitScoreObjectionAction(formData: FormData) {
         actor.role === Role.WORKSHOP_CHIEF;
 
       if (!canObject) {
-        throw new Error("Bu is icin puan itirazi oluşturma yetkiniz bulunmuyor.");
+        throw new Error("Bu iş için puan itirazı oluşturma yetkiniz bulunmuyor.");
       }
 
       const existingObjection = await tx.evaluationChangeLog.findFirst({
@@ -1167,7 +1300,7 @@ export async function submitScoreObjectionAction(formData: FormData) {
       });
 
       if (existingObjection && isWithinObjectionWindow(existingObjection.createdAt)) {
-        throw new Error("Bu is icin zaten a??k bir puan itiraziniz bulunuyor.");
+        throw new Error("Bu iş için zaten açık bir puan itirazınız bulunuyor.");
       }
 
       await tx.evaluationChangeLog.create({
@@ -1207,8 +1340,8 @@ export async function submitScoreObjectionAction(formData: FormData) {
           data: admins.map((admin) => ({
             userId: admin.id,
             type: "SCORE_OBJECTION",
-            title: "Yeni puan itirazi",
-            body: `${job.boat.name} - ${job.category.name} isi icin itiraz oluşturuldu.`,
+            title: "Yeni puan itirazı",
+            body: `${job.boat.name} - ${job.category.name} işi için itiraz oluşturuldu.`,
             metadata: {
               jobId: job.id,
               raisedById: actor.id,
@@ -1230,6 +1363,19 @@ export async function submitScoreObjectionAction(formData: FormData) {
 
 export async function reviewScoreObjectionAction(formData: FormData) {
   const actor = await requireRoles([Role.ADMIN]);
+  const tab = formData.get("tab") === "system" ? "system" : "profile";
+  const yearValue = Number(formData.get("year"));
+
+  const buildSettingsReviewUrl = (params: Record<string, string>) => {
+    const searchParams = new URLSearchParams({ tab, ...params });
+
+    if (Number.isInteger(yearValue) && yearValue >= 2024 && yearValue <= 2100) {
+      searchParams.set("year", String(yearValue));
+    }
+
+    return `/settings?${searchParams.toString()}`;
+  };
+
   const parsed = reviewScoreObjectionSchema.safeParse({
     jobId: formData.get("jobId"),
     objectionLogId: formData.get("objectionLogId") || undefined,
@@ -1242,7 +1388,7 @@ export async function reviewScoreObjectionAction(formData: FormData) {
   });
 
   if (!parsed.success) {
-    redirect("/settings?error=invalid-score-review");
+    redirect(buildSettingsReviewUrl({ error: "invalid-score-review" }));
   }
 
   try {
@@ -1271,7 +1417,7 @@ export async function reviewScoreObjectionAction(formData: FormData) {
       });
 
       if (!job?.evaluation) {
-        throw new Error("Duzenlenecek puanlama kaydi bulunamadi.");
+        throw new Error("Düzenlenecek puanlama kaydı bulunamadı.");
       }
 
       const answers = [
@@ -1308,46 +1454,65 @@ export async function reviewScoreObjectionAction(formData: FormData) {
         },
       });
 
-      for (const score of job.jobScores) {
-        await tx.jobScore.update({
+      await Promise.all([
+        tx.jobScore.updateMany({
           where: {
-            id: score.id,
+            jobId: job.id,
+            role: JobRole.SORUMLU,
           },
           data: {
             baseScore,
-            finalScore: Number((baseScore * job.multiplier * score.roleMultiplier).toFixed(1)),
+            finalScore: Number((baseScore * job.multiplier).toFixed(1)),
           },
-        });
-      }
+        }),
+        tx.jobScore.updateMany({
+          where: {
+            jobId: job.id,
+            role: JobRole.DESTEK,
+          },
+          data: {
+            baseScore,
+            finalScore: Number((baseScore * job.multiplier * 0.4).toFixed(1)),
+          },
+        }),
+      ]);
 
       const linkedKesifJobs = await tx.serviceJob.findMany({
         where: {
           kesifJobId: job.id,
         },
-        include: {
-          jobScores: {
-            select: {
-              id: true,
-              roleMultiplier: true,
-            },
-          },
+        select: {
+          id: true,
         },
       });
 
       const retroBaseScore = calculateKesifScore(baseScore);
 
-      for (const kesifJob of linkedKesifJobs) {
-        for (const score of kesifJob.jobScores) {
-          await tx.jobScore.update({
-            where: {
-              id: score.id,
-            },
-            data: {
-              baseScore: retroBaseScore,
-              finalScore: Number((retroBaseScore * score.roleMultiplier).toFixed(1)),
-            },
-          });
-        }
+      if (linkedKesifJobs.length > 0) {
+        await Promise.all(
+          linkedKesifJobs.flatMap((kesifJob) => [
+            tx.jobScore.updateMany({
+              where: {
+                jobId: kesifJob.id,
+                role: JobRole.SORUMLU,
+              },
+              data: {
+                baseScore: retroBaseScore,
+                finalScore: retroBaseScore,
+              },
+            }),
+            tx.jobScore.updateMany({
+              where: {
+                jobId: kesifJob.id,
+                role: JobRole.DESTEK,
+              },
+              data: {
+                baseScore: retroBaseScore,
+                finalScore: Number((retroBaseScore * 0.4).toFixed(1)),
+              },
+            }),
+          ])
+        );
       }
 
       await tx.evaluationChangeLog.create({
@@ -1391,7 +1556,7 @@ export async function reviewScoreObjectionAction(formData: FormData) {
             userId: recipientId,
             type: "SCORE_UPDATED",
             title: "Puanlama güncellendi",
-            body: `Admin, ${job.id.slice(0, 8)} numarali is icin Form 1 puanlamasini güncelledi.`,
+            body: `Admin, ${job.id.slice(0, 8)} numaralı iş için Form 1 puanlamasını güncelledi.`,
             metadata: {
               jobId: job.id,
               objectionLogId: parsed.data.objectionLogId ?? null,
@@ -1406,11 +1571,11 @@ export async function reviewScoreObjectionAction(formData: FormData) {
     revalidatePath("/");
     revalidatePath("/dashboard");
     revalidatePath("/settings");
-    redirect(`/settings?reviewed=${parsed.data.jobId}`);
+    redirect(buildSettingsReviewUrl({ reviewed: parsed.data.jobId }));
   } catch (error) {
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "score-review-failed";
-    redirect(`/settings?error=${message}`);
+    redirect(buildSettingsReviewUrl({ error: message }));
   }
 }
 
@@ -1439,4 +1604,3 @@ export async function markClientNotificationSent(input: {
 
   return notification;
 }
-

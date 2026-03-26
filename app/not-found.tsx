@@ -9,23 +9,23 @@ export default function AppNotFoundPage() {
           <Compass className="size-6" />
         </div>
         <h1 className="mt-6 text-3xl font-semibold text-marine-navy">
-          Aradiginiz sayfa bulunamadi
+          Aradığınız sayfa bulunamadı
         </h1>
         <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
-          Kayit tasinmis, silinmis veya hatali bir baglanti acilmis olabilir.
+          Kayıt taşınmış, silinmiş veya hatalı bir bağlantı açılmış olabilir.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/"
             className="inline-flex h-12 items-center justify-center rounded-xl bg-marine-navy px-5 text-sm font-medium text-white transition-colors hover:bg-marine-ocean"
           >
-            Dashboarda Don
+            Dashboard&apos;a Dön
           </Link>
           <Link
             href="/jobs"
             className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-medium text-marine-navy transition-colors hover:bg-slate-50"
           >
-            ?? Listesine Git
+            İş Listesine Git
           </Link>
         </div>
       </div>

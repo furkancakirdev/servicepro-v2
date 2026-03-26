@@ -13,71 +13,27 @@ import {
   Trophy,
 } from "lucide-react";
 
-import type { NavigationItem } from "@/types";
+import LogoutButton from "@/components/layout/LogoutButton";
+import { getNavigationForRole } from "@/lib/route-access";
 import { cn } from "@/lib/utils";
+import type { NavigationItem } from "@/types";
 
 function getNavigation(role?: Role): NavigationItem[] {
-  if (role === "TECHNICIAN") {
-    return [
-      {
-        href: "/my-jobs",
-        label: "Bugün",
-        description: "Bugünkü atamalar ve saha akışı",
-        icon: CalendarDays,
-      },
-      {
-        href: "/my-jobs/weekly",
-        label: "Haftam",
-        description: "Pazartesi - Cumartesi ozeti",
-        icon: CalendarRange,
-      },
-      {
-        href: "/jobs",
-        label: "Tüm İşler",
-        description: "Salt okunur genel iş listesi",
-        icon: BriefcaseBusiness,
-      },
-    ];
-  }
+  const iconMap: Record<string, NavigationItem["icon"]> = {
+    "/dashboard": LayoutDashboard,
+    "/jobs": BriefcaseBusiness,
+    "/dispatch": CalendarDays,
+    "/boats": Ship,
+    "/scoreboard": Trophy,
+    "/settings": Settings2,
+    "/my-jobs": CalendarDays,
+    "/my-jobs/weekly": CalendarRange,
+  };
 
-  return [
-    {
-      href: "/dashboard",
-      label: "Ana Ekran",
-      description: "Genel operasyon görünümü",
-      icon: LayoutDashboard,
-    },
-    {
-      href: "/jobs",
-      label: "İş Listesi",
-      description: "İş emirleri ve durum takibi",
-      icon: BriefcaseBusiness,
-    },
-    {
-      href: "/dispatch",
-      label: "İş Dağıtımı",
-      description: "Günlük ve haftalık planlama",
-      icon: CalendarDays,
-    },
-    {
-      href: "/boats",
-      label: "Tekneler",
-      description: "VIP, irtibat ve servis geçmişi",
-      icon: Ship,
-    },
-    {
-      href: "/scoreboard",
-      label: "Puan Tablosu",
-      description: "Aylık liderlik ve rozetler",
-      icon: Trophy,
-    },
-    {
-      href: "/settings",
-      label: "Ayarlar",
-      description: "Rol, kategori ve sistem alanları",
-      icon: Settings2,
-    },
-  ];
+  return getNavigationForRole(role).map((item) => ({
+    ...item,
+    icon: iconMap[item.href] ?? BriefcaseBusiness,
+  }));
 }
 
 function isNavActive(pathname: string, href: string) {
@@ -96,7 +52,7 @@ type SidebarUser = {
 
 const roleLabels: Record<Role, string> = {
   ADMIN: "Admin",
-  COORDINATOR: "Koordinatör",
+  COORDINATOR: "Koordinator",
   TECHNICIAN: "Teknisyen",
   WORKSHOP_CHIEF: "Usta",
 };
@@ -114,12 +70,10 @@ export function SidebarContent({
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-white/10 px-5 py-6">
-        <p className="text-xs uppercase tracking-[0.32em] text-slate-400">
-          Marlin Yachting
-        </p>
+        <p className="text-xs uppercase tracking-[0.32em] text-slate-400">Marlin Yachting</p>
         <h2 className="mt-3 text-2xl font-semibold text-white">ServicePRO</h2>
         <p className="mt-2 max-w-[18rem] text-sm leading-6 text-slate-300">
-          Servis yönetimi, kapanış puanlaması ve liderlik takibini tek yerden yönetin.
+          Servis yonetimi, kapanis puanlamasi ve liderlik takibini tek yerden yonetin.
         </p>
       </div>
 
@@ -167,10 +121,13 @@ export function SidebarContent({
 
       <div className="border-t border-white/10 px-5 py-5 text-xs leading-6 text-slate-400">
         {currentUser ? (
-          <div className="space-y-1">
-            <div className="font-medium text-white">{currentUser.name}</div>
-            <div>{roleLabels[currentUser.role]}</div>
-            {currentUser.isPreview ? <div>Preview modu aktif</div> : null}
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <div className="font-medium text-white">{currentUser.name}</div>
+              <div>{roleLabels[currentUser.role]}</div>
+              {currentUser.isPreview ? <div>Preview modu aktif</div> : null}
+            </div>
+            <LogoutButton className="w-full justify-center bg-white text-marine-navy" />
           </div>
         ) : (
           "ServicePRO navigasyon kabugu"
@@ -187,4 +144,3 @@ export default function Sidebar({ currentUser }: { currentUser?: SidebarUser }) 
     </aside>
   );
 }
-

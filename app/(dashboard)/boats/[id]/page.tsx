@@ -4,7 +4,11 @@ import { Role } from "@prisma/client";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 
-import { createBoatContactAction, updateBoatProfileAction } from "@/app/(dashboard)/boats/actions";
+import {
+  createBoatContactAction,
+  updateBoatProfileAction,
+} from "@/app/(dashboard)/boats/actions";
+import StatusBadge from "@/components/jobs/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,8 +22,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { requireRoles } from "@/lib/auth";
-
-import { prisma } from "@/lib/prisma";
+import {
+  boatContactLanguageOptions,
+  getPrimaryBoatContactLabel,
+} from "@/lib/boat-contacts";
+import { getBoatDetail } from "@/lib/boats";
 
 type BoatDetailPageProps = {
   params: {
@@ -38,37 +45,7 @@ export default async function BoatDetailPage({
 }: BoatDetailPageProps) {
   await requireRoles([Role.ADMIN, Role.COORDINATOR, Role.WORKSHOP_CHIEF]);
 
-  const boat = await prisma.boat.findUnique({
-    where: {
-      id: params.id,
-    },
-    include: {
-      contacts: {
-        orderBy: [
-          {
-            isPrimary: "desc",
-          },
-          {
-            name: "asc",
-          },
-        ],
-      },
-      jobs: {
-        include: {
-          category: true,
-          assignments: {
-            include: {
-              user: true,
-            },
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        take: 12,
-      },
-    },
-  });
+  const boat = await getBoatDetail(params.id);
 
   if (!boat) {
     notFound();
@@ -76,6 +53,8 @@ export default async function BoatDetailPage({
 
   const updated = takeFirstValue(searchParams?.updated) === "1";
   const contactCreated = takeFirstValue(searchParams?.contact) === "1";
+  const errorMessage = takeFirstValue(searchParams?.error);
+  const primaryContact = boat.contacts.find((contact) => contact.isPrimary) ?? null;
 
   return (
     <div className="space-y-6">
@@ -100,10 +79,10 @@ export default async function BoatDetailPage({
                 .join(" · ")}
             </p>
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+          <div className="max-w-sm rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
             <div className="font-medium text-marine-navy">Birincil irtibat</div>
             <div className="mt-2">
-              {boat.contacts.find((contact) => contact.isPrimary)?.name ?? "Secilmedi"}
+              {primaryContact ? getPrimaryBoatContactLabel(primaryContact) : "Seçilmedi"}
             </div>
           </div>
         </div>
@@ -111,13 +90,19 @@ export default async function BoatDetailPage({
 
       {updated ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Tekne profili g?ncellendi.
+          Tekne profili güncellendi.
         </div>
       ) : null}
 
       {contactCreated ? (
         <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-          Yeni irtibat kaydi olu?turuldu.
+          Yeni irtibat kaydı oluşturuldu.
+        </div>
+      ) : null}
+
+      {errorMessage ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          {errorMessage}
         </div>
       ) : null}
 
@@ -127,14 +112,14 @@ export default async function BoatDetailPage({
             <CardHeader>
               <CardTitle className="text-marine-navy">Tekne bilgileri</CardTitle>
               <CardDescription>
-                Ana marina, bayrak, sahip ve operasyon notlarini g?ncelleyin.
+                Ana marina, bayrak, sahip ve operasyon notlarını güncelleyin.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form action={updateBoatProfileAction} className="grid gap-4 md:grid-cols-2">
                 <input type="hidden" name="boatId" value={boat.id} />
                 <div className="space-y-2">
-                  <Label htmlFor="ownerName">Sahip / owner</Label>
+                  <Label htmlFor="ownerName">Sahip</Label>
                   <Input id="ownerName" name="ownerName" defaultValue={boat.ownerName ?? ""} />
                 </div>
                 <div className="space-y-2">
@@ -146,7 +131,7 @@ export default async function BoatDetailPage({
                   <Input id="flag" name="flag" defaultValue={boat.flag ?? ""} />
                 </div>
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="internalNotes">?? notlar</Label>
+                  <Label htmlFor="internalNotes">İç notlar</Label>
                   <Textarea
                     id="internalNotes"
                     name="internalNotes"
@@ -155,7 +140,10 @@ export default async function BoatDetailPage({
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <Button type="submit" className="h-12 bg-marine-navy text-white hover:bg-marine-ocean">
+                  <Button
+                    type="submit"
+                    className="h-12 bg-marine-navy text-white hover:bg-marine-ocean"
+                  >
                     Tekne profilini kaydet
                   </Button>
                 </div>
@@ -165,9 +153,9 @@ export default async function BoatDetailPage({
 
           <Card className="border-white/80 bg-white/95">
             <CardHeader>
-              <CardTitle className="text-marine-navy">Servis gecmisi</CardTitle>
+              <CardTitle className="text-marine-navy">Servis geçmişi</CardTitle>
               <CardDescription>
-                Son 12 is kaydi, kateg?ri ve g?revli ekip listesi.
+                Son 12 iş kaydı, kategori ve görevli ekip listesi.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -184,16 +172,17 @@ export default async function BoatDetailPage({
                           {format(job.createdAt, "dd MMM yyyy", { locale: tr })}
                         </div>
                       </div>
-                      <Badge variant="outline">{job.status}</Badge>
+                      <StatusBadge status={job.status} />
                     </div>
                     <div className="mt-3 text-xs uppercase tracking-[0.12em] text-slate-500">
-                      {job.assignments.map((assignment) => assignment.user.name).join(", ") || "Atama yok"}
+                      {job.assignments.map((assignment) => assignment.user.name).join(", ") ||
+                        "Atama yok"}
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
-                  Bu tekne icin servis kaydi bulunmuyor.
+                  Bu tekne için servis kaydı bulunmuyor.
                 </div>
               )}
             </CardContent>
@@ -205,7 +194,7 @@ export default async function BoatDetailPage({
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-marine-navy">
                 <Users2 className="size-5 text-marine-ocean" />
-                ?rtibat kisileri
+                İrtibat kişileri
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -224,7 +213,7 @@ export default async function BoatDetailPage({
                       </div>
                       {contact.isPrimary ? (
                         <Badge className="bg-marine-navy text-white hover:bg-marine-navy">
-                          Primary
+                          Birincil
                         </Badge>
                       ) : null}
                     </div>
@@ -234,13 +223,13 @@ export default async function BoatDetailPage({
                     </div>
                     <div className="mt-3 flex items-center gap-2 text-xs uppercase tracking-[0.12em] text-slate-500">
                       <MessageCircle className="size-3.5" />
-                      {contact.whatsappOptIn ? "WhatsApp izinli" : "WhatsApp kapali"}
+                      {contact.whatsappOptIn ? "WhatsApp izinli" : "WhatsApp kapalı"}
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-600">
-                  Hen?z irtibat eklenmedi.
+                  Henüz irtibat eklenmedi.
                 </div>
               )}
             </CardContent>
@@ -252,6 +241,9 @@ export default async function BoatDetailPage({
                 <Ship className="size-5 text-marine-ocean" />
                 Yeni irtibat ekle
               </CardTitle>
+              <CardDescription>
+                Telefon alanı E.164 formatında olmalıdır. Örnek: +905550101122
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <form action={createBoatContactAction} className="space-y-4">
@@ -266,7 +258,13 @@ export default async function BoatDetailPage({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Telefon</Label>
-                  <Input id="phone" name="phone" />
+                  <Input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="+905550101122"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">E-posta</Label>
@@ -274,18 +272,41 @@ export default async function BoatDetailPage({
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="language">Dil</Label>
-                  <Input id="language" name="language" defaultValue="TR" />
+                  <select
+                    id="language"
+                    name="language"
+                    defaultValue="TR"
+                    className="h-12 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition-colors focus:border-marine-ocean/40 focus:ring-2 focus:ring-marine-ocean/10"
+                  >
+                    {boatContactLanguageOptions.map((language) => (
+                      <option key={language} value={language}>
+                        {language}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                  <input type="checkbox" name="isPrimary" className="size-4 rounded border-slate-300" />
-                  Birincil iletisim yap
+                  <input
+                    type="checkbox"
+                    name="isPrimary"
+                    className="size-4 rounded border-slate-300"
+                  />
+                  Birincil iletişim yap
                 </label>
                 <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                  <input type="checkbox" name="whatsappOptIn" defaultChecked className="size-4 rounded border-slate-300" />
-                  WhatsApp iletisimi a??k
+                  <input
+                    type="checkbox"
+                    name="whatsappOptIn"
+                    defaultChecked
+                    className="size-4 rounded border-slate-300"
+                  />
+                  WhatsApp iletişimi açık
                 </label>
-                <Button type="submit" className="h-12 w-full bg-marine-navy text-white hover:bg-marine-ocean">
-                  ?rtibat kaydini ekle
+                <Button
+                  type="submit"
+                  className="h-12 w-full bg-marine-navy text-white hover:bg-marine-ocean"
+                >
+                  İrtibat kaydını ekle
                 </Button>
               </form>
             </CardContent>

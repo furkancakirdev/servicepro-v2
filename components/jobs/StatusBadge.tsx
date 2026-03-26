@@ -7,11 +7,11 @@ export const statusConfig: Record<
   { label: string; className: string }
 > = {
   KESIF: {
-    label: "Kesif",
+    label: "Keşif",
     className: "border-slate-200 bg-slate-100 text-slate-700",
   },
   PLANLANDI: {
-    label: "Planlandi",
+    label: "Planlandı",
     className: "border-sky-200 bg-sky-50 text-sky-700",
   },
   DEVAM_EDIYOR: {
@@ -23,11 +23,11 @@ export const statusConfig: Record<
     className: "border-amber-200 bg-amber-50 text-amber-700",
   },
   TAMAMLANDI: {
-    label: "Tamamlandi",
+    label: "Tamamlandı",
     className: "border-emerald-200 bg-emerald-50 text-emerald-700",
   },
   KAPANDI: {
-    label: "Kapand?",
+    label: "Kapandı",
     className: "border-green-300 bg-green-100 text-green-800",
   },
   GARANTI: {
@@ -35,7 +35,7 @@ export const statusConfig: Record<
     className: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
   },
   IPTAL: {
-    label: "Iptal",
+    label: "İptal",
     className: "border-red-200 bg-red-50 text-red-700",
   },
 };

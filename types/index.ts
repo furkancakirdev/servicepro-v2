@@ -62,6 +62,14 @@ export type ServiceJobListItem = Prisma.ServiceJobGetPayload<{
   };
 }>;
 
+export type PaginatedJobsResult = {
+  items: ServiceJobListItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+};
+
 export type ServiceJobDetail = Prisma.ServiceJobGetPayload<{
   include: {
     boat: {
@@ -228,6 +236,7 @@ export type DashboardAlert = {
   tone: "amber" | "sky" | "rose";
   title: string;
   description: string;
+  href?: string;
 };
 
 export type DashboardActivityPoint = {

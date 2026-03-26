@@ -6,6 +6,7 @@ import { Role } from "@prisma/client";
 import { z } from "zod";
 
 import { requireRoles } from "@/lib/auth";
+import { boatContactSchema } from "@/lib/boat-contacts";
 import { prisma } from "@/lib/prisma";
 
 const updateBoatSchema = z.object({
@@ -14,17 +15,6 @@ const updateBoatSchema = z.object({
   homePort: z.string().trim().optional(),
   flag: z.string().trim().optional(),
   internalNotes: z.string().trim().optional(),
-});
-
-const createBoatContactSchema = z.object({
-  boatId: z.string().uuid(),
-  name: z.string().trim().min(2),
-  role: z.string().trim().min(2),
-  phone: z.string().trim().optional(),
-  email: z.string().trim().email().optional().or(z.literal("")),
-  language: z.string().trim().min(2),
-  isPrimary: z.boolean().default(false),
-  whatsappOptIn: z.boolean().default(true),
 });
 
 function optionalString(value: FormDataEntryValue | null) {
@@ -65,16 +55,25 @@ export async function updateBoatProfileAction(formData: FormData) {
 
 export async function createBoatContactAction(formData: FormData) {
   await requireRoles([Role.ADMIN, Role.COORDINATOR]);
-  const parsed = createBoatContactSchema.parse({
+  const rawInput = {
     boatId: formData.get("boatId"),
     name: formData.get("name"),
     role: formData.get("role"),
     phone: optionalString(formData.get("phone")),
-    email: optionalString(formData.get("email")) ?? "",
+    email: optionalString(formData.get("email")),
     language: formData.get("language"),
     isPrimary: parseCheckbox(formData.get("isPrimary")),
     whatsappOptIn: parseCheckbox(formData.get("whatsappOptIn")),
-  });
+  };
+  const parsedResult = boatContactSchema.safeParse(rawInput);
+
+  if (!parsedResult.success) {
+    const firstError = parsedResult.error.issues[0]?.message ?? "invalid-contact";
+    const boatId = String(rawInput.boatId ?? "");
+    redirect(`/boats/${boatId}?error=${encodeURIComponent(firstError)}`);
+  }
+
+  const parsed = parsedResult.data;
 
   await prisma.$transaction(async (tx) => {
     if (parsed.isPrimary) {
@@ -94,8 +93,8 @@ export async function createBoatContactAction(formData: FormData) {
         name: parsed.name,
         role: parsed.role,
         phone: parsed.phone,
-        email: parsed.email || undefined,
-        language: parsed.language.toUpperCase(),
+        email: parsed.email,
+        language: parsed.language,
         isPrimary: parsed.isPrimary,
         whatsappOptIn: parsed.whatsappOptIn,
       },
@@ -104,5 +103,5 @@ export async function createBoatContactAction(formData: FormData) {
 
   revalidatePath("/boats");
   revalidatePath(`/boats/${parsed.boatId}`);
-  redirect(`/boats/${parsed.boatId}icontact=1`);
+  redirect(`/boats/${parsed.boatId}?contact=1`);
 }

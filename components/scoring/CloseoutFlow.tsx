@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useFormState } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -15,6 +14,7 @@ import {
   type CloseJobWithEvaluationActionState,
 } from "@/lib/scoring";
 import { uploadJobPhoto } from "@/lib/storage";
+import { useActionStateCompat } from "@/lib/use-action-state-compat";
 
 type CloseoutFlowProps = {
   jobId: string;
@@ -83,7 +83,7 @@ export default function CloseoutFlow({
   startOpen = false,
 }: CloseoutFlowProps) {
   const router = useRouter();
-  const [actionState, formAction] = useFormState<
+  const [actionState, formAction] = useActionStateCompat<
     CloseJobWithEvaluationActionState,
     FormData
   >(closeJobWithEvaluationAction, initialCloseJobWithEvaluationActionState);

@@ -31,6 +31,22 @@ export type CloseJobWithEvaluationActionState = {
   error: string | null;
   result: JobCloseoutResult | null;
 };
+export type JobScoreWriteAssignment = {
+  userId: string;
+  role: JobRole;
+};
+export type JobScoreWriteRow = {
+  jobId: string;
+  userId: string;
+  role: JobRole;
+  baseScore: number;
+  multiplier: number;
+  roleMultiplier: number;
+  finalScore: number;
+  isKesif: boolean;
+  month: number;
+  year: number;
+};
 
 export const initialCloseJobWithEvaluationActionState: CloseJobWithEvaluationActionState = {
   success: false,
@@ -160,4 +176,33 @@ export function calculateKesifScore(mainJobBaseScore: number) {
   }
 
   return Number((mainJobBaseScore * 0.5).toFixed(1));
+}
+
+export function buildJobScoreWriteRows(params: {
+  jobId: string;
+  assignments: JobScoreWriteAssignment[];
+  baseScore: number;
+  multiplier: number;
+  isKesif: boolean;
+  scoreDate: Date;
+}) {
+  assertFiniteNumber(params.baseScore, "baseScore");
+  assertPositiveNumber(params.multiplier, "multiplier");
+
+  return params.assignments.map((assignment) => {
+    const roleMultiplier = assignment.role === "SORUMLU" ? 1 : 0.4;
+
+    return {
+      jobId: params.jobId,
+      userId: assignment.userId,
+      role: assignment.role,
+      baseScore: params.baseScore,
+      multiplier: params.multiplier,
+      roleMultiplier,
+      finalScore: Number((params.baseScore * params.multiplier * roleMultiplier).toFixed(1)),
+      isKesif: params.isKesif,
+      month: params.scoreDate.getMonth() + 1,
+      year: params.scoreDate.getFullYear(),
+    };
+  });
 }

@@ -22,6 +22,10 @@ const publishDailyPlansSchema = z.object({
   fieldEN: z.string().trim().min(1),
 });
 
+function getDispatchDayEnd(date: Date) {
+  return new Date(date.getTime() + 24 * 60 * 60 * 1000 - 1);
+}
+
 export async function reassignDispatchJob(input: {
   jobId: string;
   technicianId: string;
@@ -40,7 +44,7 @@ export async function reassignDispatchJob(input: {
   });
 
   if (!technician) {
-    throw new Error("Hedef teknisyen bulunamadi.");
+    throw new Error("Hedef teknisyen bulunamadı.");
   }
 
   await prisma.$transaction(async (tx) => {
@@ -60,7 +64,7 @@ export async function reassignDispatchJob(input: {
     });
 
     if (!job) {
-      throw new Error("Tasinaacak is bulunamadi.");
+      throw new Error("Taşınacak iş bulunamadı.");
     }
 
     const responsibleAssignment = job.assignments.find(
@@ -104,6 +108,7 @@ export async function publishDailyPlans(input: {
   const actor = await requireRoles([Role.ADMIN, Role.COORDINATOR, Role.WORKSHOP_CHIEF]);
   const parsed = publishDailyPlansSchema.parse(input);
   const date = startOfDay(new Date(parsed.dateIso));
+  const dayEnd = getDispatchDayEnd(date);
 
   await prisma.$transaction(async (tx) => {
     await Promise.all([
@@ -179,10 +184,29 @@ export async function publishDailyPlans(input: {
   const assignedTechnicians = await prisma.jobAssignment.findMany({
     where: {
       job: {
-        createdAt: {
-          gte: date,
-          lte: new Date(date.getTime() + 24 * 60 * 60 * 1000 - 1),
-        },
+        OR: [
+          {
+            dispatchDate: {
+              gte: date,
+              lte: dayEnd,
+            },
+          },
+          {
+            dispatchDate: null,
+            plannedStartAt: {
+              gte: date,
+              lte: dayEnd,
+            },
+          },
+          {
+            dispatchDate: null,
+            plannedStartAt: null,
+            createdAt: {
+              gte: date,
+              lte: dayEnd,
+            },
+          },
+        ],
       },
     },
     select: {
@@ -193,7 +217,7 @@ export async function publishDailyPlans(input: {
   await createPlanPublishedNotifications({
     userIds: [...new Set(assignedTechnicians.map((assignment) => assignment.userId))],
     date,
-    location: "Gunluk dispatch",
+    location: "Günlük dispatch",
   });
 
   revalidatePath("/dispatch");

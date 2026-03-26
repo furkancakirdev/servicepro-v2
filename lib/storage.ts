@@ -1,7 +1,5 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
-
 function assertJobId(jobId: unknown) {
   if (typeof jobId !== "string") {
     throw new TypeError("jobId must be a string.");
@@ -37,40 +35,47 @@ export async function uploadJobPhoto(
   assertFile(file);
   assertPhotoType(photoType);
 
-  const supabase = createClient();
-  const ext = file.name.split(".").pop();
-  const fileName = `${jobId}/${photoType}-${Date.now()}.${ext}`;
+  const formData = new FormData();
+  formData.append("jobId", jobId);
+  formData.append("photoType", photoType);
+  formData.append("file", file);
 
-  const { data, error } = await supabase.storage.from("job-photos").upload(fileName, file, {
-    cacheControl: "3600",
-    upsert: false,
+  const response = await fetch("/api/storage/upload", {
+    method: "POST",
+    body: formData,
   });
 
-  if (error) {
-    throw new Error(`Fotoğraf yüklenemedi: ${error.message}`);
+  if (!response.ok) {
+    let message = "Fotoğraf yüklenemedi.";
+
+    try {
+      const payload = (await response.json()) as { error?: string };
+      if (payload.error) {
+        message = `Fotoğraf yüklenemedi: ${payload.error}`;
+      }
+    } catch {
+      // ignore malformed error payloads
+    }
+
+    throw new Error(message);
   }
 
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from("job-photos").getPublicUrl(data.path);
-
-  return publicUrl;
+  const payload = (await response.json()) as { publicUrl: string };
+  return payload.publicUrl;
 }
 
 export async function getJobPhotos(jobId: string): Promise<string[]> {
   assertJobId(jobId);
 
-  const supabase = createClient();
-  const { data, error } = await supabase.storage.from("job-photos").list(jobId);
+  const response = await fetch(`/api/storage/list?jobId=${encodeURIComponent(jobId)}`, {
+    method: "GET",
+    cache: "no-store",
+  });
 
-  if (error || !data) {
+  if (!response.ok) {
     return [];
   }
 
-  return data.map((file) => {
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("job-photos").getPublicUrl(`${jobId}/${file.name}`);
-    return publicUrl;
-  });
+  const payload = (await response.json()) as { urls?: string[] };
+  return payload.urls ?? [];
 }

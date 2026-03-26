@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useFormStatus } from "react-dom";
 import { Check, ShieldCheck, UsersRound, Wrench } from "lucide-react";
 
 import { createJobAction } from "@/app/(dashboard)/jobs/actions";
@@ -21,6 +21,7 @@ import {
   initialCreateJobFormState,
   type JobFormMeta,
 } from "@/lib/jobs";
+import { useActionStateCompat } from "@/lib/use-action-state-compat";
 import { cn } from "@/lib/utils";
 
 type JobFormProps = {
@@ -37,13 +38,13 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
       disabled={disabled || pending}
       className="h-12 w-full bg-marine-navy text-white hover:bg-marine-ocean"
     >
-      {pending ? "Kaydediliyor..." : "??i kaydet"}
+      {pending ? "Kaydediliyor..." : "İşi kaydet"}
     </Button>
   );
 }
 
 export default function JobForm({ meta }: JobFormProps) {
-  const [state, formAction] = useFormState(createJobAction, initialCreateJobFormState);
+  const [state, formAction] = useActionStateCompat(createJobAction, initialCreateJobFormState);
   const [boatNameInput, setBoatNameInput] = useState("");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [selectedResponsibleId, setSelectedResponsibleId] = useState("");
@@ -140,7 +141,7 @@ export default function JobForm({ meta }: JobFormProps) {
           <div className="font-medium">{technician.name}</div>
           <div className="text-sm">
             {disabled
-              ? "Sorumlu secildigi icin destekte kullanilamaz"
+              ? "Sorumlu seçildiği için destekte kullanılamaz"
               : recommendationLabel ?? "Destek personeli"}
           </div>
         </div>
@@ -176,12 +177,12 @@ export default function JobForm({ meta }: JobFormProps) {
           <CardHeader>
             <CardTitle className="text-marine-navy">1. Tekne bilgileri</CardTitle>
             <CardDescription>
-              Tekne, lokasyon ve irtibat bilgilerini ekleyip saha kaydini ba?latin.
+              Tekne, lokasyon ve irtibat bilgilerini ekleyip saha kaydını başlatın.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="boatName">Tekne adi</Label>
+              <Label htmlFor="boatName">Tekne adı</Label>
               <Input
                 id="boatName"
                 name="boatName"
@@ -204,7 +205,7 @@ export default function JobForm({ meta }: JobFormProps) {
               ) : null}
               {matchedBoat?.continuitySuggestions.length ? (
                 <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 px-4 py-3 text-sm text-slate-700">
-                  <div className="font-medium text-marine-navy">Sureklilik onerisi</div>
+                  <div className="font-medium text-marine-navy">Süreklilik önerisi</div>
                   <div className="mt-1">
                     {matchedBoat.continuitySuggestions
                       .slice(0, 3)
@@ -250,7 +251,7 @@ export default function JobForm({ meta }: JobFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contactName">?rtibat kisisi</Label>
+              <Label htmlFor="contactName">İrtibat kişisi</Label>
               <Input
                 id="contactName"
                 name="contactName"
@@ -268,15 +269,67 @@ export default function JobForm({ meta }: JobFormProps) {
                 placeholder="+90 555 010 11 22"
               />
             </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 px-4 py-3 text-sm text-slate-700">
+                Planlama kurali: planlanan baslangic zorunlu, planlanan bitis veya SLA suresi
+                alanlarindan biri doldurulmalidir.
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="plannedStartAt">Planlanan baslangic</Label>
+              <Input
+                id="plannedStartAt"
+                name="plannedStartAt"
+                type="datetime-local"
+                className="h-12"
+                aria-invalid={Boolean(state.fieldErrors.plannedStartAt)}
+              />
+              {state.fieldErrors.plannedStartAt ? (
+                <p className="text-sm text-red-600">{state.fieldErrors.plannedStartAt}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="plannedEndAt">Planlanan bitis</Label>
+              <Input
+                id="plannedEndAt"
+                name="plannedEndAt"
+                type="datetime-local"
+                className="h-12"
+                aria-invalid={Boolean(state.fieldErrors.plannedEndAt)}
+              />
+              {state.fieldErrors.plannedEndAt ? (
+                <p className="text-sm text-red-600">{state.fieldErrors.plannedEndAt}</p>
+              ) : null}
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="slaHours">SLA suresi (saat)</Label>
+              <Input
+                id="slaHours"
+                name="slaHours"
+                type="number"
+                min={1}
+                step={1}
+                className="h-12"
+                placeholder="Ornek: 6"
+                aria-invalid={Boolean(state.fieldErrors.slaHours)}
+              />
+              {state.fieldErrors.slaHours ? (
+                <p className="text-sm text-red-600">{state.fieldErrors.slaHours}</p>
+              ) : null}
+            </div>
           </CardContent>
         </Card>
 
         <Card className="border-white/80 bg-white/95">
           <CardHeader>
-            <CardTitle className="text-marine-navy">2. Kateg?ri ve kapsam</CardTitle>
+            <CardTitle className="text-marine-navy">2. Kategori ve kapsam</CardTitle>
             <CardDescription>
-              Zorluk katsayisi kateg?ri secimiyle otomatik gelir ve puanlamada aynen
-              kullanilir.
+              Zorluk katsayısı kategori seçimiyle otomatik gelir ve puanlamada aynen
+              kullanılır.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -308,7 +361,7 @@ export default function JobForm({ meta }: JobFormProps) {
                         selected ? "text-white/80" : "text-marine-ocean"
                       )}
                     >
-                      {category.brandHints ?? "Genel kateg?ri"}
+                      {category.brandHints ?? "Genel kategori"}
                     </div>
                     <div className="mt-2 text-base font-semibold">{category.name}</div>
                     <div
@@ -341,7 +394,7 @@ export default function JobForm({ meta }: JobFormProps) {
                 id="description"
                 name="description"
                 className="min-h-[144px]"
-                placeholder="Ariza semptomlarini, is kapsamindaki notlari ve teknisyenin sahada bilmesi gereken detaylari yazin..."
+                placeholder="Arıza semptomlarını, iş kapsamındaki notları ve teknisyenin sahada bilmesi gereken detayları yazın..."
                 aria-invalid={Boolean(state.fieldErrors.description)}
               />
               {state.fieldErrors.description ? (
@@ -350,7 +403,7 @@ export default function JobForm({ meta }: JobFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">?? notlar</Label>
+              <Label htmlFor="notes">İş notları</Label>
               <Textarea
                 id="notes"
                 name="notes"
@@ -369,11 +422,11 @@ export default function JobForm({ meta }: JobFormProps) {
                 <div>
                   <div className="flex items-center gap-2 font-medium text-marine-navy">
                     <ShieldCheck className="size-4 text-marine-ocean" />
-                    Garanti isi
+                    Garanti işi
                   </div>
                   <p className="mt-1 text-sm text-slate-600">
-                    ?? kaydi garanti kapsamindaysa puanlama ve takip akisi buna g?re
-                    ayrilir.
+                    İş kaydı garanti kapsamındaysa puanlama ve takip akışı buna göre
+                    ayrılır.
                   </p>
                 </div>
               </label>
@@ -387,14 +440,14 @@ export default function JobForm({ meta }: JobFormProps) {
                 <div>
                   <div className="flex items-center gap-2 font-medium text-marine-navy">
                     <Wrench className="size-4 text-marine-ocean" />
-                    Kesif kaydi olarak ac
+                    Keşif kaydı olarak aç
                   </div>
                   <p className="mt-1 text-sm text-slate-600">
-                    Ilk ziyaret sadece tespit amacliysa durum otomatik olarak
+                    İlk ziyaret sadece tespit amaçlıysa durum otomatik olarak
                     {" "}
-                    &quot;Kesif&quot;
+                    &quot;Keşif&quot;
                     {" "}
-                    acilir.
+                    açılır.
                   </p>
                 </div>
               </label>
@@ -411,7 +464,7 @@ export default function JobForm({ meta }: JobFormProps) {
               3. Personel atama
             </CardTitle>
             <CardDescription>
-              Sorumlu teknisyen ve destek ekibini aynı kayit ekranindan belirleyin.
+              Sorumlu teknisyen ve destek ekibini aynı kayıt ekranından belirleyin.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -420,7 +473,7 @@ export default function JobForm({ meta }: JobFormProps) {
               {recommendedTechnicians.length > 0 ? (
                 <div className="space-y-3">
                   <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                    Bu tekne icin son 90 gunde en sik g?revlendirilen teknisyenler once gosteriliyor.
+                    Bu tekne için son 90 günde en sık görevlendirilen teknisyenler önce gösteriliyor.
                   </div>
                   <div className="grid gap-3">
                     {recommendedTechnicians.map((technician) =>
@@ -428,7 +481,7 @@ export default function JobForm({ meta }: JobFormProps) {
                         technician,
                         matchedBoat?.continuitySuggestions.find(
                           (suggestion) => suggestion.userId === technician.id
-                        )?.label ?? "Onerilen teknisyen"
+                        )?.label ?? "Önerilen teknisyen"
                       )
                     )}
                   </div>
@@ -451,7 +504,7 @@ export default function JobForm({ meta }: JobFormProps) {
                       technician,
                       matchedBoat?.continuitySuggestions.find(
                         (suggestion) => suggestion.userId === technician.id
-                      )?.label ?? "Onerilen destek"
+                      )?.label ?? "Önerilen destek"
                     )
                   )}
                 </div>
@@ -469,15 +522,15 @@ export default function JobForm({ meta }: JobFormProps) {
 
             {!canSubmit ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                Kateg?ri veya teknisyen kaydi olmadigi icin yeni is acilamiyor.
+                Kategori veya teknisyen kaydı olmadığı için yeni iş açılamıyor.
               </div>
             ) : null}
 
             <SubmitButton disabled={!canSubmit} />
 
             <p className="text-sm leading-6 text-slate-600">
-              Kayit olu?tuktan sonra detay sayfasindan durum gecisleri, bekletme
-              nedenleri ve aynı tekne icin a??k is uyarilari yonetilir.
+              Kayıt oluştuktan sonra detay sayfasından durum geçişleri, bekletme
+              nedenleri ve aynı tekne için açık iş uyarıları yönetilir.
             </p>
           </CardContent>
         </Card>
@@ -485,4 +538,3 @@ export default function JobForm({ meta }: JobFormProps) {
     </form>
   );
 }
-

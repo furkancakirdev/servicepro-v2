@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Crown, Ship, Users2 } from "lucide-react";
-import { JobStatus, Role } from "@prisma/client";
+import { Role } from "@prisma/client";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,44 +11,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { requireRoles } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { getBoatDirectory } from "@/lib/boats";
 
 export default async function BoatsPage() {
   await requireRoles([Role.ADMIN, Role.COORDINATOR, Role.WORKSHOP_CHIEF]);
 
-  const boats = await prisma.boat.findMany({
-    include: {
-      contacts: true,
-      jobs: {
-        where: {
-          status: {
-            in: [JobStatus.TAMAMLANDI, JobStatus.KAPANDI],
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        take: 1,
-        select: {
-          createdAt: true,
-        },
-      },
-      _count: {
-        select: {
-          jobs: true,
-          contacts: true,
-        },
-      },
-    },
-    orderBy: [
-      {
-        isVip: "desc",
-      },
-      {
-        name: "asc",
-      },
-    ],
-  });
+  const boats = await getBoatDirectory();
 
   return (
     <div className="space-y-6">
@@ -86,7 +54,9 @@ export default async function BoatsPage() {
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
                   <Users2 className="mb-2 size-4 text-marine-ocean" />
-                  <div className="font-medium text-marine-navy">{boat._count.contacts} irtibat</div>
+                  <div className="font-medium text-marine-navy">
+                    {boat._count.contacts} irtibat
+                  </div>
                   <div className="mt-1">{boat.visitCount} ziyaret</div>
                 </div>
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
@@ -94,9 +64,9 @@ export default async function BoatsPage() {
                   <div className="mt-2">
                     {boat.jobs[0]?.createdAt
                       ? new Date(boat.jobs[0].createdAt).toLocaleDateString("tr-TR")
-                      : "Kayit yok"}
+                      : "Kayıt yok"}
                   </div>
-                  <div className="mt-1">{boat._count.jobs} toplam is</div>
+                  <div className="mt-1">{boat._count.jobs} toplam iş</div>
                 </div>
               </CardContent>
             </Card>

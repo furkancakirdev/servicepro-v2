@@ -1,6 +1,8 @@
+import { JobRole } from "@prisma/client";
 import { describe, expect, it } from "vitest";
 
 import {
+  buildJobScoreWriteRows,
   calculateJobScore,
   calculateKesifScore,
   calculateMonthlyTotal,
@@ -292,5 +294,48 @@ describe("calculateKesifScore", () => {
 
     // Assert
     expect(execution).toThrow("mainJobBaseScore must be 0 or greater.");
+  });
+});
+
+describe("buildJobScoreWriteRows", () => {
+  it("builds batched score rows for responsible and support technicians", () => {
+    const result = buildJobScoreWriteRows({
+      jobId: "job-1",
+      assignments: [
+        { userId: "tech-1", role: JobRole.SORUMLU },
+        { userId: "tech-2", role: JobRole.DESTEK },
+      ],
+      baseScore: 84,
+      multiplier: 2.5,
+      isKesif: false,
+      scoreDate: new Date("2026-03-26T10:00:00.000Z"),
+    });
+
+    expect(result).toEqual([
+      {
+        jobId: "job-1",
+        userId: "tech-1",
+        role: JobRole.SORUMLU,
+        baseScore: 84,
+        multiplier: 2.5,
+        roleMultiplier: 1,
+        finalScore: 210,
+        isKesif: false,
+        month: 3,
+        year: 2026,
+      },
+      {
+        jobId: "job-1",
+        userId: "tech-2",
+        role: JobRole.DESTEK,
+        baseScore: 84,
+        multiplier: 2.5,
+        roleMultiplier: 0.4,
+        finalScore: 84,
+        isKesif: false,
+        month: 3,
+        year: 2026,
+      },
+    ]);
   });
 });

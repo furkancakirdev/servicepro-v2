@@ -23,14 +23,15 @@ export default function MonthlyBadgeCalculator({
       try {
         const result = await calculateMonthlyBadgesAction(month, year);
         const winners = result.map((entry) => entry.winner).join(", ");
+
         toast.success(
           winners
-            ? `Rozetler hesapland?: ${winners}`
-            : "Rozet hesab? tamamland?, bu d?nem i?in kazanan ??kmad?."
+            ? `Rozetler hesaplandı: ${winners}`
+            : "Rozet hesabı tamamlandı, bu dönem için kazanan çıkmadı."
         );
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : "Rozet hesaplan?rken bir hata olu?tu."
+          error instanceof Error ? error.message : "Rozet hesaplanırken bir hata oluştu."
         );
       }
     });
@@ -61,7 +62,7 @@ export default function MonthlyBadgeCalculator({
             htmlFor="badge-year"
             className="mb-2 block text-sm font-medium text-marine-navy"
           >
-            Y?l
+            Yıl
           </label>
           <input
             id="badge-year"
@@ -81,7 +82,7 @@ export default function MonthlyBadgeCalculator({
         disabled={isPending}
         className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-marine-navy px-4 text-sm font-medium text-white transition-colors hover:bg-marine-ocean disabled:cursor-not-allowed disabled:opacity-70"
       >
-        {isPending ? "Rozetler hesaplan?yor..." : "Rozetleri Hesapla"}
+        {isPending ? "Rozetler hesaplanıyor..." : "Rozetleri Hesapla"}
       </button>
     </div>
   );

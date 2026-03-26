@@ -18,7 +18,7 @@ export default async function NewJobPage() {
       <div className="flex flex-col gap-4 rounded-[28px] border border-white/70 bg-white px-5 py-5 shadow-panel sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
-            Yeni Kayit
+            Yeni Kayıt
           </p>
           <h1 className="mt-2 text-2xl font-semibold text-marine-navy">Yeni İş Oluştur</h1>
         </div>
@@ -32,4 +32,3 @@ export default async function NewJobPage() {
     </div>
   );
 }
-

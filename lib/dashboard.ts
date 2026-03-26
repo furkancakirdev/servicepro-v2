@@ -2,8 +2,9 @@ import "server-only";
 
 import { endOfMonth, format, startOfDay, startOfMonth, subDays } from "date-fns";
 import { tr } from "date-fns/locale";
-import { EvaluatorType, JobStatus, Role } from "@prisma/client";
+import { JobStatus, Role } from "@prisma/client";
 
+import { activeOperationalStatuses, getJobOperationalReference } from "@/lib/jobs";
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { getMonthlyScoreboard, resolveScoreboardPeriod } from "@/lib/scoreboard";
 import type { CurrentAppUser } from "@/lib/auth";
@@ -12,14 +13,7 @@ import type {
   DashboardAlert,
   DashboardAssignedJobGroup,
   DashboardData,
-  NotificationCenterData,
 } from "@/types";
-
-const activeJobStatuses: JobStatus[] = [
-  JobStatus.PLANLANDI,
-  JobStatus.DEVAM_EDIYOR,
-  JobStatus.BEKLEMEDE,
-];
 
 function getEmptyDashboardData(): DashboardData {
   const now = new Date();
@@ -79,15 +73,16 @@ function groupAssignedJobs(
   >();
 
   const sortedJobs = [...jobs].sort((left, right) => {
-    const leftDate = left.startedAt ?? left.createdAt;
-    const rightDate = right.startedAt ?? right.createdAt;
+    const leftDate = getJobOperationalReference(left);
+    const rightDate = getJobOperationalReference(right);
 
     return leftDate.getTime() - rightDate.getTime();
   });
 
   for (const job of sortedJobs) {
     const location = job.location?.trim() || "Lokasyon bekleniyor";
-    const sortDate = (job.startedAt ?? job.createdAt).toISOString();
+    const operationalReference = getJobOperationalReference(job);
+    const sortDate = operationalReference.toISOString();
     const items = grouped.get(location) ?? [];
 
     items.push({
@@ -96,7 +91,7 @@ function groupAssignedJobs(
       categoryName: job.category.name,
       status: job.status,
       location,
-      timeLabel: formatJobTimeLabel(job.startedAt ?? job.createdAt),
+      timeLabel: formatJobTimeLabel(operationalReference),
       sortDate,
     });
 
@@ -109,262 +104,6 @@ function groupAssignedJobs(
       jobs: locationJobs,
     }))
     .sort((left, right) => left.location.localeCompare(right.location, "tr"));
-}
-
-async function syncOperationalNotifications() {
-  if (!isDatabaseConfigured()) {
-    return;
-  }
-
-  const now = new Date();
-  const todayStart = startOfDay(now);
-  const { month, year, label } = resolveScoreboardPeriod();
-  const monthStart = startOfMonth(now);
-
-  const [
-    adminUsers,
-    coordinatorUsers,
-    workshopUsers,
-    overdueHoldJobs,
-    todayHoldNotifications,
-    monthEvalNotifications,
-    technicianCount,
-    workshopCount,
-    coordinatorCount,
-  ] = await Promise.all([
-    prisma.user.findMany({
-      where: { role: Role.ADMIN },
-      select: { id: true },
-    }),
-    prisma.user.findMany({
-      where: { role: Role.COORDINATOR },
-      select: { id: true },
-    }),
-    prisma.user.findMany({
-      where: { role: Role.WORKSHOP_CHIEF },
-      select: { id: true },
-    }),
-    prisma.serviceJob.findMany({
-      where: {
-        status: JobStatus.BEKLEMEDE,
-        holdUntil: {
-          lt: now,
-        },
-      },
-      select: {
-        id: true,
-        boat: {
-          select: {
-            name: true,
-          },
-        },
-        category: {
-          select: {
-            name: true,
-          },
-        },
-      },
-    }),
-    prisma.notification.findMany({
-      where: {
-        type: "HOLD_REMINDER",
-        createdAt: {
-          gte: todayStart,
-        },
-      },
-      select: {
-        userId: true,
-        metadata: true,
-      },
-    }),
-    prisma.notification.findMany({
-      where: {
-        type: {
-          in: ["MISSING_WORKSHOP_EVAL", "MISSING_COORDINATOR_EVAL"],
-        },
-        createdAt: {
-          gte: monthStart,
-        },
-      },
-      select: {
-        userId: true,
-        type: true,
-        metadata: true,
-      },
-    }),
-    prisma.user.count({
-      where: {
-        role: Role.TECHNICIAN,
-      },
-    }),
-    prisma.monthlyEvaluation.count({
-      where: {
-        month,
-        year,
-        evaluatorType: EvaluatorType.WORKSHOP_CHIEF,
-      },
-    }),
-    prisma.monthlyEvaluation.count({
-      where: {
-        month,
-        year,
-        evaluatorType: EvaluatorType.TECHNICAL_COORDINATOR,
-      },
-    }),
-  ]);
-
-  const existingHoldKeys = new Set(
-    todayHoldNotifications
-      .map((notification) => {
-        const metadata = notification.metadata as { jobId?: string } | null;
-        return metadata?.jobId ? `${notification.userId}:${metadata.jobId}` : null;
-      })
-      .filter(Boolean) as string[]
-  );
-
-  const overdueRecipients = [...adminUsers, ...coordinatorUsers];
-  const holdNotificationsToCreate = overdueHoldJobs.flatMap((job) =>
-    overdueRecipients
-      .filter((recipient) => !existingHoldKeys.has(`${recipient.id}:${job.id}`))
-      .map((recipient) => ({
-        userId: recipient.id,
-        type: "HOLD_REMINDER",
-        title: "Beklemedeki is hatırlatmasi",
-        body: `${job.boat.name} - ${job.category.name} isi icin bekleme suresi doldu.`,
-        metadata: {
-          jobId: job.id,
-          createdForDate: format(now, "yyyy-MM-dd"),
-        },
-      }))
-  );
-
-  const missingWorkshopCount = Math.max(technicianCount - workshopCount, 0);
-  const missingCoordinatorCount = Math.max(technicianCount - coordinatorCount, 0);
-  const shouldSendMonthlyReminder = now.getDate() >= 25;
-
-  const existingMonthlyKeys = new Set(
-    monthEvalNotifications
-      .map((notification) => {
-        const metadata = notification.metadata as { month?: number; year?: number } | null;
-
-        if (!metadata?.month || !metadata?.year) {
-          return null;
-        }
-
-        return `${notification.userId}:${notification.type}:${metadata.year}-${metadata.month}`;
-      })
-      .filter(Boolean) as string[]
-  );
-
-  const workshopReminderRecipients = [...workshopUsers, ...adminUsers];
-  const coordinatorReminderRecipients = [...coordinatorUsers, ...adminUsers];
-  const evalNotificationsToCreate = [
-    ...(shouldSendMonthlyReminder && missingWorkshopCount > 0
-      ? workshopReminderRecipients
-          .filter(
-            (recipient) =>
-              !existingMonthlyKeys.has(
-                `${recipient.id}:MISSING_WORKSHOP_EVAL:${year}-${month}`
-              )
-          )
-          .map((recipient) => ({
-            userId: recipient.id,
-            type: "MISSING_WORKSHOP_EVAL",
-            title: "Aylık usta değerlendirmesi bekleniyor",
-            body: `${label} icin ${missingWorkshopCount} teknisyenin Form 2 değerlendirmesi eksik.`,
-            metadata: {
-              month,
-              year,
-            },
-          }))
-      : []),
-    ...(shouldSendMonthlyReminder && missingCoordinatorCount > 0
-      ? coordinatorReminderRecipients
-          .filter(
-            (recipient) =>
-              !existingMonthlyKeys.has(
-                `${recipient.id}:MISSING_COORDINATOR_EVAL:${year}-${month}`
-              )
-          )
-          .map((recipient) => ({
-            userId: recipient.id,
-            type: "MISSING_COORDINATOR_EVAL",
-            title: "Aylık koordinatör değerlendirmesi bekleniyor",
-            body: `${label} icin ${missingCoordinatorCount} teknisyenin Form 3 değerlendirmesi eksik.`,
-            metadata: {
-              month,
-              year,
-            },
-          }))
-      : []),
-  ];
-
-  const notificationsToCreate = [
-    ...holdNotificationsToCreate,
-    ...evalNotificationsToCreate,
-  ];
-
-  if (notificationsToCreate.length > 0) {
-    await prisma.notification.createMany({
-      data: notificationsToCreate,
-    });
-  }
-}
-
-export async function getNotificationCenterData(
-  userId: string
-): Promise<NotificationCenterData> {
-  if (!isDatabaseConfigured()) {
-    return {
-      unreadCount: 0,
-      items: [],
-    };
-  }
-
-  await syncOperationalNotifications();
-
-  const [unreadCount, items] = await Promise.all([
-    prisma.notification.count({
-      where: {
-        userId,
-        isRead: false,
-      },
-    }),
-    prisma.notification.findMany({
-      where: {
-        userId,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 8,
-      select: {
-        id: true,
-        type: true,
-        title: true,
-        body: true,
-        isRead: true,
-        createdAt: true,
-        metadata: true,
-      },
-    }),
-  ]);
-
-  return {
-    unreadCount,
-    items: items.map((item) => ({
-      id: item.id,
-      type: item.type,
-      title: item.title,
-      body: item.body,
-      isRead: item.isRead,
-      createdAt: item.createdAt.toISOString(),
-      metadata:
-        item.metadata && typeof item.metadata === "object"
-          ? (item.metadata as Record<string, unknown>)
-          : null,
-    })),
-  };
 }
 
 export async function getDashboardData(
@@ -402,7 +141,7 @@ export async function getDashboardData(
     prisma.serviceJob.count({
       where: {
         status: {
-          in: activeJobStatuses,
+          in: activeOperationalStatuses,
         },
       },
     }),
@@ -417,12 +156,21 @@ export async function getDashboardData(
     prisma.serviceJob.count({
       where: {
         status: JobStatus.TAMAMLANDI,
+        deliveryReport: {
+          is: null,
+        },
+        evaluation: {
+          is: null,
+        },
+        jobScores: {
+          none: {},
+        },
       },
     }),
     prisma.serviceJob.findMany({
       where: {
         status: {
-          in: activeJobStatuses,
+          in: activeOperationalStatuses,
         },
         ...assignedJobWhere,
       },
@@ -508,9 +256,10 @@ export async function getDashboardData(
     alerts.push({
       id: "pending-scoring",
       tone: "amber",
-      title: `${pendingScoringCount} is puanlanmayi bekliyor`,
+      title: `${pendingScoringCount} iş puanlanmayı bekliyor`,
       description:
-        "Tamamlandi durumundaki isler teslim raporu ve Form 1 sonrasinda kapanmayi bekliyor.",
+        "Tamamlandı durumundaki işler teslim raporu ve Form 1 sonrasında kapanmayı bekliyor.",
+      href: "/jobs?status=TAMAMLANDI&pendingScoring=1",
     });
   }
 
@@ -520,6 +269,7 @@ export async function getDashboardData(
       tone: "sky",
       title: "Aylık değerlendirme eksikleri var",
       description: `${missingWorkshopCount} usta ve ${missingCoordinatorCount} koordinatör değerlendirmesi bekleniyor.`,
+      href: "/scoreboard",
     });
   }
 
@@ -540,8 +290,9 @@ export async function getDashboardData(
     alerts.push({
       id: "overdue-hold",
       tone: "rose",
-      title: `${overdueHoldJobs.length} is beklemede`,
-      description: `En eski bekleme kaydi ${maxOverdueDays} gun gecikmis durumda.`,
+      title: `${overdueHoldJobs.length} iş beklemede`,
+      description: `En eski bekleme kaydı ${maxOverdueDays} gün gecikmiş durumda.`,
+      href: "/jobs?status=BEKLEMEDE",
     });
   }
 
@@ -606,4 +357,3 @@ export async function getDashboardData(
     missingCoordinatorCount,
   };
 }
-

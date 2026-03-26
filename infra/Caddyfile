@@ -1,0 +1,17 @@
+{
+  email admin@marlin.com
+}
+
+(app_proxy) {
+  encode zstd gzip
+  reverse_proxy app:3000
+}
+
+{$APP_DOMAIN} {
+  import app_proxy
+}
+
+:443 {
+  tls internal
+  import app_proxy
+}

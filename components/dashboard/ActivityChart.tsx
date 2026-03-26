@@ -16,6 +16,18 @@ type ActivityChartProps = {
 };
 
 export default function ActivityChart({ data }: ActivityChartProps) {
+  const hasMeaningfulData = data.some(
+    (item) => item.created > 0 || item.completed > 0 || item.closed > 0
+  );
+
+  if (!hasMeaningfulData) {
+    return (
+      <div className="flex h-72 items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 text-center text-sm text-slate-600">
+        Son 30 gün için gösterilecek aktivite verisi henüz oluşmadı.
+      </div>
+    );
+  }
+
   return (
     <div className="h-72 w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -67,4 +79,3 @@ export default function ActivityChart({ data }: ActivityChartProps) {
     </div>
   );
 }
-

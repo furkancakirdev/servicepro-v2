@@ -4,11 +4,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
 
-import { prisma, isDatabaseConfigured } from "@/lib/prisma";
-import {
-  createServerSupabaseClient,
-  isSupabaseConfigured,
-} from "@/lib/supabase/server";
+import { auth } from "@/lib/next-auth";
 
 export type CurrentAppUser = {
   id: string;
@@ -19,59 +15,24 @@ export type CurrentAppUser = {
   isPreview: boolean;
 };
 
-const previewUser: CurrentAppUser = {
-  id: "preview-admin",
-  email: "admin@marlin.com",
-  name: "ServicePRO Preview",
-  role: Role.ADMIN,
-  avatarUrl: null,
-  isPreview: true,
-};
-
 export const getCurrentAppUser = cache(async (): Promise<CurrentAppUser | null> => {
-  if (!isSupabaseConfigured() || !isDatabaseConfigured()) {
-    if (process.env.NODE_ENV === "production") {
-      console.error(
-        "[AUTH] FATAL: Supabase/DB env vars missing in production. Blocking access."
-      );
-      return null;
-    }
+  const session = await auth();
 
-    return previewUser;
-  }
-
-  const supabase = createServerSupabaseClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
-  if (!authUser?.email) {
-    return null;
-  }
-
-  const appUser = await prisma.user.findUnique({
-    where: { email: authUser.email },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      role: true,
-      avatarUrl: true,
-    },
-  });
-
-  if (!appUser) {
+  if (!session?.user?.email || !session.user.id || !session.user.role) {
     return null;
   }
 
   return {
-    ...appUser,
-    avatarUrl: appUser.avatarUrl ?? null,
+    id: session.user.id,
+    email: session.user.email,
+    name: session.user.name ?? "",
+    role: session.user.role,
+    avatarUrl: session.user.avatarUrl ?? null,
     isPreview: false,
   };
 });
 
-export async function requireAppUser() {
+export async function requireAppUser(): Promise<CurrentAppUser> {
   const user = await getCurrentAppUser();
 
   if (!user) {
@@ -81,7 +42,7 @@ export async function requireAppUser() {
   return user;
 }
 
-export async function requireRoles(roles: Role[]) {
+export async function requireRoles(roles: Role[]): Promise<CurrentAppUser> {
   const user = await requireAppUser();
 
   if (!roles.includes(user.role)) {

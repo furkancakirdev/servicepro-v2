@@ -1,11 +1,9 @@
-import "server-only";
-
 import {
   addDays,
-  addMinutes,
   endOfDay,
   format,
   isSameDay,
+  parseISO,
   startOfDay,
   startOfWeek,
 } from "date-fns";
@@ -14,10 +12,7 @@ import { JobRole, JobStatus, Role } from "@prisma/client";
 
 import { openStatuses } from "@/lib/jobs";
 import { prisma } from "@/lib/prisma";
-import {
-  generateSahaTemplate,
-  generateYatmarinTemplate,
-} from "@/lib/wa-templates";
+import { generateSahaTemplate, generateYatmarinTemplate } from "@/lib/wa-templates";
 
 export type DispatchTab = "YATMARIN" | "NETSEL" | "SAHA";
 
@@ -46,6 +41,9 @@ export type DispatchJobCard = {
   supportNames: string[];
   hasMissingContact: boolean;
   continuityHint: string | null;
+  createdAtIso: string;
+  dispatchDateIso: string | null;
+  plannedStartAtIso: string | null;
 };
 
 export type DispatchTimelineBlock = {
@@ -83,6 +81,15 @@ export type DispatchTechnicianLane = {
   blocks: DispatchTimelineBlock[];
 };
 
+export type DispatchPublishedPlanLogEntry = {
+  location: string;
+  publishedAt: string | null;
+  publishedAtLabel: string | null;
+  publishedByName: string | null;
+  hasTRTemplate: boolean;
+  hasENTemplate: boolean;
+};
+
 export type DispatchBoardData = {
   dateIso: string;
   dateValue: string;
@@ -97,10 +104,7 @@ export type DispatchBoardData = {
     fieldTR: string;
     fieldEN: string;
   };
-  publishedPlans: Array<{
-    location: string;
-    publishedAt: string | null;
-  }>;
+  publishedPlans: DispatchPublishedPlanLogEntry[];
 };
 
 export type WeeklyDispatchDay = {
@@ -132,6 +136,8 @@ type DispatchSourceJob = {
   id: string;
   location: string | null;
   createdAt: Date;
+  dispatchDate: Date | null;
+  plannedStartAt: Date | null;
   status: JobStatus;
   multiplier: number;
   isKesif: boolean;
@@ -155,22 +161,81 @@ type DispatchSourceJob = {
   }>;
 };
 
+type DispatchPlanningDateSource = {
+  dispatchDate?: Date | null;
+  plannedStartAt?: Date | null;
+  createdAt: Date;
+};
+
+type DispatchPublishedPlanSource = {
+  location: string;
+  publishedAt: Date | string | null;
+  publishedByName?: string | null;
+  waTemplateTR?: string | null;
+  waTemplateEN?: string | null;
+};
+
 const MORNING_START_MINUTES = 8 * 60;
 const DAY_END_MINUTES = 17 * 60;
+const MAX_DAILY_LOAD = 2;
+const MAX_WEEKLY_LOAD = MAX_DAILY_LOAD * 6;
+const CONTINUING_STATUSES: JobStatus[] = [JobStatus.DEVAM_EDIYOR, JobStatus.BEKLEMEDE];
 const FIELD_TRAVEL_MINUTES = [
   ["gocek", 90],
   ["bodrum", 120],
   ["bozburun", 150],
   ["didim", 80],
 ] as const;
-const MAX_WEEKLY_LOAD = 12;
 
 function normalizeLocationLabel(location: string | null | undefined) {
   return location?.trim() || "Lokasyon bekleniyor";
 }
 
-function normalizeLocation(value: string | null | undefined) {
-  return normalizeLocationLabel(value).toLocaleLowerCase("tr");
+function normalizeSearchText(value: string | null | undefined) {
+  return normalizeLocationLabel(value)
+    .toLocaleLowerCase("tr")
+    .normalize("NFKD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function getTimelineLabel(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function clampTimelineMinutes(value: number) {
+  return Math.max(MORNING_START_MINUTES, Math.min(value, DAY_END_MINUTES));
+}
+
+function getMinutesFromDate(value: Date) {
+  return value.getHours() * 60 + value.getMinutes();
+}
+
+function parseOptionalIso(value: string | null | undefined) {
+  return value ? parseISO(value) : null;
+}
+
+function resolveTravelDuration(location: string | null | undefined) {
+  const normalized = normalizeSearchText(location);
+
+  for (const [keyword, duration] of FIELD_TRAVEL_MINUTES) {
+    if (normalized.includes(keyword)) {
+      return duration;
+    }
+  }
+
+  return null;
 }
 
 function getLocationColorTone(tab: DispatchTab) {
@@ -185,65 +250,18 @@ function getLocationColorTone(tab: DispatchTab) {
   }
 }
 
-function getTimelineLabel(totalMinutes: number) {
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-}
-
-function clampTimelineMinutes(value: number) {
-  return Math.max(MORNING_START_MINUTES, Math.min(value, DAY_END_MINUTES));
-}
-
-function resolveTravelDuration(location: string | null | undefined) {
-  const normalized = normalizeLocation(location);
-
-  for (const [keyword, duration] of FIELD_TRAVEL_MINUTES) {
-    if (normalized.includes(keyword)) {
-      return duration;
-    }
-  }
-
-  return null;
-}
-
-export function resolveDispatchTab(location: string | null | undefined): DispatchTab {
-  const normalized = normalizeLocation(location);
-
-  if (normalized.includes("netsel")) {
-    return "NETSEL";
-  }
-
-  if (
-    normalized.includes("gocek") ||
-    normalized.includes("gÃ¶cek") ||
-    normalized.includes("bodrum") ||
-    normalized.includes("bozburun") ||
-    normalized.includes("didim") ||
-    normalized.includes("saha")
-  ) {
-    return "SAHA";
-  }
-
-  return "YATMARIN";
-}
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0] ?? "")
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
 function getJobDurationMinutes(job: Pick<DispatchSourceJob, "isKesif" | "multiplier">) {
   if (job.isKesif) {
     return 45;
   }
 
   return Math.min(150, Math.max(60, Math.round(40 + job.multiplier * 30)));
+}
+
+function getDispatchSortDateTime(source: DispatchPlanningDateSource) {
+  return new Date(
+    (source.plannedStartAt ?? source.dispatchDate ?? source.createdAt).getTime()
+  );
 }
 
 function mapDispatchJob(job: DispatchSourceJob, continuityHint?: string | null): DispatchJobCard {
@@ -272,6 +290,9 @@ function mapDispatchJob(job: DispatchSourceJob, continuityHint?: string | null):
       .map((assignment) => assignment.user.name),
     hasMissingContact: !job.contactName || !job.contactPhone,
     continuityHint: continuityHint ?? null,
+    createdAtIso: job.createdAt.toISOString(),
+    dispatchDateIso: job.dispatchDate?.toISOString() ?? null,
+    plannedStartAtIso: job.plannedStartAt?.toISOString() ?? null,
   };
 }
 
@@ -280,19 +301,26 @@ function scheduleJobs(jobs: DispatchJobCard[]) {
   const blocks: DispatchTimelineBlock[] = [];
   let cursor = MORNING_START_MINUTES;
 
-  for (const job of jobs) {
+  for (const job of sortDispatchJobsForLane(jobs)) {
     const travelMinutes =
       job.dispatchTab === "SAHA" ? resolveTravelDuration(job.locationLabel) : null;
+    const plannedStartDate = parseOptionalIso(job.plannedStartAtIso);
+    const desiredJobStart = plannedStartDate
+      ? clampTimelineMinutes(getMinutesFromDate(plannedStartDate))
+      : cursor;
+
+    let jobStart = Math.max(cursor, desiredJobStart);
 
     if (travelMinutes) {
-      const travelStart = clampTimelineMinutes(cursor);
-      const travelEnd = clampTimelineMinutes(cursor + travelMinutes);
+      const desiredTravelStart = clampTimelineMinutes(jobStart - travelMinutes);
+      const travelStart = desiredTravelStart >= cursor ? desiredTravelStart : clampTimelineMinutes(cursor);
+      const travelEnd = clampTimelineMinutes(travelStart + travelMinutes);
 
       blocks.push({
         id: `travel-${job.id}`,
         type: "TRAVEL",
         title: "Seyahat",
-        subtitle: `${job.locationLabel} ~${travelMinutes}dk`,
+        subtitle: `${job.locationLabel} ~${travelMinutes} dk`,
         startMinutes: travelStart - MORNING_START_MINUTES,
         durationMinutes: Math.max(travelEnd - travelStart, 30),
         startLabel: getTimelineLabel(travelStart),
@@ -301,16 +329,16 @@ function scheduleJobs(jobs: DispatchJobCard[]) {
         hasWarningDot: false,
       });
 
+      jobStart = Math.max(jobStart, travelEnd);
       cursor = travelEnd;
     }
 
-    const start = clampTimelineMinutes(cursor);
-    const durationMinutes = getJobDurationMinutes(job);
-    const end = clampTimelineMinutes(cursor + durationMinutes);
-    const tone =
-      job.dispatchTab === "SAHA"
-        ? getLocationColorTone("SAHA")
-        : getLocationColorTone(job.dispatchTab);
+    const durationMinutes = getJobDurationMinutes({
+      isKesif: job.isKesif,
+      multiplier: job.multiplier,
+    });
+    const start = clampTimelineMinutes(jobStart);
+    const end = clampTimelineMinutes(start + durationMinutes);
     const startLabel = getTimelineLabel(start);
     const endLabel = getTimelineLabel(end);
 
@@ -329,12 +357,12 @@ function scheduleJobs(jobs: DispatchJobCard[]) {
       id: `job-${job.id}`,
       type: "JOB",
       title: job.boatName,
-      subtitle: `${job.categoryName} â€¢ ${job.locationLabel}`,
+      subtitle: `${job.categoryName} • ${job.locationLabel}`,
       startMinutes: start - MORNING_START_MINUTES,
       durationMinutes: Math.max(end - start, 30),
       startLabel,
       endLabel,
-      tone,
+      tone: getLocationColorTone(job.dispatchTab),
       hasWarningDot: job.hasMissingContact,
       jobId: job.id,
     });
@@ -352,8 +380,8 @@ function buildWorkshopTemplate(params: {
 }) {
   const dayEn = format(params.date, "EEEE", { locale: enUS });
   const dateEn = format(params.date, "MMM d, yyyy", { locale: enUS });
-  const workshopLanes = params.lanes.filter(
-    (lane) => lane.scheduledJobs.some((job) => job.dispatchTab !== "SAHA")
+  const workshopLanes = params.lanes.filter((lane) =>
+    lane.scheduledJobs.some((job) => job.dispatchTab !== "SAHA")
   );
   const continuingWorkshopJobs = params.continuingJobs.filter(
     (job) => job.dispatchTab !== "SAHA"
@@ -365,7 +393,7 @@ function buildWorkshopTemplate(params: {
         .filter((job) => job.dispatchTab !== "SAHA")
         .map(
           (job) =>
-            `• ${job.startLabel} › ${job.boatName} (${job.locationLabel}) — ${job.categoryName}`
+            `• ${job.startLabel} → ${job.boatName} (${job.locationLabel}) — ${job.categoryName}`
         );
 
       return lineItems.length > 0 ? `${lane.name}:\n${lineItems.join("\n")}` : null;
@@ -430,7 +458,9 @@ function buildFieldTemplate(params: {
       const firstJob = fieldJobs[0];
       const travelMinutes = firstJob.travelMinutes ?? 0;
 
-      return `${lane.name} › ${firstJob.locationLabel} (${firstJob.departureLabel ?? firstJob.startLabel} departure, ~${travelMinutes} min)\n${fieldJobs
+      return `${lane.name} → ${firstJob.locationLabel} (${
+        firstJob.departureLabel ?? firstJob.startLabel
+      } departure, ~${travelMinutes} min)\n${fieldJobs
         .map((job) => `• ${job.boatName} — ${job.categoryName}`)
         .join("\n")}\nEstimated return: ${fieldJobs[fieldJobs.length - 1].returnLabel}`;
     })
@@ -485,6 +515,64 @@ function buildFieldTemplate(params: {
   };
 }
 
+function buildDayRangeFallbackWhere(dayStart: Date, dayEnd: Date) {
+  return [
+    {
+      dispatchDate: {
+        gte: dayStart,
+        lte: dayEnd,
+      },
+    },
+    {
+      dispatchDate: null,
+      plannedStartAt: {
+        gte: dayStart,
+        lte: dayEnd,
+      },
+    },
+    {
+      dispatchDate: null,
+      plannedStartAt: null,
+      createdAt: {
+        gte: dayStart,
+        lte: dayEnd,
+      },
+    },
+  ];
+}
+
+function buildContinuingWhere(dayStart: Date) {
+  return [
+    {
+      status: {
+        in: CONTINUING_STATUSES,
+      },
+      dispatchDate: {
+        lt: dayStart,
+      },
+    },
+    {
+      status: {
+        in: CONTINUING_STATUSES,
+      },
+      dispatchDate: null,
+      plannedStartAt: {
+        lt: dayStart,
+      },
+    },
+    {
+      status: {
+        in: CONTINUING_STATUSES,
+      },
+      dispatchDate: null,
+      plannedStartAt: null,
+      createdAt: {
+        lt: dayStart,
+      },
+    },
+  ];
+}
+
 async function getDispatchSourceJobs(date: Date) {
   const dayStart = startOfDay(date);
   const dayEnd = endOfDay(date);
@@ -494,22 +582,7 @@ async function getDispatchSourceJobs(date: Date) {
       status: {
         in: openStatuses,
       },
-      OR: [
-        {
-          createdAt: {
-            gte: dayStart,
-            lte: dayEnd,
-          },
-        },
-        {
-          status: {
-            in: [JobStatus.DEVAM_EDIYOR, JobStatus.BEKLEMEDE],
-          },
-          createdAt: {
-            lt: dayStart,
-          },
-        },
-      ],
+      OR: [...buildDayRangeFallbackWhere(dayStart, dayEnd), ...buildContinuingWhere(dayStart)],
     },
     include: {
       boat: {
@@ -547,6 +620,12 @@ async function getDispatchSourceJobs(date: Date) {
     },
     orderBy: [
       {
+        dispatchDate: "asc",
+      },
+      {
+        plannedStartAt: "asc",
+      },
+      {
         createdAt: "asc",
       },
       {
@@ -554,6 +633,80 @@ async function getDispatchSourceJobs(date: Date) {
       },
     ],
   });
+}
+
+export function resolveDispatchTab(location: string | null | undefined): DispatchTab {
+  const normalized = normalizeSearchText(location);
+
+  if (normalized.includes("netsel")) {
+    return "NETSEL";
+  }
+
+  if (
+    normalized.includes("gocek") ||
+    normalized.includes("bodrum") ||
+    normalized.includes("bozburun") ||
+    normalized.includes("didim") ||
+    normalized.includes("saha")
+  ) {
+    return "SAHA";
+  }
+
+  return "YATMARIN";
+}
+
+export function getDispatchPlanningDate(job: DispatchPlanningDateSource) {
+  return new Date((job.dispatchDate ?? job.plannedStartAt ?? job.createdAt).getTime());
+}
+
+export function sortDispatchJobsForLane(jobs: DispatchJobCard[]) {
+  return [...jobs].sort((left, right) => {
+    const leftSortDate = getDispatchSortDateTime({
+      dispatchDate: parseOptionalIso(left.dispatchDateIso),
+      plannedStartAt: parseOptionalIso(left.plannedStartAtIso),
+      createdAt: parseISO(left.createdAtIso),
+    });
+    const rightSortDate = getDispatchSortDateTime({
+      dispatchDate: parseOptionalIso(right.dispatchDateIso),
+      plannedStartAt: parseOptionalIso(right.plannedStartAtIso),
+      createdAt: parseISO(right.createdAtIso),
+    });
+
+    if (leftSortDate.getTime() !== rightSortDate.getTime()) {
+      return leftSortDate.getTime() - rightSortDate.getTime();
+    }
+
+    return left.boatName.localeCompare(right.boatName, "tr");
+  });
+}
+
+export function buildDispatchPublishLogEntries(plans: DispatchPublishedPlanSource[]) {
+  return [...plans]
+    .sort((left, right) => {
+      const leftTime = left.publishedAt ? new Date(left.publishedAt).getTime() : 0;
+      const rightTime = right.publishedAt ? new Date(right.publishedAt).getTime() : 0;
+
+      return rightTime - leftTime;
+    })
+    .map((plan) => {
+      const publishedAt = plan.publishedAt ? new Date(plan.publishedAt) : null;
+
+      return {
+        location: plan.location,
+        publishedAt: publishedAt?.toISOString() ?? null,
+        publishedAtLabel: publishedAt
+          ? publishedAt.toLocaleString("tr-TR", {
+              day: "2-digit",
+              month: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : null,
+        publishedByName: plan.publishedByName ?? null,
+        hasTRTemplate: Boolean(plan.waTemplateTR?.trim()),
+        hasENTemplate: Boolean(plan.waTemplateEN?.trim()),
+      };
+    });
 }
 
 export async function getDispatchBoardData(
@@ -582,24 +735,37 @@ export async function getDispatchBoardData(
       select: {
         location: true,
         publishedAt: true,
+        waTemplateTR: true,
+        waTemplateEN: true,
+        publishedBy: {
+          select: {
+            name: true,
+          },
+        },
       },
     }),
   ]);
 
-  const todayJobs = jobs.filter((job) => isSameDay(job.createdAt, dayStart));
-  const continuingJobs = jobs.filter((job) => !isSameDay(job.createdAt, dayStart));
+  const todayJobs = jobs.filter((job) => isSameDay(getDispatchPlanningDate(job), dayStart));
+  const continuingJobs = jobs.filter((job) => !isSameDay(getDispatchPlanningDate(job), dayStart));
   const allMappedJobs = jobs.map((job) => mapDispatchJob(job));
   const selectedJobs = allMappedJobs.filter((job) => job.dispatchTab === selectedTab);
-  const unassignedJobs = selectedJobs.filter((job) => !job.responsibleId);
+  const unassignedJobs = sortDispatchJobsForLane(
+    selectedJobs.filter((job) => !job.responsibleId)
+  );
 
   const lanes = users.map((user) => {
-    const assignedJobs = selectedJobs
-      .filter((job) => job.responsibleId === user.id)
-      .sort((left, right) => left.boatName.localeCompare(right.boatName, "tr"));
+    const assignedJobs = sortDispatchJobsForLane(
+      selectedJobs.filter((job) => job.responsibleId === user.id)
+    );
     const { scheduledJobs, blocks } = scheduleJobs(assignedJobs);
     const topLocation =
       scheduledJobs[0]?.locationLabel ??
-      (selectedTab === "SAHA" ? "Saha ekibi" : selectedTab === "NETSEL" ? "Netsel" : "Yatmarin");
+      (selectedTab === "SAHA"
+        ? "Saha ekibi"
+        : selectedTab === "NETSEL"
+          ? "Netsel"
+          : "Yatmarin");
 
     return {
       id: user.id,
@@ -607,7 +773,7 @@ export async function getDispatchBoardData(
       initials: getInitials(user.name),
       jobCount: assignedJobs.length,
       locationLabel: topLocation,
-      isOverloaded: assignedJobs.length >= 5,
+      isOverloaded: assignedJobs.length > MAX_DAILY_LOAD,
       scheduledJobs,
       blocks,
     };
@@ -621,9 +787,9 @@ export async function getDispatchBoardData(
     warnings.push({
       id: "multi-location",
       tone: "amber",
-      title: "?oklu lokasyon aktif",
+      title: "Çoklu lokasyon aktif",
       description:
-        "Aynı gun atölye ve saha operasyonu g?runuyor. Saha ??k??i icin ekip ayrimi kontrol edilmeli.",
+        "Aynı gün atölye ve saha operasyonu görünüyor. Saha çıkışı için ekip ayrımı kontrol edilmeli.",
     });
   }
 
@@ -633,15 +799,17 @@ export async function getDispatchBoardData(
     warnings.push({
       id: "workload",
       tone: "rose",
-      title: "Yuksek doluluk uyarisi",
+      title: "Yüksek doluluk uyarısı",
       description: `${overloadedLanes
         .map((lane) => `${lane.name} (${lane.jobCount})`)
-        .join(", ")} icin 5+ is atamasi g?runuyor.`,
+        .join(", ")} için günlük kapasitenin üzerinde atama görünüyor.`,
     });
   }
 
   const allLanes = users.map((user) => {
-    const assignedJobs = allMappedJobs.filter((job) => job.responsibleId === user.id);
+    const assignedJobs = sortDispatchJobsForLane(
+      allMappedJobs.filter((job) => job.responsibleId === user.id)
+    );
     const { scheduledJobs, blocks } = scheduleJobs(assignedJobs);
 
     return {
@@ -649,8 +817,8 @@ export async function getDispatchBoardData(
       name: user.name,
       initials: getInitials(user.name),
       jobCount: assignedJobs.length,
-      locationLabel: scheduledJobs[0]?.locationLabel ?? "Musait",
-      isOverloaded: assignedJobs.length >= 5,
+      locationLabel: scheduledJobs[0]?.locationLabel ?? "Müsait",
+      isOverloaded: assignedJobs.length > MAX_DAILY_LOAD,
       scheduledJobs,
       blocks,
     };
@@ -669,7 +837,7 @@ export async function getDispatchBoardData(
   return {
     dateIso: dayStart.toISOString(),
     dateValue: format(dayStart, "yyyy-MM-dd"),
-    dateLabel: format(date, "d MMMM yyyy, EEEE", { locale: tr }),
+    dateLabel: format(dayStart, "d MMMM yyyy, EEEE", { locale: tr }),
     selectedTab,
     lanes,
     unassignedJobs,
@@ -678,10 +846,15 @@ export async function getDispatchBoardData(
       ...workshopTemplates,
       ...fieldTemplates,
     },
-    publishedPlans: publishedPlans.map((plan) => ({
-      location: plan.location,
-      publishedAt: plan.publishedAt ? plan.publishedAt.toISOString() : null,
-    })),
+    publishedPlans: buildDispatchPublishLogEntries(
+      publishedPlans.map((plan) => ({
+        location: plan.location,
+        publishedAt: plan.publishedAt,
+        publishedByName: plan.publishedBy?.name ?? null,
+        waTemplateTR: plan.waTemplateTR,
+        waTemplateEN: plan.waTemplateEN,
+      }))
+    ),
   };
 }
 
@@ -708,10 +881,7 @@ export async function getWeeklyDispatchData(referenceDate: Date): Promise<Weekly
         status: {
           in: openStatuses,
         },
-        createdAt: {
-          gte: weekStart,
-          lte: weekEnd,
-        },
+        OR: buildDayRangeFallbackWhere(weekStart, weekEnd),
       },
       include: {
         boat: {
@@ -737,9 +907,17 @@ export async function getWeeklyDispatchData(referenceDate: Date): Promise<Weekly
           },
         },
       },
-      orderBy: {
-        createdAt: "asc",
-      },
+      orderBy: [
+        {
+          dispatchDate: "asc",
+        },
+        {
+          plannedStartAt: "asc",
+        },
+        {
+          createdAt: "asc",
+        },
+      ],
     }),
   ]);
 
@@ -758,9 +936,12 @@ export async function getWeeklyDispatchData(referenceDate: Date): Promise<Weekly
       { locale: tr }
     )}`,
     days: weekDays.map((day) => {
-      const dayJobs = mappedJobs.filter((job) =>
-        jobs.some((sourceJob) => sourceJob.id === job.id && isSameDay(sourceJob.createdAt, day))
+      const dayJobIds = new Set(
+        jobs
+          .filter((sourceJob) => isSameDay(getDispatchPlanningDate(sourceJob), day))
+          .map((sourceJob) => sourceJob.id)
       );
+      const dayJobs = mappedJobs.filter((job) => dayJobIds.has(job.id));
 
       return {
         dateIso: startOfDay(day).toISOString(),
@@ -770,14 +951,12 @@ export async function getWeeklyDispatchData(referenceDate: Date): Promise<Weekly
           userId: user.id,
           name: user.name,
           jobCount: dayJobs.filter((job) => job.responsibleId === user.id).length,
-          maxCapacity: 2,
-          jobs: dayJobs.filter((job) => job.responsibleId === user.id),
+          maxCapacity: MAX_DAILY_LOAD,
+          jobs: sortDispatchJobsForLane(dayJobs.filter((job) => job.responsibleId === user.id)),
         })),
-        unassignedJobs: dayJobs.filter((job) => !job.responsibleId),
+        unassignedJobs: sortDispatchJobsForLane(dayJobs.filter((job) => !job.responsibleId)),
       };
     }),
     technicianLoads,
   };
 }
-
-

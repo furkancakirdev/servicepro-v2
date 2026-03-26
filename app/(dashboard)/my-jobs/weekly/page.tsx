@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CalendarRange } from "lucide-react";
+import { Role } from "@prisma/client";
 
 import {
   Card,
@@ -8,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { requireAppUser } from "@/lib/auth";
+import { requireRoles } from "@/lib/auth";
 import { getMyJobsOverview } from "@/lib/my-jobs";
 
 type MyJobsWeeklyPageProps = {
@@ -22,7 +23,7 @@ function takeFirstValue(value?: string | string[]) {
 export default async function MyJobsWeeklyPage({
   searchParams,
 }: MyJobsWeeklyPageProps) {
-  const currentUser = await requireAppUser();
+  const currentUser = await requireRoles([Role.TECHNICIAN]);
   const overview = await getMyJobsOverview(currentUser.id);
   const selectedDay = takeFirstValue(searchParams?.day);
   const activeDay =
@@ -39,7 +40,7 @@ export default async function MyJobsWeeklyPage({
           </div>
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
-              Haftalik g?runum
+              Haftalık görünüm
             </p>
             <h1 className="mt-1 text-2xl font-semibold text-marine-navy">Haftam</h1>
           </div>
@@ -67,20 +68,20 @@ export default async function MyJobsWeeklyPage({
       <Card className="border-white/80 bg-white/95">
         <CardHeader>
           <CardTitle className="text-marine-navy">
-            {activeDay?.label} gunu ozeti
+            {activeDay?.label} günü özeti
           </CardTitle>
           <CardDescription>
-            Secili gun icin toplam {activeDay?.count ?? 0} is planli g?runuyor.
+            Seçili gün için toplam {activeDay?.count ?? 0} iş planlı görünüyor.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {activeDay?.count ? (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-              Bu gunun detaylari bugünku isler ekraninda ilgili job kartlarina baglidir.
+              Bu günün detayları bugünkü işler ekranında ilgili iş kartlarına bağlıdır.
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
-              Secili gunde planlanmis is bulunmuyor.
+              Seçili günde planlanmış iş bulunmuyor.
             </div>
           )}
         </CardContent>

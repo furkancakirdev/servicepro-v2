@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { format } from "date-fns";
+import { format, isValid, parseISO, startOfDay } from "date-fns";
 import { ArrowLeft, CalendarRange } from "lucide-react";
 import { Role } from "@prisma/client";
 
@@ -11,8 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getWeeklyDispatchData } from "@/lib/dispatch";
 import { requireRoles } from "@/lib/auth";
+import { getWeeklyDispatchData } from "@/lib/dispatch";
 
 type WeeklyDispatchPageProps = {
   searchParams?: Record<string, string | string[] | undefined>;
@@ -27,8 +27,8 @@ function parseDispatchDate(input?: string) {
     return new Date();
   }
 
-  const parsed = new Date(input);
-  return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  const parsed = parseISO(input);
+  return isValid(parsed) ? startOfDay(parsed) : new Date();
 }
 
 export default async function WeeklyDispatchPage({
@@ -51,7 +51,7 @@ export default async function WeeklyDispatchPage({
             Haftalık İş Planı
           </h1>
           <p className="mt-2 text-sm text-slate-600">
-            Pazartesi - Cumartesi dagilimini ve ekip yukunu tek bakista kontrol edin.
+            Pazartesi - Cumartesi dağılımını ve ekip yükünü tek bakışta kontrol edin.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -64,7 +64,7 @@ export default async function WeeklyDispatchPage({
             className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-marine-ocean/20 bg-white px-5 text-sm font-medium text-marine-navy transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5"
           >
             <ArrowLeft className="size-4" />
-            Gunluk board
+            Günlük board
           </Link>
         </div>
       </div>
@@ -76,38 +76,44 @@ export default async function WeeklyDispatchPage({
               <CardHeader>
                 <CardTitle className="text-lg text-marine-navy">{day.label}</CardTitle>
                 <CardDescription>
-                  {day.unassignedJobs.length} atanmamis is, {day.lanes.reduce((sum, lane) => sum + lane.jobCount, 0)} toplam atama
+                  {day.unassignedJobs.length} atanmamış iş,{" "}
+                  {day.lanes.reduce((sum, lane) => sum + lane.jobCount, 0)} toplam atama
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {day.lanes.map((lane) => (
-                  <div key={lane.userId} className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                  <div
+                    key={lane.userId}
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
+                  >
                     <div className="flex items-center justify-between gap-3">
                       <div className="font-medium text-marine-navy">{lane.name}</div>
-                      <Badge variant="outline">{lane.jobCount}/{lane.maxCapacity}</Badge>
+                      <Badge variant="outline">
+                        {lane.jobCount}/{lane.maxCapacity}
+                      </Badge>
                     </div>
                     <div className="mt-3 space-y-2">
-                      {lane.jobs.length > 0 ? (
-                        lane.jobs.map((job) => (
-                          <div
-                            key={job.id}
-                            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
-                          >
-                            <div className="font-medium text-marine-navy">{job.boatName}</div>
-                            <div>{job.categoryName}</div>
-                            <div className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-500">
-                              {job.locationLabel}
+                      {lane.jobs.length > 0
+                        ? lane.jobs.map((job) => (
+                            <div
+                              key={job.id}
+                              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600"
+                            >
+                              <div className="font-medium text-marine-navy">{job.boatName}</div>
+                              <div>{job.categoryName}</div>
+                              <div className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-500">
+                                {job.locationLabel}
+                              </div>
                             </div>
-                          </div>
-                        ))
-                      ) : null}
+                          ))
+                        : null}
                     </div>
                   </div>
                 ))}
 
                 {day.unassignedJobs.length > 0 ? (
                   <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-                    <div className="font-medium text-rose-900">Atanmamis isler</div>
+                    <div className="font-medium text-rose-900">Atanmamış işler</div>
                     <div className="mt-2 space-y-2 text-sm text-rose-800">
                       {day.unassignedJobs.map((job) => (
                         <div key={job.id}>
@@ -124,7 +130,7 @@ export default async function WeeklyDispatchPage({
 
         <Card className="border-white/80 bg-white/95">
           <CardHeader>
-            <CardTitle className="text-marine-navy">Teknisyen yuk cubugu</CardTitle>
+            <CardTitle className="text-marine-navy">Teknisyen yük çubuğu</CardTitle>
             <CardDescription>
               Haftalık toplam atama ve maksimum kapasite görünümü.
             </CardDescription>
