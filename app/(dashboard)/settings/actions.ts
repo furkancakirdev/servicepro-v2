@@ -118,6 +118,15 @@ function buildSettingsUrl(
   return `/settings?${searchParams.toString()}`;
 }
 
+function isRedirectSignal(error: unknown): error is Error & { digest: string } {
+  return (
+    error instanceof Error &&
+    "digest" in error &&
+    typeof (error as { digest?: unknown }).digest === "string" &&
+    (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
+
 function revalidateSettingsSurfaces() {
   revalidatePath("/");
   revalidatePath("/dashboard");
@@ -165,6 +174,10 @@ export async function calculateMonthlyBadgesAction(
 
     return result;
   } catch (error) {
+    if (isRedirectSignal(error)) {
+      throw error;
+    }
+
     if (monthOrFormData instanceof FormData) {
       const message =
         error instanceof Error ? encodeURIComponent(error.message) : "badge-calc-failed";
@@ -251,6 +264,10 @@ export async function createPersonnelAction(formData: FormData) {
     revalidateSettingsSurfaces();
     redirect(buildSettingsUrl(redirectContext, { toast: "personnel-created" }));
   } catch (error) {
+    if (isRedirectSignal(error)) {
+      throw error;
+    }
+
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "personnel-create-failed";
     redirect(buildSettingsUrl(redirectContext, { error: message }));
@@ -314,6 +331,10 @@ export async function updatePersonnelRoleAction(formData: FormData) {
     revalidateSettingsSurfaces();
     redirect(buildSettingsUrl(redirectContext, { toast: "role-updated" }));
   } catch (error) {
+    if (isRedirectSignal(error)) {
+      throw error;
+    }
+
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "role-update-failed";
     redirect(buildSettingsUrl(redirectContext, { error: message }));
@@ -363,6 +384,10 @@ export async function saveBoatAction(formData: FormData) {
     revalidateSettingsSurfaces();
     redirect(buildSettingsUrl(redirectContext, { toast: "boat-saved" }));
   } catch (error) {
+    if (isRedirectSignal(error)) {
+      throw error;
+    }
+
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "boat-save-failed";
     redirect(buildSettingsUrl(redirectContext, { error: message }));
@@ -405,6 +430,10 @@ export async function saveCategoryAction(formData: FormData) {
     revalidateSettingsSurfaces();
     redirect(buildSettingsUrl(redirectContext, { toast: "category-saved" }));
   } catch (error) {
+    if (isRedirectSignal(error)) {
+      throw error;
+    }
+
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "category-save-failed";
     redirect(buildSettingsUrl(redirectContext, { error: message }));
@@ -439,6 +468,10 @@ export async function createCategoryAction(formData: FormData) {
     revalidateSettingsSurfaces();
     redirect(buildSettingsUrl(redirectContext, { toast: "category-created" }));
   } catch (error) {
+    if (isRedirectSignal(error)) {
+      throw error;
+    }
+
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "category-create-failed";
     redirect(buildSettingsUrl(redirectContext, { error: message }));
@@ -495,6 +528,10 @@ export async function saveSystemSettingsAction(formData: FormData) {
     revalidateSettingsSurfaces();
     redirect(buildSettingsUrl(redirectContext, { toast: "system-saved" }));
   } catch (error) {
+    if (isRedirectSignal(error)) {
+      throw error;
+    }
+
     const message =
       error instanceof Error ? encodeURIComponent(error.message) : "system-settings-save-failed";
     redirect(buildSettingsUrl(redirectContext, { error: message }));

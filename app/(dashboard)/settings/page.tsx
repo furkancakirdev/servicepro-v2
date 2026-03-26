@@ -12,10 +12,7 @@ import {
 import { parseSettingsTab } from "@/components/settings/shared";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { requireRoles } from "@/lib/auth";
-import {
-  type PersonnelActivationFlash,
-  getSettingsPageData,
-} from "@/lib/settings";
+import { type PersonnelActivationFlash, getSettingsPageData } from "@/lib/settings";
 
 const SETTINGS_PERSONNEL_FLASH_COOKIE = "settings-personnel-activation";
 
@@ -72,9 +69,13 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
     })();
 
     return (
-      <div className="space-y-6">
-        <div className="rounded-[28px] border border-white/70 bg-white px-5 py-5 shadow-panel sm:px-6">
-          <h1 className="mt-2 text-2xl font-semibold text-marine-navy">Ayarlar</h1>
+      <div className="space-y-5">
+        <div className="px-1">
+          <p className="max-w-3xl text-sm leading-6 text-slate-600">
+            Personel, kategori, tekne ve sistem davranislarini tek merkezden yonetin.
+            Bu alan, operasyonu bozmayacak sekilde hizli guncelleme ve audit takibi icin
+            duzenlendi.
+          </p>
         </div>
 
         <SettingsAlerts
@@ -85,50 +86,77 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           toastKey={toastKey}
         />
 
-        <Tabs defaultValue={selectedTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
-            <TabsTrigger value="profile">Profil</TabsTrigger>
-            <TabsTrigger value="team">Personel</TabsTrigger>
-            <TabsTrigger value="boats">Tekneler</TabsTrigger>
-            <TabsTrigger value="categories">Kategoriler</TabsTrigger>
-            <TabsTrigger value="system">İşleyiş</TabsTrigger>
-          </TabsList>
+        <section className="overflow-hidden rounded-[30px] border border-white/80 bg-white/80 p-3 shadow-panel backdrop-blur-sm sm:p-5">
+          <Tabs defaultValue={selectedTab} className="space-y-5">
+            <TabsList className="grid w-full grid-cols-2 gap-2 rounded-2xl bg-slate-100 p-1.5 sm:grid-cols-3 xl:grid-cols-5">
+              <TabsTrigger
+                value="profile"
+                className="h-11 rounded-xl px-4 text-sm font-semibold text-slate-600 data-[active]:bg-white data-[active]:text-marine-navy data-[active]:shadow-sm"
+              >
+                Profil
+              </TabsTrigger>
+              <TabsTrigger
+                value="team"
+                className="h-11 rounded-xl px-4 text-sm font-semibold text-slate-600 data-[active]:bg-white data-[active]:text-marine-navy data-[active]:shadow-sm"
+              >
+                Personel
+              </TabsTrigger>
+              <TabsTrigger
+                value="boats"
+                className="h-11 rounded-xl px-4 text-sm font-semibold text-slate-600 data-[active]:bg-white data-[active]:text-marine-navy data-[active]:shadow-sm"
+              >
+                Tekneler
+              </TabsTrigger>
+              <TabsTrigger
+                value="categories"
+                className="h-11 rounded-xl px-4 text-sm font-semibold text-slate-600 data-[active]:bg-white data-[active]:text-marine-navy data-[active]:shadow-sm"
+              >
+                Kategoriler
+              </TabsTrigger>
+              <TabsTrigger
+                value="system"
+                className="h-11 rounded-xl px-4 text-sm font-semibold text-slate-600 data-[active]:bg-white data-[active]:text-marine-navy data-[active]:shadow-sm"
+              >
+                Isleyis
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="profile">
-            <SettingsProfileTab viewer={viewer} />
-          </TabsContent>
+            <TabsContent value="profile" className="min-w-0">
+              <SettingsProfileTab viewer={viewer} />
+            </TabsContent>
 
-          <TabsContent value="team">
-            <SettingsTeamTab users={users} personnelAuditLogs={personnelAuditLogs} />
-          </TabsContent>
+            <TabsContent value="team" className="min-w-0">
+              <SettingsTeamTab users={users} personnelAuditLogs={personnelAuditLogs} />
+            </TabsContent>
 
-          <TabsContent value="boats">
-            <SettingsBoatsTab boats={boats} />
-          </TabsContent>
+            <TabsContent value="boats" className="min-w-0">
+              <SettingsBoatsTab boats={boats} />
+            </TabsContent>
 
-          <TabsContent value="categories">
-            <SettingsCategoriesTab categories={categories} />
-          </TabsContent>
+            <TabsContent value="categories" className="min-w-0">
+              <SettingsCategoriesTab categories={categories} />
+            </TabsContent>
 
-          <TabsContent value="system">
-            <SettingsSystemTab
-              currentDate={now}
-              selectedYear={selectedYear}
-              onHoldDefaultDays={onHoldDefaultDays}
-              yearlyStandings={yearlyStandings}
-              objectionQueue={objectionQueue}
-              systemAuditLogs={systemAuditLogs}
-            />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="system" className="min-w-0">
+              <SettingsSystemTab
+                currentDate={now}
+                selectedYear={selectedYear}
+                onHoldDefaultDays={onHoldDefaultDays}
+                yearlyStandings={yearlyStandings}
+                objectionQueue={objectionQueue}
+                systemAuditLogs={systemAuditLogs}
+              />
+            </TabsContent>
+          </Tabs>
+        </section>
       </div>
     );
   } catch (error) {
-    console.error("[Settings] Veri yüklenemedi:", error);
+    console.error("[Settings] Veri yuklenemedi:", error);
 
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
-        <p className="text-base text-slate-600">Ayarlar yüklenemedi.</p>
+        <p className="text-base text-slate-600">Ayarlar yuklenemedi.</p>
         <a
           href="/settings"
           className="rounded-xl bg-marine-navy px-5 py-2.5 text-sm font-medium text-white hover:bg-marine-ocean"

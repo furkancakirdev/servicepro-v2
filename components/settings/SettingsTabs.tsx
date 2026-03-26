@@ -70,6 +70,11 @@ type SystemTabProps = {
   systemAuditLogs: SettingsAuditLog[];
 };
 
+const settingsCardClassName =
+  "w-full min-w-0 border border-white/80 bg-white/95 shadow-[0_18px_40px_rgba(15,23,42,0.06)]";
+
+const settingsSectionTitleClassName = "flex items-center gap-2 text-marine-navy";
+
 function formatAuditDate(value: Date) {
   return new Intl.DateTimeFormat("tr-TR", {
     dateStyle: "short",
@@ -132,9 +137,9 @@ function buildAuditSummary(log: SettingsAuditLog) {
 
 export function SettingsProfileTab({ viewer }: ViewerProps) {
   return (
-    <Card className="border-white/80 bg-white/95">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-marine-navy">
+    <Card className={settingsCardClassName}>
+      <CardHeader className="border-b border-slate-100 pb-5">
+        <CardTitle className={settingsSectionTitleClassName}>
           <Users2 className="size-5 text-marine-ocean" />
           Profil ayarları
         </CardTitle>
@@ -142,20 +147,20 @@ export function SettingsProfileTab({ viewer }: ViewerProps) {
           Giriş yapan kullanıcı: {viewer.name} ({viewer.email})
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+      <CardContent className="grid gap-4 pt-1 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
           <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
             Ad soyad
           </div>
-          <div className="mt-2 font-medium text-marine-navy">{viewer.name}</div>
+          <div className="mt-2 break-words font-medium text-marine-navy">{viewer.name}</div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+        <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
           <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
             E-posta
           </div>
-          <div className="mt-2 font-medium text-marine-navy">{viewer.email}</div>
+          <div className="mt-2 break-all font-medium text-marine-navy">{viewer.email}</div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+        <div className="min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
           <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
             Rol
           </div>
@@ -170,10 +175,10 @@ export function SettingsProfileTab({ viewer }: ViewerProps) {
 
 export function SettingsTeamTab({ users, personnelAuditLogs }: TeamTabProps) {
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-      <Card className="border-white/80 bg-white/95">
+    <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+      <Card className={settingsCardClassName}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-marine-navy">
+          <CardTitle className={settingsSectionTitleClassName}>
             <ShieldCheck className="size-5 text-marine-ocean" />
             Yeni personel kaydı
           </CardTitle>
@@ -239,9 +244,9 @@ export function SettingsTeamTab({ users, personnelAuditLogs }: TeamTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-white/80 bg-white/95">
+      <Card className={settingsCardClassName}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-marine-navy">
+          <CardTitle className={settingsSectionTitleClassName}>
             <Users2 className="size-5 text-marine-ocean" />
             Personel listesi
           </CardTitle>
@@ -293,9 +298,9 @@ export function SettingsTeamTab({ users, personnelAuditLogs }: TeamTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-white/80 bg-white/95 xl:col-span-2">
+      <Card className={`${settingsCardClassName} xl:col-span-2`}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-marine-navy">
+          <CardTitle className={settingsSectionTitleClassName}>
             <ShieldCheck className="size-5 text-marine-ocean" />
             Personel audit geçmişi
           </CardTitle>
@@ -348,10 +353,10 @@ export function SettingsTeamTab({ users, personnelAuditLogs }: TeamTabProps) {
 
 export function SettingsBoatsTab({ boats }: BoatsTabProps) {
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-      <Card className="border-white/80 bg-white/95">
+    <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+      <Card className={settingsCardClassName}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-marine-navy">
+          <CardTitle className={settingsSectionTitleClassName}>
             <Anchor className="size-5 text-marine-ocean" />
             Yeni tekne
           </CardTitle>
@@ -410,9 +415,9 @@ export function SettingsBoatsTab({ boats }: BoatsTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-white/80 bg-white/95">
+      <Card className={settingsCardClassName}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-marine-navy">
+          <CardTitle className={settingsSectionTitleClassName}>
             <Anchor className="size-5 text-marine-ocean" />
             Tekne listesi
           </CardTitle>
@@ -489,10 +494,10 @@ export function SettingsBoatsTab({ boats }: BoatsTabProps) {
 
 export function SettingsCategoriesTab({ categories }: CategoriesTabProps) {
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-      <Card className="border-white/80 bg-white/95">
+    <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+      <Card className={settingsCardClassName}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-marine-navy">
+          <CardTitle className={settingsSectionTitleClassName}>
             <Tags className="size-5 text-marine-ocean" />
             Yeni kategori
           </CardTitle>
@@ -587,9 +592,9 @@ export function SettingsCategoriesTab({ categories }: CategoriesTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="border-white/80 bg-white/95">
+      <Card className={settingsCardClassName}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-marine-navy">
+          <CardTitle className={settingsSectionTitleClassName}>
             <Tags className="size-5 text-marine-ocean" />
             Kategori listesi
           </CardTitle>
@@ -678,10 +683,10 @@ export function SettingsSystemTab({
 }: SystemTabProps) {
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <Card className="border-white/80 bg-white/95">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+        <Card className={settingsCardClassName}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-marine-navy">
+            <CardTitle className={settingsSectionTitleClassName}>
               <Settings2 className="size-5 text-marine-ocean" />
               Aylık rozet hesaplama
             </CardTitle>
@@ -731,9 +736,9 @@ export function SettingsSystemTab({
           </CardContent>
         </Card>
 
-        <Card className="border-white/80 bg-white/95">
+        <Card className={settingsCardClassName}>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-marine-navy">
+            <CardTitle className={settingsSectionTitleClassName}>
               <CalendarClock className="size-5 text-marine-ocean" />
               Yıl sonu puanları
             </CardTitle>
@@ -812,9 +817,9 @@ export function SettingsSystemTab({
         </Card>
       </div>
 
-      <Card className="border-white/80 bg-white/95">
+      <Card className={settingsCardClassName}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-marine-navy">
+          <CardTitle className={settingsSectionTitleClassName}>
             <Settings2 className="size-5 text-marine-ocean" />
             Sistem ayarı audit geçmişi
           </CardTitle>
@@ -859,9 +864,9 @@ export function SettingsSystemTab({
         </CardContent>
       </Card>
 
-      <Card className="border-white/80 bg-white/95">
+      <Card className={settingsCardClassName}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-marine-navy">
+          <CardTitle className={settingsSectionTitleClassName}>
             <Trophy className="size-5 text-marine-ocean" />
             Puan itirazları ve yönetici incelemesi
           </CardTitle>
