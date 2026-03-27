@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect";
 import { HoldReason, JobRole, JobStatus, Prisma, Role } from "@prisma/client";
 import { z } from "zod";
 
@@ -683,6 +684,10 @@ export async function createJobAction(
     revalidatePath("/jobs");
     redirect(`/jobs/${job.id}?created=1`);
   } catch (error) {
+    if (isRedirectError(error)) {
+      throw error;
+    }
+
     return {
       error:
         error instanceof Error
