@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { submitFieldReportAction } from "@/app/(dashboard)/jobs/actions";
 import FieldCompletionModal from "@/components/scoring/FieldCompletionModal";
 import { Button } from "@/components/ui/button";
+import {
+  flushQueuedFieldReports,
+  getQueuedFieldReportCount,
+  upsertQueuedFieldReport,
+} from "@/lib/field-report-queue";
 import { initialSubmitFieldReportActionState } from "@/lib/scoring";
 import { uploadJobPhoto } from "@/lib/storage";
 import { useActionStateCompat } from "@/lib/use-action-state-compat";
@@ -68,7 +73,56 @@ export default function FieldReportFlow({
   const [draft, setDraft] = useState<FieldReportDraft>(initialDraft);
   const [photos, setPhotos] = useState<FieldReportPhotos>(initialPhotos);
   const [uploading, setUploading] = useState(false);
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine
+  );
+  const [queuedCount, setQueuedCount] = useState(0);
+  const [syncingQueue, setSyncingQueue] = useState(false);
   const formRef = useRef<HTMLFormElement | null>(null);
+
+  const resetDraftState = useCallback(() => {
+    setOpen(false);
+    setDraft({
+      ...initialDraft,
+      responsibleId: currentUserId,
+    });
+    setPhotos(initialPhotos);
+  }, [currentUserId]);
+
+  const clearLocalDraft = useCallback(() => {
+    try {
+      localStorage.removeItem(`field-report-draft-${jobId}`);
+    } catch {
+      // Ignore local storage cleanup failures.
+    }
+  }, [jobId]);
+
+  const syncQueuedReports = useCallback(async (trigger: "mount" | "online" = "mount") => {
+    if (typeof navigator === "undefined" || !navigator.onLine) {
+      return;
+    }
+
+    setSyncingQueue(true);
+
+    const result = await flushQueuedFieldReports();
+
+    setQueuedCount(result.remaining.length);
+    setSyncingQueue(false);
+
+    if (result.synced.length > 0) {
+      clearLocalDraft();
+      toast.success(
+        result.synced.length === 1
+          ? "Bekleyen saha raporu gonderildi."
+          : `${result.synced.length} bekleyen saha raporu gonderildi.`
+      );
+      router.refresh();
+    }
+
+    if (trigger === "online" && result.lastError) {
+      toast.error(result.lastError);
+    }
+  }, [clearLocalDraft, router]);
 
   useEffect(() => {
     if (!jobId) {
@@ -124,20 +178,38 @@ export default function FieldReportFlow({
       return;
     }
 
-    try {
-      localStorage.removeItem(`field-report-draft-${jobId}`);
-    } catch {
-      // Ignore local storage cleanup failures.
+    clearLocalDraft();
+    resetDraftState();
+    router.refresh();
+  }, [actionState.success, clearLocalDraft, resetDraftState, router]);
+
+  useEffect(() => {
+    setQueuedCount(getQueuedFieldReportCount());
+
+    if (typeof window === "undefined") {
+      return;
     }
 
-    setOpen(false);
-    setDraft({
-      ...initialDraft,
-      responsibleId: currentUserId,
-    });
-    setPhotos(initialPhotos);
-    router.refresh();
-  }, [actionState.success, currentUserId, jobId, router]);
+    const handleOnline = () => {
+      setIsOnline(true);
+      void syncQueuedReports("online");
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    if (navigator.onLine) {
+      void syncQueuedReports("mount");
+    }
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [jobId, syncQueuedReports]);
 
   const canSubmit = useMemo(() => {
     const hasPhoto = Boolean(photos.before || photos.after || photos.details.length > 0);
@@ -150,6 +222,11 @@ export default function FieldReportFlow({
   }, [draft, photos]);
 
   async function handlePhotoUpload(file: File, type: "before" | "after" | "detail") {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast.error("Fotograf yuklemek icin internet baglantisi gerekiyor.");
+      return;
+    }
+
     setUploading(true);
 
     try {
@@ -212,6 +289,9 @@ export default function FieldReportFlow({
           photos={photos}
           technicians={technicians}
           uploading={uploading}
+          isOnline={isOnline}
+          queuedCount={queuedCount}
+          syncingQueue={syncingQueue}
           error={actionState.error}
           onChange={setDraft}
           onPhotoUpload={handlePhotoUpload}
@@ -220,6 +300,31 @@ export default function FieldReportFlow({
             if (!canSubmit) {
               return;
             }
+
+            if (!isOnline) {
+              upsertQueuedFieldReport(jobId, {
+                unitInfo: draft.unitInfo,
+                responsibleId: draft.responsibleId,
+                supportIds: draft.supportIds,
+                partsUsed: draft.partsUsed,
+                hasSubcontractor: draft.hasSubcontractor,
+                subcontractorDetails: draft.subcontractorDetails,
+                notes: draft.notes,
+                photos: {
+                  before: photos.before,
+                  after: photos.after,
+                  details: photos.details,
+                },
+              });
+              setQueuedCount(getQueuedFieldReportCount());
+              clearLocalDraft();
+              resetDraftState();
+              toast.success(
+                "Internet yok, saha raporu cihaza alindi. Baglanti gelince otomatik gonderilecek."
+              );
+              return;
+            }
+
             formRef.current?.requestSubmit();
           }}
           canSubmit={canSubmit}

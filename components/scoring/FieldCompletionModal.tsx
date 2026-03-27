@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Mic, Square, WifiOff } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Progress, ProgressLabel, ProgressValue } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { useVoiceDictation } from "@/hooks/use-voice-dictation";
 
 type FieldReportDraft = {
   unitInfo: string;
@@ -33,6 +35,9 @@ type FieldCompletionModalProps = {
     name: string;
   }>;
   uploading: boolean;
+  isOnline: boolean;
+  queuedCount: number;
+  syncingQueue: boolean;
   error?: string | null;
   onChange: (value: FieldReportDraft) => void;
   onPhotoUpload: (file: File, type: "before" | "after" | "detail") => Promise<void>;
@@ -49,6 +54,9 @@ export default function FieldCompletionModal({
   photos,
   technicians,
   uploading,
+  isOnline,
+  queuedCount,
+  syncingQueue,
   error,
   onChange,
   onPhotoUpload,
@@ -56,6 +64,18 @@ export default function FieldCompletionModal({
   onSubmit,
   canSubmit,
 }: FieldCompletionModalProps) {
+  const [dictationTarget, setDictationTarget] = useState<"partsUsed" | "notes" | null>(null);
+  const latestValueRef = useRef(value);
+  const dictationTargetRef = useRef<"partsUsed" | "notes" | null>(null);
+
+  useEffect(() => {
+    latestValueRef.current = value;
+  }, [value]);
+
+  useEffect(() => {
+    dictationTargetRef.current = dictationTarget;
+  }, [dictationTarget]);
+
   useEffect(() => {
     if (!open || !onClose) {
       return;
@@ -71,6 +91,35 @@ export default function FieldCompletionModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose, open]);
 
+  const {
+    isSupported: isVoiceSupported,
+    isListening,
+    error: voiceError,
+    start,
+    stop,
+  } = useVoiceDictation({
+    lang: "tr-TR",
+    onTranscript: (transcript) => {
+      const target = dictationTargetRef.current;
+
+      if (!target) {
+        return;
+      }
+
+      const current = latestValueRef.current;
+      onChange({
+        ...current,
+        [target]: transcript,
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (!isListening && dictationTargetRef.current) {
+      setDictationTarget(null);
+    }
+  }, [isListening]);
+
   if (!open) {
     return null;
   }
@@ -81,6 +130,46 @@ export default function FieldCompletionModal({
     Boolean(photos.before || photos.after || photos.details.length > 0),
     !value.hasSubcontractor || value.subcontractorDetails.trim().length > 0,
   ].filter(Boolean).length;
+
+  function toggleDictation(target: "partsUsed" | "notes") {
+    if (!isVoiceSupported) {
+      return;
+    }
+
+    if (isListening) {
+      stop();
+
+      if (dictationTarget === target) {
+        setDictationTarget(null);
+        return;
+      }
+    }
+
+    const baseText = target === "partsUsed" ? value.partsUsed : value.notes;
+    const started = start(baseText);
+
+    if (started) {
+      setDictationTarget(target);
+    }
+  }
+
+  function renderDictationButton(target: "partsUsed" | "notes") {
+    const active = isListening && dictationTarget === target;
+
+    return (
+      <Button
+        type="button"
+        size="sm"
+        variant={active ? "secondary" : "outline"}
+        className="h-9 gap-2"
+        onClick={() => toggleDictation(target)}
+        disabled={!isVoiceSupported}
+      >
+        {active ? <Square className="size-4" /> : <Mic className="size-4" />}
+        {active ? "Durdur" : "Sesli not"}
+      </Button>
+    );
+  }
 
   return (
     <div
@@ -117,6 +206,44 @@ export default function FieldCompletionModal({
         {error ? (
           <div className="rounded-2xl border border-red-300/40 bg-red-500/10 px-4 py-3 text-sm text-red-100">
             {error}
+          </div>
+        ) : null}
+
+        {!isOnline ? (
+          <div className="rounded-2xl border border-amber-300/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-50">
+            <div className="flex items-center gap-2 font-medium">
+              <WifiOff className="size-4" />
+              Internet baglantisi yok.
+            </div>
+            <p className="mt-1 text-amber-100/90">
+              Gonder tusuna bastiginizda form cihaza kuyruklanir ve baglanti geri geldiginde
+              otomatik olarak senkronize edilir.
+            </p>
+          </div>
+        ) : null}
+
+        {syncingQueue ? (
+          <div className="rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-50">
+            Bekleyen saha raporlari gonderiliyor...
+          </div>
+        ) : null}
+
+        {queuedCount > 0 ? (
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100">
+            Cihazda bekleyen saha raporu: {queuedCount}
+          </div>
+        ) : null}
+
+        {!isVoiceSupported ? (
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
+            Tarayiciniz sesli dikte ozelligini desteklemiyor. Chrome ve Safari tabanli
+            guncel tarayicilarda mikrofonla not yazabilirsiniz.
+          </div>
+        ) : null}
+
+        {voiceError ? (
+          <div className="rounded-2xl border border-red-300/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+            {voiceError}
           </div>
         ) : null}
 
@@ -327,9 +454,12 @@ export default function FieldCompletionModal({
 
           <div className="grid gap-5 md:grid-cols-2">
             <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-              <label className="mb-2 block text-sm font-medium text-white" htmlFor="partsUsed">
-                Degisen parcalar / malzemeler
-              </label>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+                <label className="block text-sm font-medium text-white" htmlFor="partsUsed">
+                  Degisen parcalar / malzemeler
+                </label>
+                {renderDictationButton("partsUsed")}
+              </div>
               <Textarea
                 id="partsUsed"
                 value={value.partsUsed}
@@ -382,9 +512,12 @@ export default function FieldCompletionModal({
           </div>
 
           <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-            <label className="mb-2 block text-sm font-medium text-white" htmlFor="fieldNotes">
-              Ek saha notlari
-            </label>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+              <label className="block text-sm font-medium text-white" htmlFor="fieldNotes">
+                Ek saha notlari
+              </label>
+              {renderDictationButton("notes")}
+            </div>
             <Textarea
               id="fieldNotes"
               value={value.notes}
