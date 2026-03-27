@@ -114,8 +114,8 @@ export function buildJobTimeline(job: ServiceJobDetail): TimelineEntry[] {
       : null,
     job.deliveryReport
       ? {
-          label: "Teslim raporu kaydedildi",
-          description: "Teslim kriterleri sisteme girildi.",
+          label: "Saha raporu gonderildi",
+          description: "Teknisyen saha notlarini ve gorselleri sisteme aktardi.",
           date: job.deliveryReport.createdAt,
         }
       : null,

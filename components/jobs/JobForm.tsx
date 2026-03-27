@@ -1,10 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Check, ShieldCheck, UsersRound, Wrench } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  Plus,
+  ShieldCheck,
+  Wrench,
+} from "lucide-react";
 
 import { createJobAction } from "@/app/(dashboard)/jobs/actions";
+import BoatFormModal from "@/components/boats/BoatFormModal";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,8 +24,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  boatTypeOptions,
   initialCreateJobFormState,
+  jobPriorityConfig,
+  jobPriorityOptions,
+  type JobPriority,
+  type JobFormBoatOption,
   type JobFormMeta,
 } from "@/lib/jobs";
 import { useActionStateCompat } from "@/lib/use-action-state-compat";
@@ -38,133 +48,72 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
       disabled={disabled || pending}
       className="h-12 w-full bg-marine-navy text-white hover:bg-marine-ocean"
     >
-      {pending ? "Kaydediliyor..." : "İşi kaydet"}
+      {pending ? "Kaydediliyor..." : "Isi kaydet"}
     </Button>
   );
 }
 
+function buildBoatMetaLabel(boat: Pick<JobFormBoatOption, "type" | "homePort" | "flag">) {
+  return [boat.type, boat.homePort, boat.flag].filter(Boolean).join(" • ");
+}
+
 export default function JobForm({ meta }: JobFormProps) {
   const [state, formAction] = useActionStateCompat(createJobAction, initialCreateJobFormState);
-  const [boatNameInput, setBoatNameInput] = useState("");
+  const [boats, setBoats] = useState(meta.boats);
+  const [selectedBoatId, setSelectedBoatId] = useState("");
+  const [boatSearchQuery, setBoatSearchQuery] = useState("");
+  const [isBoatPickerOpen, setIsBoatPickerOpen] = useState(false);
+  const [isBoatModalOpen, setIsBoatModalOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
-  const [selectedResponsibleId, setSelectedResponsibleId] = useState("");
-  const [selectedSupportIds, setSelectedSupportIds] = useState<string[]>([]);
+  const [selectedPriority, setSelectedPriority] = useState<JobPriority>("NORMAL");
+  const boatPickerRef = useRef<HTMLDivElement | null>(null);
 
-  const canSubmit = meta.categories.length > 0 && meta.technicians.length > 0;
-  const matchedBoat = useMemo(() => {
-    const normalizedBoatName = boatNameInput.trim().toLocaleLowerCase("tr");
+  const canSubmit = meta.categories.length > 0;
+  const selectedBoat = useMemo(
+    () => boats.find((boat) => boat.id === selectedBoatId) ?? null,
+    [boats, selectedBoatId]
+  );
+  const filteredBoats = useMemo(() => {
+    const normalizedQuery = boatSearchQuery.trim().toLocaleLowerCase("tr");
 
-    if (!normalizedBoatName) {
-      return null;
+    if (!normalizedQuery) {
+      return boats;
     }
 
-    return (
-      meta.boats.find(
-        (boat) => boat.name.trim().toLocaleLowerCase("tr") === normalizedBoatName
-      ) ?? null
+    return boats.filter((boat) =>
+      [
+        boat.name,
+        boat.type,
+        boat.ownerName ?? "",
+        boat.homePort ?? "",
+        boat.flag ?? "",
+      ].some((value) => value.toLocaleLowerCase("tr").includes(normalizedQuery))
     );
-  }, [boatNameInput, meta.boats]);
-  const recommendedTechnicianIds = new Set(
-    matchedBoat?.continuitySuggestions.map((suggestion) => suggestion.userId) ?? []
-  );
-  const recommendedTechnicians = meta.technicians.filter((technician) =>
-    recommendedTechnicianIds.has(technician.id)
-  );
-  const otherTechnicians = meta.technicians.filter(
-    (technician) => !recommendedTechnicianIds.has(technician.id)
-  );
+  }, [boatSearchQuery, boats]);
+  useEffect(() => {
+    if (!isBoatPickerOpen) {
+      return;
+    }
 
-  function renderResponsibleOption(
-    technician: JobFormMeta["technicians"][number],
-    recommendationLabel?: string
-  ) {
-    const selected = selectedResponsibleId === technician.id;
+    function handlePointerDown(event: MouseEvent) {
+      if (!boatPickerRef.current?.contains(event.target as Node)) {
+        setIsBoatPickerOpen(false);
+      }
+    }
 
-    return (
-      <label
-        key={technician.id}
-        className={cn(
-          "cursor-pointer rounded-2xl border px-4 py-4 transition-all",
-          selected
-            ? "border-marine-navy bg-marine-navy text-white shadow-lg shadow-marine-navy/10"
-            : "border-slate-200 bg-slate-50 hover:border-marine-ocean/40 hover:bg-white"
-        )}
-      >
-        <input
-          type="radio"
-          name="responsibleId"
-          value={technician.id}
-          className="sr-only"
-          checked={selected}
-          onChange={() => {
-            setSelectedResponsibleId(technician.id);
-            setSelectedSupportIds((current) =>
-              current.filter((item) => item !== technician.id)
-            );
-          }}
-        />
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="font-medium">{technician.name}</div>
-            <div
-              className={cn("text-sm", selected ? "text-white/80" : "text-slate-600")}
-            >
-              {recommendationLabel ?? "Sorumlu teknisyen"}
-            </div>
-          </div>
-          {selected ? <Check className="size-5" /> : null}
-        </div>
-      </label>
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [isBoatPickerOpen]);
+
+  function handleBoatCreated(boat: JobFormBoatOption) {
+    setBoats((current) =>
+      [...current.filter((item) => item.id !== boat.id), boat].sort(
+        (left, right) =>
+          right.jobCount - left.jobCount || left.name.localeCompare(right.name, "tr")
+      )
     );
-  }
-
-  function renderSupportOption(
-    technician: JobFormMeta["technicians"][number],
-    recommendationLabel?: string
-  ) {
-    const checked = selectedSupportIds.includes(technician.id);
-    const disabled = selectedResponsibleId === technician.id;
-
-    return (
-      <label
-        key={technician.id}
-        className={cn(
-          "flex cursor-pointer items-center justify-between rounded-2xl border px-4 py-4 transition-colors",
-          disabled
-            ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
-            : checked
-              ? "border-marine-ocean bg-marine-ocean/10 text-marine-navy"
-              : "border-slate-200 bg-slate-50 hover:border-marine-ocean/40 hover:bg-white"
-        )}
-      >
-        <div>
-          <div className="font-medium">{technician.name}</div>
-          <div className="text-sm">
-            {disabled
-              ? "Sorumlu seçildiği için destekte kullanılamaz"
-              : recommendationLabel ?? "Destek personeli"}
-          </div>
-        </div>
-        <input
-          type="checkbox"
-          name="supportIds"
-          value={technician.id}
-          className="size-4 rounded border-slate-300"
-          checked={checked}
-          disabled={disabled}
-          onChange={(event) => {
-            if (event.target.checked) {
-              setSelectedSupportIds((current) => [...current, technician.id]);
-              return;
-            }
-
-            setSelectedSupportIds((current) =>
-              current.filter((item) => item !== technician.id)
-            );
-          }}
-        />
-      </label>
-    );
+    setSelectedBoatId(boat.id);
+    setBoatSearchQuery("");
   }
 
   return (
@@ -177,66 +126,142 @@ export default function JobForm({ meta }: JobFormProps) {
           <CardHeader>
             <CardTitle className="text-marine-navy">1. Tekne bilgileri</CardTitle>
             <CardDescription>
-              Tekne, lokasyon ve irtibat bilgilerini ekleyip saha kaydını başlatın.
+              Tekne, lokasyon ve irtibat bilgilerini ekleyip saha kaydini baslatin.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="boatName">Tekne adı</Label>
-              <Input
-                id="boatName"
-                name="boatName"
-                value={boatNameInput}
-                onChange={(event) => setBoatNameInput(event.target.value)}
-                className="h-12"
-                placeholder="M/V Bonita II"
-                list="job-boat-suggestions"
-                aria-invalid={Boolean(state.fieldErrors.boatName)}
-              />
-              <datalist id="job-boat-suggestions">
-                {meta.boats.map((boat) => (
-                  <option key={boat.id} value={boat.name}>
-                    {boat.type}
-                  </option>
-                ))}
-              </datalist>
-              {state.fieldErrors.boatName ? (
-                <p className="text-sm text-red-600">{state.fieldErrors.boatName}</p>
+              <Label htmlFor="boat-selector">Tekne</Label>
+              <input type="hidden" name="boatId" value={selectedBoatId} />
+              <div className="relative" ref={boatPickerRef}>
+                <button
+                  id="boat-selector"
+                  type="button"
+                  className={cn(
+                    "flex min-h-12 w-full items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left text-sm outline-none transition-colors",
+                    state.fieldErrors.boatId
+                      ? "border-red-300 ring-2 ring-red-100"
+                      : "border-input bg-transparent hover:border-marine-ocean/40 focus:border-ring focus:ring-3 focus:ring-ring/50"
+                  )}
+                  onClick={() => setIsBoatPickerOpen((current) => !current)}
+                  aria-expanded={isBoatPickerOpen}
+                  aria-haspopup="listbox"
+                >
+                  {selectedBoat ? (
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-marine-navy">
+                        {selectedBoat.name}
+                      </div>
+                      <div className="truncate text-xs text-slate-500">
+                        {buildBoatMetaLabel(selectedBoat) || "Kayitli tekne"}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-slate-500">Kayitli tekne secin</span>
+                  )}
+                  <ChevronsUpDown className="size-4 shrink-0 text-slate-400" />
+                </button>
+
+                {isBoatPickerOpen ? (
+                  <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                    <div className="border-b border-slate-100 p-3">
+                      <Input
+                        value={boatSearchQuery}
+                        onChange={(event) => setBoatSearchQuery(event.target.value)}
+                        className="h-10"
+                        placeholder="Tekne ara..."
+                      />
+                    </div>
+
+                    <div className="max-h-72 overflow-y-auto p-2">
+                      {filteredBoats.length > 0 ? (
+                        filteredBoats.map((boat) => {
+                          const selected = boat.id === selectedBoatId;
+
+                          return (
+                            <button
+                              key={boat.id}
+                              type="button"
+                              className={cn(
+                                "flex w-full items-start justify-between gap-3 rounded-2xl px-3 py-3 text-left transition-colors",
+                                selected
+                                  ? "bg-marine-navy text-white"
+                                  : "hover:bg-slate-50"
+                              )}
+                              onClick={() => {
+                                setSelectedBoatId(boat.id);
+                                setBoatSearchQuery("");
+                                setIsBoatPickerOpen(false);
+                              }}
+                            >
+                              <div className="min-w-0">
+                                <div className="truncate font-medium">{boat.name}</div>
+                                <div
+                                  className={cn(
+                                    "mt-1 truncate text-xs",
+                                    selected ? "text-white/80" : "text-slate-500"
+                                  )}
+                                >
+                                  {buildBoatMetaLabel(boat) || boat.type}
+                                </div>
+                                {boat.ownerName ? (
+                                  <div
+                                    className={cn(
+                                      "mt-1 truncate text-xs",
+                                      selected ? "text-white/75" : "text-slate-400"
+                                    )}
+                                  >
+                                    Sahip: {boat.ownerName}
+                                  </div>
+                                ) : null}
+                              </div>
+                              {selected ? <Check className="mt-0.5 size-4 shrink-0" /> : null}
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="px-3 py-6 text-sm text-slate-500">
+                          Aramanizla eslesen tekne bulunamadi.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="border-t border-slate-100 p-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 w-full justify-center gap-2"
+                        onClick={() => {
+                          setIsBoatPickerOpen(false);
+                          setIsBoatModalOpen(true);
+                        }}
+                      >
+                        <Plus className="size-4" />
+                        Yeni Tekne Ekle
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              {state.fieldErrors.boatId ? (
+                <p className="text-sm text-red-600">{state.fieldErrors.boatId}</p>
               ) : null}
-              {matchedBoat?.continuitySuggestions.length ? (
+
+              <p className="text-sm text-slate-500">
+                Is kaydi sadece rehberdeki teknelerle acilir. Listede yoksa once tekne olusturun.
+              </p>
+
+              {selectedBoat?.continuitySuggestions.length ? (
                 <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 px-4 py-3 text-sm text-slate-700">
-                  <div className="font-medium text-marine-navy">Süreklilik önerisi</div>
+                  <div className="font-medium text-marine-navy">Sureklilik onerisi</div>
                   <div className="mt-1">
-                    {matchedBoat.continuitySuggestions
+                    {selectedBoat.continuitySuggestions
                       .slice(0, 3)
                       .map((suggestion) => suggestion.label)
                       .join(" | ")}
                   </div>
                 </div>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="boatType">Tekne tipi</Label>
-              <select
-                id="boatType"
-                name="boatType"
-                defaultValue={boatTypeOptions[0]}
-                className={cn(
-                  "h-12 w-full rounded-lg border border-input bg-transparent px-3 text-sm outline-none transition-colors",
-                  state.fieldErrors.boatType
-                    ? "border-red-300 ring-2 ring-red-100"
-                    : "focus:border-ring focus:ring-3 focus:ring-ring/50"
-                )}
-              >
-                {boatTypeOptions.map((boatType) => (
-                  <option key={boatType} value={boatType}>
-                    {boatType}
-                  </option>
-                ))}
-              </select>
-              {state.fieldErrors.boatType ? (
-                <p className="text-sm text-red-600">{state.fieldErrors.boatType}</p>
               ) : null}
             </div>
 
@@ -251,7 +276,7 @@ export default function JobForm({ meta }: JobFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contactName">İrtibat kişisi</Label>
+              <Label htmlFor="contactName">Irtibat kisisi</Label>
               <Input
                 id="contactName"
                 name="contactName"
@@ -272,53 +297,99 @@ export default function JobForm({ meta }: JobFormProps) {
 
             <div className="space-y-2 md:col-span-2">
               <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 px-4 py-3 text-sm text-slate-700">
-                Planlama kurali: planlanan baslangic zorunlu, planlanan bitis veya SLA suresi
-                alanlarindan biri doldurulmalidir.
+                Planlama kurali: operasyonun baslangic ve tahmini bitis zamani birlikte
+                girilir. Dispatch panosu bu iki bilgiyle zaman bloklarini olusturur.
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="plannedStartAt">Planlanan baslangic</Label>
+              <Label htmlFor="plannedStartDate">Planlanan baslangic</Label>
               <Input
-                id="plannedStartAt"
-                name="plannedStartAt"
+                id="plannedStartDate"
+                name="plannedStartDate"
                 type="datetime-local"
                 className="h-12"
-                aria-invalid={Boolean(state.fieldErrors.plannedStartAt)}
+                aria-invalid={Boolean(state.fieldErrors.plannedStartDate)}
               />
-              {state.fieldErrors.plannedStartAt ? (
-                <p className="text-sm text-red-600">{state.fieldErrors.plannedStartAt}</p>
+              {state.fieldErrors.plannedStartDate ? (
+                <p className="text-sm text-red-600">{state.fieldErrors.plannedStartDate}</p>
               ) : null}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="plannedEndAt">Planlanan bitis</Label>
+              <Label htmlFor="estimatedDate">Tahmini bitis</Label>
               <Input
-                id="plannedEndAt"
-                name="plannedEndAt"
+                id="estimatedDate"
+                name="estimatedDate"
                 type="datetime-local"
                 className="h-12"
-                aria-invalid={Boolean(state.fieldErrors.plannedEndAt)}
+                aria-invalid={Boolean(state.fieldErrors.estimatedDate)}
               />
-              {state.fieldErrors.plannedEndAt ? (
-                <p className="text-sm text-red-600">{state.fieldErrors.plannedEndAt}</p>
+              {state.fieldErrors.estimatedDate ? (
+                <p className="text-sm text-red-600">{state.fieldErrors.estimatedDate}</p>
               ) : null}
             </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="slaHours">SLA suresi (saat)</Label>
-              <Input
-                id="slaHours"
-                name="slaHours"
-                type="number"
-                min={1}
-                step={1}
-                className="h-12"
-                placeholder="Ornek: 6"
-                aria-invalid={Boolean(state.fieldErrors.slaHours)}
-              />
-              {state.fieldErrors.slaHours ? (
-                <p className="text-sm text-red-600">{state.fieldErrors.slaHours}</p>
+            <div className="space-y-3 md:col-span-2">
+              <Label>Oncelik</Label>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {jobPriorityOptions.map((priority) => {
+                  const current = jobPriorityConfig[priority];
+                  const selected = selectedPriority === priority;
+
+                  return (
+                    <label
+                      key={priority}
+                      className={cn(
+                        "cursor-pointer rounded-2xl border px-4 py-4 transition-all",
+                        selected
+                          ? current.accentClassName
+                          : "border-slate-200 bg-slate-50 hover:border-marine-ocean/40 hover:bg-white"
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="priority"
+                        value={priority}
+                        className="sr-only"
+                        checked={selected}
+                        onChange={() => setSelectedPriority(priority)}
+                      />
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 font-medium">
+                            <span
+                              className={cn(
+                                "inline-flex size-2.5 rounded-full",
+                                priority === "ACIL"
+                                  ? "bg-rose-500"
+                                  : priority === "YUKSEK"
+                                    ? "bg-amber-500"
+                                    : priority === "NORMAL"
+                                      ? "bg-sky-500"
+                                      : "bg-emerald-500"
+                              )}
+                            />
+                            {current.label}
+                          </div>
+                          <p className="text-sm text-slate-600">
+                            {priority === "ACIL"
+                              ? "Ilk planlamada one cikart."
+                              : priority === "YUKSEK"
+                                ? "Takvime ust siralarda yerlestir."
+                                : priority === "NORMAL"
+                                  ? "Standart operasyon akisi."
+                                  : "Musait pencereye planlanabilir."}
+                          </p>
+                        </div>
+                        {selected ? <Check className="size-4 shrink-0" /> : null}
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+              {state.fieldErrors.priority ? (
+                <p className="text-sm text-red-600">{state.fieldErrors.priority}</p>
               ) : null}
             </div>
           </CardContent>
@@ -328,8 +399,8 @@ export default function JobForm({ meta }: JobFormProps) {
           <CardHeader>
             <CardTitle className="text-marine-navy">2. Kategori ve kapsam</CardTitle>
             <CardDescription>
-              Zorluk katsayısı kategori seçimiyle otomatik gelir ve puanlamada aynen
-              kullanılır.
+              Zorluk katsayisi kategori secimiyle otomatik gelir ve puanlamada aynen
+              kullanilir.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -389,12 +460,12 @@ export default function JobForm({ meta }: JobFormProps) {
             ) : null}
 
             <div className="space-y-2">
-              <Label htmlFor="description">Açıklama</Label>
+              <Label htmlFor="description">Aciklama</Label>
               <Textarea
                 id="description"
                 name="description"
                 className="min-h-[144px]"
-                placeholder="Arıza semptomlarını, iş kapsamındaki notları ve teknisyenin sahada bilmesi gereken detayları yazın..."
+                placeholder="Ariza semptomlarini, is kapsamindaki notlari ve teknisyenin sahada bilmesi gereken detaylari yazin..."
                 aria-invalid={Boolean(state.fieldErrors.description)}
               />
               {state.fieldErrors.description ? (
@@ -403,12 +474,12 @@ export default function JobForm({ meta }: JobFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">İş notları</Label>
+              <Label htmlFor="notes">Is notlari</Label>
               <Textarea
                 id="notes"
                 name="notes"
                 className="min-h-[112px]"
-                placeholder="Parca bekleniyor, ek ekipman gerekli, müşteri notu gibi operasyon detaylari..."
+                placeholder="Parca bekleniyor, ek ekipman gerekli, musteri notu gibi operasyon detaylari..."
               />
             </div>
 
@@ -422,11 +493,10 @@ export default function JobForm({ meta }: JobFormProps) {
                 <div>
                   <div className="flex items-center gap-2 font-medium text-marine-navy">
                     <ShieldCheck className="size-4 text-marine-ocean" />
-                    Garanti işi
+                    Garanti isi
                   </div>
                   <p className="mt-1 text-sm text-slate-600">
-                    İş kaydı garanti kapsamındaysa puanlama ve takip akışı buna göre
-                    ayrılır.
+                    Is kaydi garanti kapsamindaysa puanlama ve takip akisi buna gore ayrilir.
                   </p>
                 </div>
               </label>
@@ -440,14 +510,14 @@ export default function JobForm({ meta }: JobFormProps) {
                 <div>
                   <div className="flex items-center gap-2 font-medium text-marine-navy">
                     <Wrench className="size-4 text-marine-ocean" />
-                    Keşif kaydı olarak aç
+                    Kesif kaydi olarak ac
                   </div>
                   <p className="mt-1 text-sm text-slate-600">
-                    İlk ziyaret sadece tespit amaçlıysa durum otomatik olarak
+                    Ilk ziyaret sadece tespit amacliysa durum otomatik olarak
                     {" "}
-                    &quot;Keşif&quot;
+                    &quot;Kesif&quot;
                     {" "}
-                    açılır.
+                    acilir.
                   </p>
                 </div>
               </label>
@@ -459,59 +529,29 @@ export default function JobForm({ meta }: JobFormProps) {
       <div className="space-y-6">
         <Card className="border-white/80 bg-white/95">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-marine-navy">
-              <UsersRound className="size-5 text-marine-ocean" />
-              3. Personel atama
-            </CardTitle>
+            <CardTitle className="text-marine-navy">3. Kayit ozeti</CardTitle>
             <CardDescription>
-              Sorumlu teknisyen ve destek ekibini aynı kayıt ekranından belirleyin.
+              Isler tekne bazli havuza duser. Ekip atamasi saha teslim formunda geriye donuk
+              olarak teknisyen tarafindan bildirilir.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="space-y-3">
-              <Label>Sorumlu teknisyen</Label>
-              {recommendedTechnicians.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-                    Bu tekne için son 90 günde en sık görevlendirilen teknisyenler önce gösteriliyor.
-                  </div>
-                  <div className="grid gap-3">
-                    {recommendedTechnicians.map((technician) =>
-                      renderResponsibleOption(
-                        technician,
-                        matchedBoat?.continuitySuggestions.find(
-                          (suggestion) => suggestion.userId === technician.id
-                        )?.label ?? "Önerilen teknisyen"
-                      )
-                    )}
-                  </div>
-                </div>
-              ) : null}
-              <div className="grid gap-3">
-                {otherTechnicians.map((technician) => renderResponsibleOption(technician))}
-              </div>
-              {state.fieldErrors.responsibleId ? (
-                <p className="text-sm text-red-600">{state.fieldErrors.responsibleId}</p>
-              ) : null}
+            <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 px-4 py-4 text-sm leading-7 text-slate-700">
+              Koordinator sadece tekneyi, kategoriyi ve operasyon penceresini planlar.
+              Isi sahada kim tamamladiysa, teslim raporu aninda
+              {" "}
+              <span className="font-medium text-marine-navy">Sorumlu</span>
+              {" "}
+              ve
+              {" "}
+              <span className="font-medium text-marine-navy">Destek</span>
+              {" "}
+              secimlerini yaparak kaydi geriye donuk netlestirir.
             </div>
 
-            <div className="space-y-3">
-              <Label>Destek ekibi</Label>
-              {recommendedTechnicians.length > 0 ? (
-                <div className="grid gap-3">
-                  {recommendedTechnicians.map((technician) =>
-                    renderSupportOption(
-                      technician,
-                      matchedBoat?.continuitySuggestions.find(
-                        (suggestion) => suggestion.userId === technician.id
-                      )?.label ?? "Önerilen destek"
-                    )
-                  )}
-                </div>
-              ) : null}
-              <div className="grid gap-3">
-                {otherTechnicians.map((technician) => renderSupportOption(technician))}
-              </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
+              Havuz mantigi sayesinde sabah sabit atama zorunlulugu ortadan kalkar. Is ilk
+              etapta atamasiz acilir ve detay sayfasindan baslatilir.
             </div>
 
             {state.error ? (
@@ -522,19 +562,27 @@ export default function JobForm({ meta }: JobFormProps) {
 
             {!canSubmit ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                Kategori veya teknisyen kaydı olmadığı için yeni iş açılamıyor.
+                Aktif kategori kaydi olmadigi icin yeni is acilamiyor.
               </div>
             ) : null}
 
             <SubmitButton disabled={!canSubmit} />
 
             <p className="text-sm leading-6 text-slate-600">
-              Kayıt oluştuktan sonra detay sayfasından durum geçişleri, bekletme
-              nedenleri ve aynı tekne için açık iş uyarıları yönetilir.
+              Kayit olustuktan sonra detay sayfasindan durum gecisleri, bekletme nedenleri
+              ve ayni tekne icin acik is uyarilari yonetilir.
             </p>
           </CardContent>
         </Card>
       </div>
+
+      <BoatFormModal
+        open={isBoatModalOpen}
+        onOpenChange={setIsBoatModalOpen}
+        onCreated={handleBoatCreated}
+        title="Yeni tekne ekle"
+        description="Rehbere yeni tekne ekleyin. Kayit tamamlaninca is formunda otomatik secilir."
+      />
     </form>
   );
 }

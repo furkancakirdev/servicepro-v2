@@ -7,6 +7,7 @@ import { tr } from "date-fns/locale";
 import DifficultyBadge from "@/components/jobs/DifficultyBadge";
 import StatusBadge from "@/components/jobs/StatusBadge";
 import {
+  getEstimatedDateAsDate,
   getJobDateFieldLabel,
   getJobDateValue,
   type JobDateField,
@@ -29,7 +30,7 @@ function getTeamLabel(job: ServiceJobListItem) {
   const responsible =
     job.assignments.find((assignment) => assignment.role === JobRole.SORUMLU)?.user.name ??
     job.assignments[0]?.user.name ??
-    "Atama bekleniyor";
+    "Havuzda (Atanmadi)";
   const supportCount = job.assignments.filter(
     (assignment) => assignment.role === JobRole.DESTEK
   ).length;
@@ -41,6 +42,13 @@ function formatJobDate(date: Date) {
   return format(date, "dd MMM yyyy - HH:mm", { locale: tr });
 }
 
+function getPlanningMoments(job: ServiceJobListItem) {
+  return {
+    plannedStart: job.plannedStartDate ?? job.plannedStartAt,
+    estimatedEnd: getEstimatedDateAsDate(job.estimatedDate) ?? job.plannedEndAt,
+  };
+}
+
 export default function JobCard({
   job,
   dateField,
@@ -49,6 +57,7 @@ export default function JobCard({
   dateField: JobDateField;
 }) {
   const dateFieldLabel = getJobDateFieldLabel(dateField);
+  const planning = getPlanningMoments(job);
 
   return (
     <Card className="border-white/80 bg-white/95">
@@ -60,7 +69,7 @@ export default function JobCard({
             <p className="text-sm text-slate-600">{job.category.subScope}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <StatusBadge status={job.status} />
+            <StatusBadge status={job.status} priority={job.priority} />
             <DifficultyBadge multiplier={job.multiplier} />
           </div>
         </div>
@@ -77,9 +86,21 @@ export default function JobCard({
           </div>
           <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
             <CalendarDays className="size-4 text-marine-ocean" />
-            <span>
-              {dateFieldLabel}: {formatJobDate(getJobDateValue(job, dateField))}
-            </span>
+            <div className="space-y-1">
+              <div>
+                {dateFieldLabel}: {formatJobDate(getJobDateValue(job, dateField))}
+              </div>
+              {planning.plannedStart ? (
+                <div className="text-xs text-slate-500">
+                  Plan: {formatJobDate(planning.plannedStart)}
+                </div>
+              ) : null}
+              {planning.estimatedEnd ? (
+                <div className="text-xs text-slate-500">
+                  Tahmini: {formatJobDate(planning.estimatedEnd)}
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
 

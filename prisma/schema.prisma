@@ -145,6 +145,9 @@ model ServiceJob {
   contactPhone String?
   createdAt    DateTime        @default(now())
   dispatchDate DateTime?
+  plannedStartDate DateTime?
+  estimatedDate Int?
+  priority     String          @default("NORMAL")
   plannedStartAt DateTime?
   plannedEndAt DateTime?
   startedAt    DateTime?
@@ -164,7 +167,9 @@ model ServiceJob {
   @@index([boatId])
   @@index([categoryId])
   @@index([status, createdAt])
+  @@index([status, plannedStartDate])
   @@index([status, plannedStartAt])
+  @@index([priority, plannedStartDate])
   @@index([dispatchDate, status])
   @@index([createdById])
   @@index([closedById])
@@ -245,6 +250,12 @@ model DeliveryReport {
   id                 String     @id @default(uuid())
   jobId              String     @unique
   job                ServiceJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  unitInfo           String?
+  partsUsed          String?
+  subcontractorDetails String?
+  beforePhotoUrl     String?
+  afterPhotoUrl      String?
+  detailPhotoUrls    Json?
   unitInfoScore      Int
   photosScore        Int
   partsListScore     Int

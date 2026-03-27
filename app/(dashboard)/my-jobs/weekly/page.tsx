@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarRange, MapPin } from "lucide-react";
 import { Role } from "@prisma/client";
 
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -9,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { requireRoles } from "@/lib/auth";
 import { getMyJobsOverview } from "@/lib/my-jobs";
 
@@ -19,6 +19,18 @@ type MyJobsWeeklyPageProps = {
 
 function takeFirstValue(value?: string | string[]) {
   return Array.isArray(value) ? value[0] : value;
+}
+
+function getPoolRoleLabel(role: "SORUMLU" | "DESTEK" | null) {
+  if (role === "SORUMLU") {
+    return "Sorumlu";
+  }
+
+  if (role === "DESTEK") {
+    return "Destek";
+  }
+
+  return "Havuz";
 }
 
 export default async function MyJobsWeeklyPage({
@@ -41,9 +53,9 @@ export default async function MyJobsWeeklyPage({
           </div>
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
-              Haftalık görünüm
+              Haftalik acik is havuzu
             </p>
-            <h1 className="mt-1 text-2xl font-semibold text-marine-navy">Haftam</h1>
+            <h1 className="mt-1 text-2xl font-semibold text-marine-navy">Hafta plani</h1>
           </div>
         </div>
       </section>
@@ -61,16 +73,16 @@ export default async function MyJobsWeeklyPage({
           >
             <div className="text-xs uppercase tracking-[0.16em] opacity-80">{day.label}</div>
             <div className="mt-3 text-2xl font-semibold">{day.count}</div>
-            <div className="mt-1 text-sm opacity-80">iş</div>
+            <div className="mt-1 text-sm opacity-80">is</div>
           </Link>
         ))}
       </div>
 
       <Card className="border-white/80 bg-white/95">
         <CardHeader>
-          <CardTitle className="text-marine-navy">{activeDay?.label} günü özeti</CardTitle>
+          <CardTitle className="text-marine-navy">{activeDay?.label} gunu ozeti</CardTitle>
           <CardDescription>
-            Seçili gün için toplam {activeDay?.count ?? 0} iş planlı görünüyor.
+            Secili gun icin toplam {activeDay?.count ?? 0} acik is havuzda gorunuyor.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -89,9 +101,7 @@ export default async function MyJobsWeeklyPage({
                     <div className="mt-2 font-semibold text-marine-navy">{job.boatName}</div>
                     <div className="mt-1 text-sm text-slate-600">{job.categoryName}</div>
                   </div>
-                  <Badge variant="outline">
-                    {job.role === "SORUMLU" ? "Sorumlu" : "Destek"}
-                  </Badge>
+                  <Badge variant="outline">{getPoolRoleLabel(job.role)}</Badge>
                 </div>
                 <div className="mt-3 inline-flex items-center gap-2 text-sm text-slate-600">
                   <MapPin className="size-4 text-marine-ocean" />
@@ -101,7 +111,7 @@ export default async function MyJobsWeeklyPage({
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
-              Seçili günde planlanmış iş bulunmuyor.
+              Secili gunde planlanmis acik is bulunmuyor.
             </div>
           )}
         </CardContent>

@@ -115,9 +115,7 @@ export function buildMyJobsOverviewData(
   });
 
   const mapJob = (job: MyJobsOverviewSourceJob) => {
-    const role =
-      job.assignments.find((assignment) => assignment.userId === userId)?.role ??
-      JobRole.DESTEK;
+    const role = job.assignments.find((assignment) => assignment.userId === userId)?.role ?? null;
     const planningDate = getMyJobPlanningDate(job);
     const timeReference = job.plannedStartAt ?? planningDate;
 
@@ -259,11 +257,6 @@ export async function getMyJobsOverview(userId: string, date = new Date()) {
       status: {
         in: openStatuses,
       },
-      assignments: {
-        some: {
-          userId,
-        },
-      },
       OR: buildPlanningRangeWhere(weekStart, weekEnd),
     },
     include: {
@@ -332,7 +325,7 @@ export async function getMyJobDetail(params: {
 
   if (
     params.currentUserRole === Role.TECHNICIAN &&
-    !job.assignments.some((assignment) => assignment.userId === params.currentUserId)
+    !openStatuses.includes(job.status)
   ) {
     return null;
   }

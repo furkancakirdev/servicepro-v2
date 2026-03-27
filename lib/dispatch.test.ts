@@ -43,9 +43,12 @@ function createDispatchJobCard(
     supportNames: [],
     hasMissingContact: false,
     continuityHint: null,
+    priority: "NORMAL",
     createdAtIso: "2026-03-25T12:00:00.000Z",
     dispatchDateIso: "2026-03-26T00:00:00.000Z",
+    plannedStartDateIso: null,
     plannedStartAtIso: "2026-03-26T09:00:00.000Z",
+    estimatedDate: null,
     ...overrides,
   };
 }
@@ -57,28 +60,31 @@ describe("resolveDispatchTab", () => {
 });
 
 describe("getDispatchPlanningDate", () => {
-  it("prefers dispatchDate over plannedStartAt and createdAt", () => {
+  it("prefers planned start values over dispatchDate and createdAt", () => {
     const result = getDispatchPlanningDate({
       dispatchDate: new Date("2026-03-28T00:00:00.000Z"),
+      plannedStartDate: new Date("2026-03-27T08:00:00.000Z"),
       plannedStartAt: new Date("2026-03-27T09:00:00.000Z"),
       createdAt: new Date("2026-03-26T11:00:00.000Z"),
     });
 
-    expect(result.toISOString()).toBe("2026-03-28T00:00:00.000Z");
+    expect(result.toISOString()).toBe("2026-03-27T08:00:00.000Z");
   });
 });
 
 describe("sortDispatchJobsForLane", () => {
-  it("sorts by planned start before boat name", () => {
+  it("sorts by the new planned start field before boat name", () => {
     const result = sortDispatchJobsForLane([
       createDispatchJobCard({
         id: "late",
         boatName: "A Boat",
+        plannedStartDateIso: "2026-03-26T11:00:00.000Z",
         plannedStartAtIso: "2026-03-26T11:00:00.000Z",
       }),
       createDispatchJobCard({
         id: "early",
         boatName: "Z Boat",
+        plannedStartDateIso: "2026-03-26T09:00:00.000Z",
         plannedStartAtIso: "2026-03-26T09:00:00.000Z",
       }),
     ]);

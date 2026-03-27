@@ -92,7 +92,9 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
             {job.assignments.find((assignment) => assignment.userId === currentUser.id)?.role ===
             "SORUMLU"
               ? "Sorumlu"
-              : "Destek"}
+              : job.assignments.some((assignment) => assignment.userId === currentUser.id)
+                ? "Destek"
+                : "Havuz"}
           </Badge>
         </div>
       </section>
@@ -126,7 +128,7 @@ export default async function MyJobDetailPage({ params }: MyJobDetailPageProps) 
               {job.assignments
                 .filter((assignment) => assignment.role === "DESTEK")
                 .map((assignment) => assignment.user.name)
-                .join(", ") || "Destek personeli yok"}
+                .join(", ") || "Henuz destek bildirimi yok"}
             </div>
           </div>
         </CardContent>

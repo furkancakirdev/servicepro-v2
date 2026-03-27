@@ -10,7 +10,7 @@ import {
 import { enUS, tr } from "date-fns/locale";
 import { JobRole, JobStatus, Role } from "@prisma/client";
 
-import { openStatuses } from "@/lib/jobs";
+import { getEstimatedDateAsDate, openStatuses } from "@/lib/jobs";
 import { prisma } from "@/lib/prisma";
 import { generateSahaTemplate, generateYatmarinTemplate } from "@/lib/wa-templates";
 
@@ -41,9 +41,12 @@ export type DispatchJobCard = {
   supportNames: string[];
   hasMissingContact: boolean;
   continuityHint: string | null;
+  priority: string | null;
   createdAtIso: string;
   dispatchDateIso: string | null;
+  plannedStartDateIso: string | null;
   plannedStartAtIso: string | null;
+  estimatedDate: number | null;
 };
 
 export type DispatchTimelineBlock = {
@@ -57,6 +60,7 @@ export type DispatchTimelineBlock = {
   endLabel: string;
   tone: "blue" | "green" | "amber" | "purple" | "slate";
   hasWarningDot: boolean;
+  priority: string | null;
   jobId?: string;
 };
 
@@ -90,6 +94,18 @@ export type DispatchPublishedPlanLogEntry = {
   hasENTemplate: boolean;
 };
 
+export type DispatchCalendarEvent = {
+  id: string;
+  title: string;
+  startIso: string;
+  endIso: string;
+  priority: string | null;
+  status: JobStatus;
+  technicianId: string | null;
+  locationLabel: string;
+  dispatchTab: DispatchTab;
+};
+
 export type DispatchBoardData = {
   dateIso: string;
   dateValue: string;
@@ -98,6 +114,7 @@ export type DispatchBoardData = {
   lanes: DispatchTechnicianLane[];
   unassignedJobs: DispatchJobCard[];
   warnings: DispatchWarning[];
+  calendarEvents: DispatchCalendarEvent[];
   templates: {
     workshopTR: string;
     workshopEN: string;
@@ -137,7 +154,10 @@ type DispatchSourceJob = {
   location: string | null;
   createdAt: Date;
   dispatchDate: Date | null;
+  plannedStartDate: Date | null;
   plannedStartAt: Date | null;
+  estimatedDate: number | null;
+  priority: string | null;
   status: JobStatus;
   multiplier: number;
   isKesif: boolean;
@@ -163,6 +183,7 @@ type DispatchSourceJob = {
 
 type DispatchPlanningDateSource = {
   dispatchDate?: Date | null;
+  plannedStartDate?: Date | null;
   plannedStartAt?: Date | null;
   createdAt: Date;
 };
@@ -177,6 +198,7 @@ type DispatchPublishedPlanSource = {
 
 const MORNING_START_MINUTES = 8 * 60;
 const DAY_END_MINUTES = 17 * 60;
+const DISPATCH_DAY_WINDOW_MINUTES = DAY_END_MINUTES - MORNING_START_MINUTES;
 const MAX_DAILY_LOAD = 2;
 const MAX_WEEKLY_LOAD = MAX_DAILY_LOAD * 6;
 const CONTINUING_STATUSES: JobStatus[] = [JobStatus.DEVAM_EDIYOR, JobStatus.BEKLEMEDE];
@@ -260,7 +282,40 @@ function getJobDurationMinutes(job: Pick<DispatchSourceJob, "isKesif" | "multipl
 
 function getDispatchSortDateTime(source: DispatchPlanningDateSource) {
   return new Date(
-    (source.plannedStartAt ?? source.dispatchDate ?? source.createdAt).getTime()
+    (source.plannedStartDate ?? source.plannedStartAt ?? source.dispatchDate ?? source.createdAt).getTime()
+  );
+}
+
+function getDispatchStartDate(job: {
+  createdAtIso: string;
+  dispatchDateIso: string | null;
+  plannedStartDateIso: string | null;
+  plannedStartAtIso: string | null;
+}) {
+  return (
+    parseOptionalIso(job.plannedStartDateIso) ??
+    parseOptionalIso(job.plannedStartAtIso) ??
+    parseOptionalIso(job.dispatchDateIso) ??
+    parseISO(job.createdAtIso)
+  );
+}
+
+function getDispatchEndDate(job: DispatchJobCard) {
+  const startDate = getDispatchStartDate(job);
+  const estimatedEnd = getEstimatedDateAsDate(job.estimatedDate);
+
+  if (estimatedEnd && estimatedEnd.getTime() > startDate.getTime()) {
+    return estimatedEnd;
+  }
+
+  return new Date(
+    startDate.getTime() +
+      getJobDurationMinutes({
+        isKesif: job.isKesif,
+        multiplier: job.multiplier,
+      }) *
+        60 *
+        1000
   );
 }
 
@@ -290,9 +345,29 @@ function mapDispatchJob(job: DispatchSourceJob, continuityHint?: string | null):
       .map((assignment) => assignment.user.name),
     hasMissingContact: !job.contactName || !job.contactPhone,
     continuityHint: continuityHint ?? null,
+    priority: job.priority,
     createdAtIso: job.createdAt.toISOString(),
     dispatchDateIso: job.dispatchDate?.toISOString() ?? null,
+    plannedStartDateIso: job.plannedStartDate?.toISOString() ?? null,
     plannedStartAtIso: job.plannedStartAt?.toISOString() ?? null,
+    estimatedDate: job.estimatedDate,
+  };
+}
+
+function mapDispatchJobToCalendarEvent(job: DispatchJobCard): DispatchCalendarEvent {
+  const startDate = getDispatchStartDate(job);
+  const endDate = getDispatchEndDate(job);
+
+  return {
+    id: job.id,
+    title: `${job.boatName} - ${job.categoryName}`,
+    startIso: startDate.toISOString(),
+    endIso: endDate.toISOString(),
+    priority: job.priority,
+    status: job.status,
+    technicianId: job.responsibleId,
+    locationLabel: job.locationLabel,
+    dispatchTab: job.dispatchTab,
   };
 }
 
@@ -304,7 +379,7 @@ function scheduleJobs(jobs: DispatchJobCard[]) {
   for (const job of sortDispatchJobsForLane(jobs)) {
     const travelMinutes =
       job.dispatchTab === "SAHA" ? resolveTravelDuration(job.locationLabel) : null;
-    const plannedStartDate = parseOptionalIso(job.plannedStartAtIso);
+    const plannedStartDate = getDispatchStartDate(job);
     const desiredJobStart = plannedStartDate
       ? clampTimelineMinutes(getMinutesFromDate(plannedStartDate))
       : cursor;
@@ -327,16 +402,27 @@ function scheduleJobs(jobs: DispatchJobCard[]) {
         endLabel: getTimelineLabel(travelEnd),
         tone: "slate",
         hasWarningDot: false,
+        priority: null,
       });
 
       jobStart = Math.max(jobStart, travelEnd);
       cursor = travelEnd;
     }
 
-    const durationMinutes = getJobDurationMinutes({
-      isKesif: job.isKesif,
-      multiplier: job.multiplier,
-    });
+    const estimatedEndDate = getEstimatedDateAsDate(job.estimatedDate);
+    const durationMinutes =
+      estimatedEndDate && estimatedEndDate.getTime() > plannedStartDate.getTime()
+        ? Math.min(
+            DISPATCH_DAY_WINDOW_MINUTES,
+            Math.max(
+              30,
+              Math.round((estimatedEndDate.getTime() - plannedStartDate.getTime()) / (60 * 1000))
+            )
+          )
+        : getJobDurationMinutes({
+            isKesif: job.isKesif,
+            multiplier: job.multiplier,
+          });
     const start = clampTimelineMinutes(jobStart);
     const end = clampTimelineMinutes(start + durationMinutes);
     const startLabel = getTimelineLabel(start);
@@ -364,6 +450,7 @@ function scheduleJobs(jobs: DispatchJobCard[]) {
       endLabel,
       tone: getLocationColorTone(job.dispatchTab),
       hasWarningDot: job.hasMissingContact,
+      priority: job.priority,
       jobId: job.id,
     });
 
@@ -525,6 +612,14 @@ function buildDayRangeFallbackWhere(dayStart: Date, dayEnd: Date) {
     },
     {
       dispatchDate: null,
+      plannedStartDate: {
+        gte: dayStart,
+        lte: dayEnd,
+      },
+    },
+    {
+      dispatchDate: null,
+      plannedStartDate: null,
       plannedStartAt: {
         gte: dayStart,
         lte: dayEnd,
@@ -532,6 +627,7 @@ function buildDayRangeFallbackWhere(dayStart: Date, dayEnd: Date) {
     },
     {
       dispatchDate: null,
+      plannedStartDate: null,
       plannedStartAt: null,
       createdAt: {
         gte: dayStart,
@@ -556,6 +652,16 @@ function buildContinuingWhere(dayStart: Date) {
         in: CONTINUING_STATUSES,
       },
       dispatchDate: null,
+      plannedStartDate: {
+        lt: dayStart,
+      },
+    },
+    {
+      status: {
+        in: CONTINUING_STATUSES,
+      },
+      dispatchDate: null,
+      plannedStartDate: null,
       plannedStartAt: {
         lt: dayStart,
       },
@@ -565,6 +671,7 @@ function buildContinuingWhere(dayStart: Date) {
         in: CONTINUING_STATUSES,
       },
       dispatchDate: null,
+      plannedStartDate: null,
       plannedStartAt: null,
       createdAt: {
         lt: dayStart,
@@ -623,6 +730,9 @@ async function getDispatchSourceJobs(date: Date) {
         dispatchDate: "asc",
       },
       {
+        plannedStartDate: "asc",
+      },
+      {
         plannedStartAt: "asc",
       },
       {
@@ -656,18 +766,22 @@ export function resolveDispatchTab(location: string | null | undefined): Dispatc
 }
 
 export function getDispatchPlanningDate(job: DispatchPlanningDateSource) {
-  return new Date((job.dispatchDate ?? job.plannedStartAt ?? job.createdAt).getTime());
+  return new Date(
+    (job.plannedStartDate ?? job.plannedStartAt ?? job.dispatchDate ?? job.createdAt).getTime()
+  );
 }
 
 export function sortDispatchJobsForLane(jobs: DispatchJobCard[]) {
   return [...jobs].sort((left, right) => {
     const leftSortDate = getDispatchSortDateTime({
       dispatchDate: parseOptionalIso(left.dispatchDateIso),
+      plannedStartDate: parseOptionalIso(left.plannedStartDateIso),
       plannedStartAt: parseOptionalIso(left.plannedStartAtIso),
       createdAt: parseISO(left.createdAtIso),
     });
     const rightSortDate = getDispatchSortDateTime({
       dispatchDate: parseOptionalIso(right.dispatchDateIso),
+      plannedStartDate: parseOptionalIso(right.plannedStartDateIso),
       plannedStartAt: parseOptionalIso(right.plannedStartAtIso),
       createdAt: parseISO(right.createdAtIso),
     });
@@ -753,6 +867,7 @@ export async function getDispatchBoardData(
   const unassignedJobs = sortDispatchJobsForLane(
     selectedJobs.filter((job) => !job.responsibleId)
   );
+  const calendarEvents = selectedJobs.map((job) => mapDispatchJobToCalendarEvent(job));
 
   const lanes = users.map((user) => {
     const assignedJobs = sortDispatchJobsForLane(
@@ -842,6 +957,7 @@ export async function getDispatchBoardData(
     lanes,
     unassignedJobs,
     warnings,
+    calendarEvents,
     templates: {
       ...workshopTemplates,
       ...fieldTemplates,
@@ -910,6 +1026,9 @@ export async function getWeeklyDispatchData(referenceDate: Date): Promise<Weekly
       orderBy: [
         {
           dispatchDate: "asc",
+        },
+        {
+          plannedStartDate: "asc",
         },
         {
           plannedStartAt: "asc",

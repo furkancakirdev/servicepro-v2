@@ -60,6 +60,17 @@ describe("normalizeJobSchedule", () => {
     expect(result.plannedEndAt.toISOString()).toBe("2026-03-26T13:00:00.000Z");
   });
 
+  it("supports plannedStartDate and estimatedDate from the new planning flow", () => {
+    const result = normalizeJobSchedule({
+      plannedStartDate: "2026-03-26T09:00:00.000Z",
+      estimatedDate: "2026-03-26T12:30:00.000Z",
+    });
+
+    expect(result.plannedStartAt.toISOString()).toBe("2026-03-26T09:00:00.000Z");
+    expect(result.plannedEndAt.toISOString()).toBe("2026-03-26T12:30:00.000Z");
+    expect(result.slaHours).toBe(4);
+  });
+
   it("rejects schedules that do not define an end or sla", () => {
     const execution = () =>
       normalizeJobSchedule({

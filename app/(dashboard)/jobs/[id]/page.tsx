@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import {
   getJobById,
+  getJobFilterOptions,
 } from "@/app/(dashboard)/jobs/actions";
 import DifficultyBadge from "@/components/jobs/DifficultyBadge";
 import JobDetailAlerts from "@/components/jobs/detail/JobDetailAlerts";
@@ -23,6 +24,7 @@ import {
   buildClientNotificationTemplate,
   buildWhatsAppDeepLink,
 } from "@/lib/client-notifications";
+import { parseFieldReport, type FieldReportInput } from "@/lib/scoring";
 import { getOnHoldDefaultDays } from "@/lib/system-settings";
 
 type JobDetailPageProps = {
@@ -35,9 +37,10 @@ export default async function JobDetailPage({
   searchParams,
 }: JobDetailPageProps) {
   const currentUser = await requireAppUser();
-  const [data, onHoldDefaultDays] = await Promise.all([
+  const [data, onHoldDefaultDays, technicians] = await Promise.all([
     getJobById(params.id),
     getOnHoldDefaultDays(),
+    getJobFilterOptions(),
   ]);
 
   if (!data) {
@@ -55,10 +58,19 @@ export default async function JobDetailPage({
   const created = takeFirstValue(searchParams?.created) === "1";
   const updated = takeFirstValue(searchParams?.updated) === "1";
   const objectionSubmitted = takeFirstValue(searchParams?.objection) === "1";
-  const closeoutRequested = takeFirstValue(searchParams?.closeout) === "1";
   const statusMessage = takeFirstValue(searchParams?.error);
   const canManageJob =
     currentUser.role === Role.ADMIN || currentUser.role === Role.COORDINATOR;
+  const canSubmitFieldReport =
+    currentUser.role === Role.TECHNICIAN &&
+    job.status === JobStatus.DEVAM_EDIYOR &&
+    !job.deliveryReport;
+  const canEvaluateAndClose =
+    canManageJob &&
+    job.status === JobStatus.TAMAMLANDI &&
+    Boolean(job.deliveryReport) &&
+    !job.evaluation &&
+    job.jobScores.length === 0;
   const canSendClientNotification = canManageJob && job.boat.contacts.length > 0;
   const primaryContact =
     job.boat.contacts.find(
@@ -82,9 +94,27 @@ export default async function JobDetailPage({
     primaryContact?.phone && primaryContactTemplate
       ? buildWhatsAppDeepLink(primaryContact.phone, primaryContactTemplate.text)
       : null;
-  const needsMandatoryCloseout =
-    job.status === JobStatus.TAMAMLANDI &&
-    (!job.deliveryReport || !job.evaluation || job.jobScores.length === 0);
+  const parsedReport = parseFieldReport(job.deliveryReport?.notes);
+  const fieldReport: FieldReportInput | null = job.deliveryReport
+    ? {
+        unitInfo: job.deliveryReport.unitInfo ?? parsedReport?.unitInfo ?? "",
+        partsUsed: job.deliveryReport.partsUsed ?? parsedReport?.partsUsed ?? "",
+        hasSubcontractor: job.deliveryReport.hasSubcontractor,
+        subcontractorDetails:
+          job.deliveryReport.subcontractorDetails ?? parsedReport?.subcontractorDetails ?? "",
+        notes: parsedReport?.notes ?? "",
+        photos: {
+          before: job.deliveryReport.beforePhotoUrl ?? parsedReport?.photos.before,
+          after: job.deliveryReport.afterPhotoUrl ?? parsedReport?.photos.after,
+          details:
+            (Array.isArray(job.deliveryReport.detailPhotoUrls)
+              ? job.deliveryReport.detailPhotoUrls
+              : null)?.filter((item): item is string => typeof item === "string") ??
+            parsedReport?.photos.details ??
+            [],
+        },
+      }
+    : null;
   const responsibleScore =
     job.jobScores.find((score) => score.role === JobRole.SORUMLU) ??
     job.jobScores[0] ??
@@ -103,7 +133,7 @@ export default async function JobDetailPage({
           <ArrowLeft className="size-4" />
           Geri
         </Link>
-        <StatusBadge status={job.status} />
+        <StatusBadge status={job.status} priority={job.priority} />
         <DifficultyBadge multiplier={job.multiplier} />
         {job.boat.isVip ? (
           <Badge variant="outline" className="border-[#BA7517] text-[#BA7517]">
@@ -126,6 +156,7 @@ export default async function JobDetailPage({
           supportAssignments={supportAssignments}
           sameBoatOpenJobs={sameBoatOpenJobs}
           recentBoatHistory={recentBoatHistory}
+          fieldReport={fieldReport}
           timeline={timeline}
         />
 
@@ -133,13 +164,16 @@ export default async function JobDetailPage({
           job={job}
           responsible={responsible}
           canManageJob={canManageJob}
-          canObjectToScore={canObjectToScore}
-          canSendClientNotification={canSendClientNotification}
-          needsMandatoryCloseout={needsMandatoryCloseout}
-          closeoutRequested={closeoutRequested}
-          onHoldDefaultDays={onHoldDefaultDays}
-          primaryContactWhatsAppUrl={primaryContactWhatsAppUrl}
-          responsibleScore={responsibleScore}
+           canSubmitFieldReport={canSubmitFieldReport}
+           canEvaluateAndClose={canEvaluateAndClose}
+           canObjectToScore={canObjectToScore}
+           canSendClientNotification={canSendClientNotification}
+            fieldReport={fieldReport}
+            currentUserId={currentUser.id}
+            technicians={technicians}
+            onHoldDefaultDays={onHoldDefaultDays}
+            primaryContactWhatsAppUrl={primaryContactWhatsAppUrl}
+            responsibleScore={responsibleScore}
           supportScores={supportScores}
         />
       </div>

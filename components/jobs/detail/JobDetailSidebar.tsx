@@ -7,7 +7,8 @@ import {
 } from "@/app/(dashboard)/jobs/actions";
 import ClientNotificationPanel from "@/components/jobs/ClientNotificationPanel";
 import DifficultyBadge from "@/components/jobs/DifficultyBadge";
-import CloseoutFlow from "@/components/scoring/CloseoutFlow";
+import CoordinatorEvaluationFlow from "@/components/scoring/CoordinatorEvaluationFlow";
+import FieldReportFlow from "@/components/scoring/FieldReportFlow";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,6 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { holdReasonOptions } from "@/lib/jobs";
+import type { FieldReportInput } from "@/lib/scoring";
 import type { ServiceJobDetail } from "@/types";
 
 import {
@@ -32,10 +34,16 @@ type JobDetailSidebarProps = {
   job: ServiceJobDetail;
   responsible: JobDetailUser | null;
   canManageJob: boolean;
+  canSubmitFieldReport: boolean;
+  canEvaluateAndClose: boolean;
   canObjectToScore: boolean;
   canSendClientNotification: boolean;
-  needsMandatoryCloseout: boolean;
-  closeoutRequested: boolean;
+  fieldReport: FieldReportInput | null;
+  currentUserId: string;
+  technicians: Array<{
+    id: string;
+    name: string;
+  }>;
   onHoldDefaultDays: number;
   primaryContactWhatsAppUrl: string | null;
   responsibleScore: JobDetailScore | null;
@@ -46,20 +54,29 @@ export default function JobDetailSidebar({
   job,
   responsible,
   canManageJob,
+  canSubmitFieldReport,
+  canEvaluateAndClose,
   canObjectToScore,
   canSendClientNotification,
-  needsMandatoryCloseout,
-  closeoutRequested,
+  fieldReport,
+  currentUserId,
+  technicians,
   onHoldDefaultDays,
   primaryContactWhatsAppUrl,
   responsibleScore,
   supportScores,
 }: JobDetailSidebarProps) {
+  const isPendingEvaluation =
+    job.status === JobStatus.TAMAMLANDI &&
+    Boolean(job.deliveryReport) &&
+    !job.evaluation &&
+    job.jobScores.length === 0;
+
   return (
     <div className="space-y-6">
       <Card className="border-white/80 bg-white/95">
         <CardHeader>
-          <CardTitle className="text-lg text-marine-navy">Operasyon özeti</CardTitle>
+          <CardTitle className="text-lg text-marine-navy">Operasyon Ã¶zeti</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-slate-600">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -72,7 +89,7 @@ export default function JobDetailSidebar({
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-marine-ocean">
-              Zorluk çarpanı
+              Zorluk Ã§arpanÄ±
             </div>
             <div className="mt-2">
               <DifficultyBadge multiplier={job.multiplier} />
@@ -95,9 +112,9 @@ export default function JobDetailSidebar({
       {job.jobScores.length > 0 ? (
         <Card className="border-white/80 bg-white/95">
           <CardHeader>
-            <CardTitle className="text-lg text-marine-navy">Kapanış puan özeti</CardTitle>
+            <CardTitle className="text-lg text-marine-navy">KapanÄ±ÅŸ puan Ã¶zeti</CardTitle>
             <CardDescription>
-              Kaydedilen teslim raporu ve Form 1 puanlarının personel dağılımı.
+              Kaydedilen Form-1 puanlarÄ±nÄ±n personel daÄŸÄ±lÄ±mÄ±.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-slate-600">
@@ -108,12 +125,12 @@ export default function JobDetailSidebar({
               <div className="mt-2 flex items-end justify-between gap-3">
                 <div>
                   <div className="font-medium text-marine-navy">
-                    {responsibleScore?.user.name ?? "Kayıt bulunamadı"}
+                    {responsibleScore?.user.name ?? "KayÄ±t bulunamadÄ±"}
                   </div>
                   <div className="text-xs uppercase tracking-[0.12em] text-slate-500">
                     {job.evaluation
                       ? `Base ${job.evaluation.baseScore.toFixed(1)} x ${job.multiplier}`
-                      : `Rol çarpanı ${responsibleScore?.roleMultiplier ?? 1}`}
+                      : `Rol Ã§arpanÄ± ${responsibleScore?.roleMultiplier ?? 1}`}
                   </div>
                 </div>
                 <div className="text-2xl font-semibold text-emerald-700">
@@ -132,7 +149,7 @@ export default function JobDetailSidebar({
                     <div>
                       <div className="font-medium text-marine-navy">{score.user.name}</div>
                       <div className="text-xs uppercase tracking-[0.12em] text-slate-500">
-                        Destek rolü x{score.roleMultiplier}
+                        Destek rolÃ¼ x{score.roleMultiplier}
                       </div>
                     </div>
                     <div className="font-semibold text-marine-navy">
@@ -151,7 +168,7 @@ export default function JobDetailSidebar({
           <CardHeader>
             <CardTitle className="text-lg text-marine-navy">Puanlamaya itiraz et</CardTitle>
             <CardDescription>
-              Kapanıştan sonraki 30 gün içinde Form 1 puanlaması için inceleme talep
+              KapanÄ±ÅŸtan sonraki 30 gÃ¼n iÃ§inde Form-1 puanlamasÄ± iÃ§in inceleme talep
               edebilirsiniz.
             </CardDescription>
           </CardHeader>
@@ -163,11 +180,11 @@ export default function JobDetailSidebar({
                 required
                 minLength={10}
                 rows={4}
-                placeholder="Neyi düzeltmemizi istediğinizi kısaca açıklayın."
+                placeholder="Neyi dÃ¼zeltmemizi istediÄŸinizi kÄ±saca aÃ§Ä±klayÄ±n."
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition-colors focus:border-marine-ocean"
               />
               <Button type="submit" variant="outline" className="h-12 w-full">
-                Puanlamaya İtiraz Et
+                Puanlamaya Ä°tiraz Et
               </Button>
             </form>
           </CardContent>
@@ -177,9 +194,9 @@ export default function JobDetailSidebar({
       {canSendClientNotification ? (
         <Card className="border-white/80 bg-white/95">
           <CardHeader>
-            <CardTitle className="text-lg text-marine-navy">Randevu bildirimi gönder</CardTitle>
+            <CardTitle className="text-lg text-marine-navy">Randevu bildirimi gÃ¶nder</CardTitle>
             <CardDescription>
-              İrtibat kişinin dil tercihine göre WhatsApp şablonu hazırlanır.
+              Ä°rtibat kiÅŸinin dil tercihine gÃ¶re WhatsApp ÅŸablonu hazÄ±rlanÄ±r.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -191,7 +208,7 @@ export default function JobDetailSidebar({
                   rel="noreferrer"
                   className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
                 >
-                  Randevu Bildirimi Gönder
+                  Randevu Bildirimi GÃ¶nder
                 </a>
               </div>
             ) : null}
@@ -233,18 +250,18 @@ export default function JobDetailSidebar({
           <CardTitle className="text-lg text-marine-navy">Aksiyon paneli</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-slate-600">
-          {!canManageJob ? (
+          {!canManageJob && !canSubmitFieldReport ? (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              Bu kaydın operasyon aksiyonları yalnızca koordinatör veya yönetici tarafından
-              yönetilebilir.
+              Bu kaydÄ±n operasyon aksiyonlarÄ± yalnÄ±zca atanmÄ±ÅŸ teknisyen veya koordinatÃ¶r
+              tarafÄ±ndan yÃ¶netilebilir.
             </div>
           ) : null}
 
           {canManageJob && job.status === JobStatus.KESIF ? (
             <>
               <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 px-4 py-3">
-                Keşif kaydı önce randevuya alınabilir, gerekirse aynı ekrandan normal işe
-                dönüştürülebilir.
+                KeÅŸif kaydÄ± Ã¶nce randevuya alÄ±nabilir, gerekirse aynÄ± ekrandan normal iÅŸe
+                dÃ¶nÃ¼ÅŸtÃ¼rÃ¼lebilir.
               </div>
 
               <form action={updateJobStatusAction}>
@@ -260,7 +277,7 @@ export default function JobDetailSidebar({
                 <input type="hidden" name="newStatus" value={JobStatus.PLANLANDI} />
                 <input type="hidden" name="convertKesif" value="true" />
                 <Button type="submit" size="lg" variant="outline" className="h-12 w-full">
-                  İşe Dönüştür
+                  Ä°ÅŸe DÃ¶nÃ¼ÅŸtÃ¼r
                 </Button>
               </form>
             </>
@@ -271,65 +288,74 @@ export default function JobDetailSidebar({
               <input type="hidden" name="jobId" value={job.id} />
               <input type="hidden" name="newStatus" value={JobStatus.DEVAM_EDIYOR} />
               <Button type="submit" size="lg" className={primaryButtonClass}>
-                Başlat
+                BaÅŸlat
               </Button>
             </form>
           ) : null}
 
-          {canManageJob && job.status === JobStatus.DEVAM_EDIYOR ? (
+          {job.status === JobStatus.DEVAM_EDIYOR ? (
             <>
-              <form
-                action={updateHoldDetailsAction}
-                className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
-              >
-                <input type="hidden" name="jobId" value={job.id} />
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-marine-navy" htmlFor="reason">
-                    Bekletme nedeni
-                  </label>
-                  <select
-                    id="reason"
-                    name="reason"
-                    defaultValue={HoldReason.PARCA_BEKLENIYOR}
-                    className="h-12 w-full rounded-lg border border-input bg-white px-3 outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50"
-                  >
-                    {holdReasonOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label
-                    className="mb-2 block text-sm font-medium text-marine-navy"
-                    htmlFor="reminderDays"
-                  >
-                    Hatırlatma günü
-                  </label>
-                  <input
-                    id="reminderDays"
-                    type="number"
-                    min={1}
-                    max={14}
-                    defaultValue={onHoldDefaultDays}
-                    name="reminderDays"
-                    className="h-12 w-full rounded-lg border border-input bg-white px-3 outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50"
+              {canManageJob ? (
+                <form
+                  action={updateHoldDetailsAction}
+                  className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                >
+                  <input type="hidden" name="jobId" value={job.id} />
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-marine-navy" htmlFor="reason">
+                      Bekletme nedeni
+                    </label>
+                    <select
+                      id="reason"
+                      name="reason"
+                      defaultValue={HoldReason.PARCA_BEKLENIYOR}
+                      className="h-12 w-full rounded-lg border border-input bg-white px-3 outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50"
+                    >
+                      {holdReasonOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label
+                      className="mb-2 block text-sm font-medium text-marine-navy"
+                      htmlFor="reminderDays"
+                    >
+                      HatÄ±rlatma gÃ¼nÃ¼
+                    </label>
+                    <input
+                      id="reminderDays"
+                      type="number"
+                      min={1}
+                      max={14}
+                      defaultValue={onHoldDefaultDays}
+                      name="reminderDays"
+                      className="h-12 w-full rounded-lg border border-input bg-white px-3 outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/50"
+                    />
+                  </div>
+                  <Button type="submit" size="lg" variant="outline" className="h-12 w-full">
+                    Beklemeye Al
+                  </Button>
+                </form>
+              ) : null}
+
+              {canSubmitFieldReport ? (
+                <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 p-4">
+                  <p className="mb-3 text-sm text-slate-600">
+                    Saha personeli bu iÅŸi kapatmadan Ã¶nce sadece saha raporunu ve gÃ¶rselleri
+                    gÃ¶nderir. Form-1 puanlamasÄ± koordinatÃ¶r tarafÄ±nda yapÄ±lÄ±r.
+                  </p>
+                  <FieldReportFlow
+                    jobId={job.id}
+                    boatName={job.boat.name}
+                    categoryName={job.category.name}
+                    currentUserId={currentUserId}
+                    technicians={technicians}
                   />
                 </div>
-                <Button type="submit" size="lg" variant="outline" className="h-12 w-full">
-                  Beklemeye Al
-                </Button>
-              </form>
-
-              <form action={updateJobStatusAction}>
-                <input type="hidden" name="jobId" value={job.id} />
-                <input type="hidden" name="newStatus" value={JobStatus.TAMAMLANDI} />
-                <input type="hidden" name="next" value={`/jobs/${job.id}?closeout=1&updated=1`} />
-                <Button type="submit" size="lg" className={primaryButtonClass}>
-                  Tamamlandı Olarak İşaretle
-                </Button>
-              </form>
+              ) : null}
             </>
           ) : null}
 
@@ -343,31 +369,41 @@ export default function JobDetailSidebar({
             </form>
           ) : null}
 
-          {canManageJob && needsMandatoryCloseout ? (
+          {job.status === JobStatus.TAMAMLANDI && !job.deliveryReport ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+              Ä°ÅŸ tamamlandÄ± ancak saha raporu gelmedi. Nihai puanlama iÃ§in Ã¶nce teknisyen
+              tarafÄ±ndan saha raporu gÃ¶nderilmelidir.
+            </div>
+          ) : null}
+
+          {isPendingEvaluation ? (
             <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm text-slate-600">
-                İş ancak zorunlu teslim raporu ve Form 1 puanlama tamamlandıktan sonra
-                kapanabilir.
+                Saha raporu alÄ±ndÄ±. KoordinatÃ¶r saha gÃ¶rsellerini inceleyip Form-1
+                puanlamasÄ±nÄ± tamamladÄ±ktan sonra iÅŸ kapanacaktÄ±r.
               </p>
-              <CloseoutFlow
-                jobId={job.id}
-                boatName={job.boat.name}
-                categoryName={job.category.name}
-                multiplier={job.multiplier}
-                startOpen={closeoutRequested}
-              />
+              {canEvaluateAndClose && fieldReport ? (
+                <CoordinatorEvaluationFlow
+                  jobId={job.id}
+                  multiplier={job.multiplier}
+                  report={fieldReport}
+                />
+              ) : null}
             </div>
           ) : null}
 
-          {canManageJob && job.status === JobStatus.TAMAMLANDI && !needsMandatoryCloseout ? (
+          {canManageJob &&
+          job.status === JobStatus.KAPANDI &&
+          job.evaluation &&
+          job.jobScores.length > 0 ? (
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-              Kapanış puanlama verileri kaydedildi. İş kaydı son kapanış adımına hazır.
+              Form-1 puanlama tamamlandÄ± ve iÅŸ resmi olarak kapatÄ±ldÄ±.
             </div>
           ) : null}
 
-          {!promptThreeActionStatuses.includes(job.status) ? (
+          {!promptThreeActionStatuses.includes(job.status) && job.status !== JobStatus.KAPANDI ? (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              Bu iş durumu için ek aksiyon yok.
+              Bu iÅŸ durumu iÃ§in ek aksiyon yok.
             </div>
           ) : null}
         </CardContent>

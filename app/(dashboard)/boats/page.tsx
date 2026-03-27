@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Crown, Ship, Users2 } from "lucide-react";
 import { Role } from "@prisma/client";
 
+import BoatFormModal from "@/components/boats/BoatFormModal";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -21,7 +22,15 @@ export default async function BoatsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[32px] border border-white/70 bg-white px-5 py-6 shadow-panel sm:px-6">
-        <h1 className="mt-2 text-3xl font-semibold text-marine-navy">Tekneler</h1>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="mt-2 text-3xl font-semibold text-marine-navy">Tekneler</h1>
+          <BoatFormModal
+            trigger="Yeni Tekne Ekle"
+            refreshOnSuccess
+            title="Tekne rehberine yeni kayit"
+            description="Tekne kaydini master data olarak olusturun. Yeni isler artik sadece bu rehberdeki teknelerle acilir."
+          />
+        </div>
       </section>
 
       <div className="grid gap-4 xl:grid-cols-2">

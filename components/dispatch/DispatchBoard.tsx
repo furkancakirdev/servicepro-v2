@@ -15,6 +15,13 @@ const blockToneStyles: Record<DispatchTimelineBlock["tone"], string> = {
   slate: "border-slate-300 bg-slate-100 text-slate-700",
 };
 
+const priorityStyles: Record<string, string> = {
+  ACIL: "border-l-4 border-l-rose-500",
+  YUKSEK: "border-l-4 border-l-amber-500",
+  NORMAL: "border-l-4 border-l-sky-500",
+  DUSUK: "border-l-4 border-l-emerald-500",
+};
+
 const timelineHours = Array.from({ length: 10 }, (_, index) => 8 + index);
 const timelineWindowMinutes = 9 * 60;
 
@@ -40,11 +47,13 @@ function TimelineHeader() {
 function JobToken({
   title,
   subtitle,
+  priority,
   draggable = false,
   onDragStart,
 }: {
   title: string;
   subtitle: string;
+  priority?: string | null;
   draggable?: boolean;
   onDragStart?: () => void;
 }) {
@@ -53,7 +62,9 @@ function JobToken({
       type="button"
       draggable={draggable}
       onDragStart={onDragStart}
-      className="flex w-full items-start justify-between gap-3 rounded-2xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-left transition-colors hover:border-rose-300"
+      className={`flex w-full items-start justify-between gap-3 rounded-2xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-left transition-colors hover:border-rose-300 ${
+        priority ? priorityStyles[priority] ?? "" : ""
+      }`}
     >
       <div>
         <div className="font-medium text-rose-900">{title}</div>
@@ -183,7 +194,9 @@ export default function DispatchBoard({ data }: DispatchBoardProps) {
                             onDragStart={() => setDraggedJobId(block.jobId ?? null)}
                             className={`absolute top-3 rounded-2xl border px-3 py-2 text-xs shadow-sm ${
                               blockToneStyles[block.tone]
-                            } ${block.jobId ? "cursor-grab active:cursor-grabbing" : ""}`}
+                            } ${block.priority ? priorityStyles[block.priority] ?? "" : ""} ${
+                              block.jobId ? "cursor-grab active:cursor-grabbing" : ""
+                            }`}
                             style={{
                               left: `${left}%`,
                               width: `${Math.max(width, 12)}%`,
@@ -239,6 +252,7 @@ export default function DispatchBoard({ data }: DispatchBoardProps) {
                     key={job.id}
                     title={job.boatName}
                     subtitle={`${job.categoryName} • ${job.locationLabel}`}
+                    priority={job.priority}
                     draggable
                     onDragStart={() => setDraggedJobId(job.id)}
                   />

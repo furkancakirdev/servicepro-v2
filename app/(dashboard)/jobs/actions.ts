@@ -7,10 +7,12 @@ import { z } from "zod";
 
 import {
   activeOperationalStatuses,
-  boatTypeOptions,
+  jobPriorityOptions,
   normalizeJobSchedule,
+  normalizeJobPriority,
   normalizeJobsPagination,
   openStatuses,
+  toEstimatedDateSeconds,
   type CreateJobFormState,
   type JobFiltersInput,
   type JobFormMeta,
@@ -19,9 +21,13 @@ import {
   buildJobScoreWriteRows,
   calculateJobScore,
   calculateKesifScore,
-  initialCloseJobWithEvaluationActionState,
-  type CloseJobWithEvaluationActionState,
   type DeliveryReportInput,
+  initialEvaluateAndCloseJobActionState,
+  initialSubmitFieldReportActionState,
+  serializeFieldReport,
+  type EvaluateAndCloseJobActionState,
+  type FieldReportInput,
+  type SubmitFieldReportInput,
 } from "@/lib/scoring";
 import { requireAppUser, requireRoles } from "@/lib/auth";
 import { getTechnicianSuggestionsForBoats } from "@/lib/continuity";
@@ -30,8 +36,7 @@ import { DEFAULT_ON_HOLD_DAYS, getOnHoldDefaultDays } from "@/lib/system-setting
 import type { PaginatedJobsResult, ServiceJobDetail, ServiceJobListItem } from "@/types";
 
 const createJobSchema = z.object({
-  boatName: z.string().trim().min(2, "Tekne adı zorunludur."),
-  boatType: z.enum(boatTypeOptions),
+  boatId: z.string().uuid("Tekne secimi zorunludur."),
   location: z.string().trim().optional(),
   contactName: z.string().trim().optional(),
   contactPhone: z.string().trim().optional(),
@@ -43,11 +48,9 @@ const createJobSchema = z.object({
   isWarranty: z.boolean().default(false),
   isKesif: z.boolean().default(false),
   notes: z.string().trim().optional(),
-  responsibleId: z.string().uuid("Sorumlu teknisyen seçimi zorunludur."),
-  plannedStartAt: z.string().trim().min(1, "Planlanan baslangic zamani zorunludur."),
-  plannedEndAt: z.string().trim().optional(),
-  slaHours: z.number().int().min(1, "SLA suresi en az 1 saat olmalidir.").optional(),
-  supportIds: z.array(z.string().uuid()).default([]),
+  plannedStartDate: z.string().trim().min(1, "Planlanan operasyon baslangici zorunludur."),
+  estimatedDate: z.string().trim().min(1, "Tahmini bitis tarihi zorunludur."),
+  priority: z.enum(jobPriorityOptions).default("NORMAL"),
 });
 
 const holdReasonSchema = z.nativeEnum(HoldReason);
@@ -57,16 +60,52 @@ const createJobActionSchema = createJobSchema.extend({
   nextPath: z.string().trim().optional(),
 });
 const scoreFieldSchema = z.coerce.number().int().min(1).max(5);
-const closeJobSchema = z.object({
+const fieldReportSchema = z
+  .object({
+    jobId: z.string().uuid(),
+    unitInfo: z.string().trim().min(3, "Unite bilgisi zorunludur."),
+    responsibleId: z.string().uuid("Sorumlu teknisyen seçimi zorunludur."),
+    supportIds: z.array(z.string().uuid()).default([]),
+    partsUsed: z.string().trim().optional(),
+    hasSubcontractor: z.boolean().default(false),
+    subcontractorDetails: z.string().trim().optional(),
+    notes: z.string().trim().optional(),
+    beforePhotoUrl: z.string().trim().optional(),
+    afterPhotoUrl: z.string().trim().optional(),
+    detailPhotoUrls: z.array(z.string().trim()).default([]),
+  })
+  .superRefine((value, context) => {
+    const hasPhoto = Boolean(
+      value.beforePhotoUrl || value.afterPhotoUrl || value.detailPhotoUrls.length > 0
+    );
+
+    if (!hasPhoto) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["beforePhotoUrl"],
+        message: "En az bir saha fotografi zorunludur.",
+      });
+    }
+
+    if (value.hasSubcontractor && !value.subcontractorDetails?.trim()) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["subcontractorDetails"],
+        message: "Taseron secildiginde firma ve kapsam bilgisi zorunludur.",
+      });
+    }
+
+    if (value.supportIds.includes(value.responsibleId)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["supportIds"],
+        message: "Sorumlu teknisyen destek listesinde tekrar seçilemez.",
+      });
+    }
+  });
+
+const evaluateAndCloseSchema = z.object({
   jobId: z.string().uuid(),
-  evaluatorId: z.string().uuid().optional(),
-  unitInfoScore: scoreFieldSchema,
-  photosScore: scoreFieldSchema,
-  partsListScore: scoreFieldSchema,
-  hasSubcontractor: z.boolean().default(false),
-  subcontractorScore: scoreFieldSchema,
-  clientNotifyScore: scoreFieldSchema,
-  deliveryNotes: z.string().trim().optional(),
   q1_unit: scoreFieldSchema,
   q2_photos: scoreFieldSchema,
   q3_parts: scoreFieldSchema,
@@ -113,16 +152,6 @@ const allowedTransitions: Record<JobStatus, JobStatus[]> = {
 function optionalString(value: FormDataEntryValue | null) {
   const raw = String(value ?? "").trim();
   return raw.length > 0 ? raw : undefined;
-}
-
-function optionalInteger(value: FormDataEntryValue | null) {
-  const raw = String(value ?? "").trim();
-
-  if (!raw) {
-    return undefined;
-  }
-
-  return Number.parseInt(raw, 10);
 }
 
 function parseCheckbox(value: FormDataEntryValue | null) {
@@ -207,6 +236,9 @@ export async function getJobFormMeta(): Promise<JobFormMeta> {
         id: boat.id,
         name: boat.name,
         type: boat.type,
+        ownerName: boat.ownerName,
+        homePort: boat.homePort,
+        flag: boat.flag,
         jobCount: boat._count.jobs,
         continuitySuggestions: continuitySuggestions[boat.id] ?? [],
       }))
@@ -333,7 +365,7 @@ export async function getJobs(filters: JobFiltersInput = {}): Promise<PaginatedJ
     ...(filters.pendingScoring
       ? {
           deliveryReport: {
-            is: null,
+            isNot: null,
           },
           evaluation: {
             is: null,
@@ -546,9 +578,8 @@ export async function getJobById(id: string): Promise<{
 export async function createJob(data: CreateJobInput) {
   const actor = await requireRoles([Role.ADMIN, Role.COORDINATOR]);
   const schedule = normalizeJobSchedule({
-    plannedStartAt: data.plannedStartAt,
-    plannedEndAt: data.plannedEndAt,
-    slaHours: data.slaHours,
+    plannedStartDate: data.plannedStartDate,
+    estimatedDate: data.estimatedDate,
   });
 
   const category = await prisma.serviceCategory.findUnique({
@@ -559,64 +590,24 @@ export async function createJob(data: CreateJobInput) {
     throw new Error("Seçilen kategori bulunamadı.");
   }
 
-  const responsible = await prisma.user.findFirst({
+  const boat = await prisma.boat.findFirst({
     where: {
-      id: data.responsibleId,
-      role: Role.TECHNICIAN,
+      id: data.boatId,
+      isActive: true,
     },
   });
 
-  if (!responsible) {
-    throw new Error("Sorumlu teknisyen bulunamad?.");
+  if (!boat) {
+    throw new Error("Secilen tekne bulunamadi.");
   }
+  /*
 
-  const supportIds = [...new Set(data.supportIds)].filter(
-    (supportId) => supportId !== data.responsibleId
-  );
 
-  const supportTechnicians = supportIds.length
-    ? await prisma.user.findMany({
-        where: {
-          id: { in: supportIds },
-          role: Role.TECHNICIAN,
-        },
-        select: { id: true },
-      })
-    : [];
 
-  if (supportTechnicians.length !== supportIds.length) {
     throw new Error("Destek ekibindeki kullanıcılardan biri bulunamadı.");
   }
 
-  const existingBoat = await prisma.boat.findFirst({
-    where: {
-      name: {
-        equals: data.boatName,
-        mode: "insensitive",
-      },
-    },
-  });
-
-  const boat = existingBoat
-    ? existingBoat.isActive
-      ? existingBoat
-      : await prisma.boat.update({
-          where: {
-            id: existingBoat.id,
-          },
-          data: {
-            isActive: true,
-            type: data.boatType,
-          },
-        })
-    : await prisma.boat.create({
-        data: {
-          name: data.boatName,
-          type: data.boatType,
-          isActive: true,
-        },
-      });
-
+  */
   const status = data.isKesif ? JobStatus.KESIF : JobStatus.PLANLANDI;
   const dispatchDate = new Date(schedule.plannedStartAt.getTime());
   dispatchDate.setHours(0, 0, 0, 0);
@@ -637,25 +628,13 @@ export async function createJob(data: CreateJobInput) {
         contactPhone: data.contactPhone,
         notes: data.notes,
         dispatchDate,
+        plannedStartDate: schedule.plannedStartAt,
+        estimatedDate: toEstimatedDateSeconds(schedule.plannedEndAt),
+        priority: normalizeJobPriority(data.priority),
         plannedStartAt: schedule.plannedStartAt,
         plannedEndAt: schedule.plannedEndAt,
         slaHours: schedule.slaHours,
       },
-    });
-
-    await tx.jobAssignment.createMany({
-      data: [
-        {
-          jobId: job.id,
-          userId: responsible.id,
-          role: JobRole.SORUMLU,
-        },
-        ...supportTechnicians.map((supportUser) => ({
-          jobId: job.id,
-          userId: supportUser.id,
-          role: JobRole.DESTEK,
-        })),
-      ],
     });
 
     return job;
@@ -668,8 +647,7 @@ export async function createJobAction(
   formData: FormData
 ): Promise<CreateJobFormState> {
   const parsed = createJobActionSchema.safeParse({
-    boatName: formData.get("boatName"),
-    boatType: formData.get("boatType"),
+    boatId: formData.get("boatId"),
     location: optionalString(formData.get("location")),
     contactName: optionalString(formData.get("contactName")),
     contactPhone: optionalString(formData.get("contactPhone")),
@@ -678,11 +656,9 @@ export async function createJobAction(
     isWarranty: parseCheckbox(formData.get("isWarranty")),
     isKesif: parseCheckbox(formData.get("isKesif")),
     notes: optionalString(formData.get("notes")),
-    plannedStartAt: formData.get("plannedStartAt"),
-    plannedEndAt: optionalString(formData.get("plannedEndAt")),
-    slaHours: optionalInteger(formData.get("slaHours")),
-    responsibleId: formData.get("responsibleId"),
-    supportIds: formData.getAll("supportIds").map(String),
+    plannedStartDate: formData.get("plannedStartDate"),
+    estimatedDate: formData.get("estimatedDate"),
+    priority: formData.get("priority"),
     nextPath: formData.get("nextPath"),
   });
 
@@ -692,14 +668,12 @@ export async function createJobAction(
     return {
       error: "Lütfen zorunlu alanları kontrol edin.",
       fieldErrors: {
-        boatName: flattened.boatName?.[0],
-        boatType: flattened.boatType?.[0],
+        boatId: flattened.boatId?.[0],
         categoryId: flattened.categoryId?.[0],
         description: flattened.description?.[0],
-        responsibleId: flattened.responsibleId?.[0],
-        plannedStartAt: flattened.plannedStartAt?.[0],
-        plannedEndAt: flattened.plannedEndAt?.[0],
-        slaHours: flattened.slaHours?.[0],
+        plannedStartDate: flattened.plannedStartDate?.[0],
+        estimatedDate: flattened.estimatedDate?.[0],
+        priority: flattened.priority?.[0],
       },
     };
   }
@@ -724,7 +698,7 @@ type UpdateJobStatusOptions = {
   reminderDays?: number;
   convertKesif?: boolean;
 };
-type CloseJobWithEvaluationOptions = {
+type EvaluateAndCloseJobOptions = {
   closedById: string;
   closedAt?: Date;
 };
@@ -865,7 +839,438 @@ export async function updateHoldDetailsAction(formData: FormData) {
   }
 }
 
-export async function closeJobWithEvaluation(
+function revalidateJobLifecyclePaths(jobId: string) {
+  revalidatePath("/jobs");
+  revalidatePath(`/jobs/${jobId}`);
+  revalidatePath("/");
+  revalidatePath("/dashboard");
+  revalidatePath("/dispatch");
+  revalidatePath("/dispatch/weekly");
+  revalidatePath("/my-jobs");
+  revalidatePath("/my-jobs/weekly");
+  revalidatePath("/boats");
+  revalidatePath("/scoreboard");
+}
+
+type CloseJobWithEvaluationOptions = EvaluateAndCloseJobOptions;
+
+export async function submitFieldReport(jobId: string, report: SubmitFieldReportInput) {
+  const actor = await requireAppUser();
+  const completedAt = new Date();
+  const supportIds = Array.from(new Set(report.supportIds)).filter(
+    (supportId) => supportId !== report.responsibleId
+  );
+
+  return prisma.$transaction(async (tx) => {
+    const job = await tx.serviceJob.findUnique({
+      where: { id: jobId },
+      include: {
+        assignments: true,
+        deliveryReport: true,
+      },
+    });
+
+    if (!job) {
+      throw new Error("Is kaydi bulunamadi.");
+    }
+
+    if (actor.role !== Role.TECHNICIAN) {
+      throw new Error("Saha raporu yalnizca teknisyen tarafindan gonderilebilir.");
+    }
+
+    if (job.status !== JobStatus.DEVAM_EDIYOR) {
+      throw new Error("Saha raporu yalnizca devam eden islerde gonderilebilir.");
+    }
+
+    if (job.deliveryReport) {
+      throw new Error("Bu is icin saha raporu zaten gonderilmis.");
+    }
+
+    const declaredTeamIds = [report.responsibleId, ...supportIds];
+
+    if (!declaredTeamIds.includes(actor.id)) {
+      throw new Error("Raporu gonderen teknisyen ekip listesinde yer almalidir.");
+    }
+
+    const technicians = await tx.user.findMany({
+      where: {
+        id: {
+          in: declaredTeamIds,
+        },
+        role: Role.TECHNICIAN,
+      },
+      select: {
+        id: true,
+      },
+    });
+    const technicianIds = new Set(technicians.map((technician) => technician.id));
+
+    if (!technicianIds.has(report.responsibleId)) {
+      throw new Error("Secilen sorumlu teknisyen bulunamadi.");
+    }
+
+    if (supportIds.some((supportId) => !technicianIds.has(supportId))) {
+      throw new Error("Destek ekibindeki teknisyenlerden biri bulunamadi.");
+    }
+
+    await tx.jobAssignment.deleteMany({
+      where: {
+        jobId: job.id,
+      },
+    });
+
+    await tx.jobAssignment.createMany({
+      data: [
+        {
+          jobId: job.id,
+          userId: report.responsibleId,
+          role: JobRole.SORUMLU,
+        },
+        ...supportIds.map((supportId) => ({
+          jobId: job.id,
+          userId: supportId,
+          role: JobRole.DESTEK,
+        })),
+      ],
+    });
+
+    const deliveryReport = await tx.deliveryReport.create({
+      data: {
+        jobId: job.id,
+        unitInfo: report.unitInfo,
+        partsUsed: report.partsUsed?.trim() || null,
+        subcontractorDetails: report.hasSubcontractor
+          ? report.subcontractorDetails?.trim() || null
+          : null,
+        beforePhotoUrl: report.photos.before || null,
+        afterPhotoUrl: report.photos.after || null,
+        detailPhotoUrls: report.photos.details,
+        unitInfoScore: 5,
+        photosScore: 5,
+        partsListScore: 5,
+        subcontractorScore: 5,
+        hasSubcontractor: report.hasSubcontractor,
+        clientNotifyScore: 5,
+        notes: serializeFieldReport(report),
+      },
+    });
+
+    const updatedJob = await tx.serviceJob.update({
+      where: { id: job.id },
+      data: {
+        status: JobStatus.TAMAMLANDI,
+        completedAt,
+        actualEndAt: completedAt,
+      },
+    });
+
+    return {
+      deliveryReport,
+      job: updatedJob,
+    };
+  });
+}
+
+export async function submitFieldReportAction(
+  _prevState: typeof initialSubmitFieldReportActionState,
+  formData: FormData
+): Promise<typeof initialSubmitFieldReportActionState> {
+  const detailPhotoUrlsRaw = String(formData.get("detailPhotoUrls") ?? "[]");
+
+  let detailPhotoUrls: string[] = [];
+  try {
+    const parsedPhotoUrls = JSON.parse(detailPhotoUrlsRaw) as unknown;
+    detailPhotoUrls = Array.isArray(parsedPhotoUrls)
+      ? parsedPhotoUrls.filter((item): item is string => typeof item === "string")
+      : [];
+  } catch {
+    detailPhotoUrls = [];
+  }
+
+  const parsed = fieldReportSchema.safeParse({
+    jobId: formData.get("jobId"),
+    unitInfo: formData.get("unitInfo"),
+    responsibleId: formData.get("responsibleId"),
+    supportIds: formData.getAll("supportIds").map(String),
+    partsUsed: optionalString(formData.get("partsUsed")),
+    hasSubcontractor: parseCheckbox(formData.get("hasSubcontractor")),
+    subcontractorDetails: optionalString(formData.get("subcontractorDetails")),
+    notes: optionalString(formData.get("notes")),
+    beforePhotoUrl: optionalString(formData.get("beforePhotoUrl")),
+    afterPhotoUrl: optionalString(formData.get("afterPhotoUrl")),
+    detailPhotoUrls,
+  });
+
+  if (!parsed.success) {
+    return {
+      ...initialSubmitFieldReportActionState,
+      error: parsed.error.issues[0]?.message ?? "Saha raporu eksik veya gecersiz.",
+    };
+  }
+
+  try {
+    await submitFieldReport(parsed.data.jobId, {
+      unitInfo: parsed.data.unitInfo,
+      responsibleId: parsed.data.responsibleId,
+      supportIds: parsed.data.supportIds,
+      partsUsed: parsed.data.partsUsed,
+      hasSubcontractor: parsed.data.hasSubcontractor,
+      subcontractorDetails: parsed.data.subcontractorDetails,
+      notes: parsed.data.notes,
+      photos: {
+        before: parsed.data.beforePhotoUrl,
+        after: parsed.data.afterPhotoUrl,
+        details: parsed.data.detailPhotoUrls,
+      },
+    });
+
+    revalidateJobLifecyclePaths(parsed.data.jobId);
+
+    return {
+      success: true,
+      error: null,
+    };
+  } catch (error) {
+    return {
+      ...initialSubmitFieldReportActionState,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Saha raporu gonderilirken beklenmeyen bir hata olustu.",
+    };
+  }
+}
+
+export async function evaluateAndCloseJob(
+  jobId: string,
+  evaluationAnswers: number[],
+  evaluatorId: string,
+  options?: EvaluateAndCloseJobOptions
+) {
+  const actor = await requireRoles([Role.ADMIN, Role.COORDINATOR]);
+
+  if (actor.id !== evaluatorId) {
+    throw new Error("Degerlendirmeyi baslatan kullanici dogrulanamadi.");
+  }
+
+  const closedAt = options?.closedAt ?? new Date();
+  const closeoutStartedAt = Date.now();
+
+  const result = await prisma.$transaction(async (tx) => {
+    const job = await tx.serviceJob.findUnique({
+      where: { id: jobId },
+      include: {
+        boat: true,
+        assignments: {
+          include: {
+            user: true,
+          },
+        },
+        deliveryReport: true,
+        evaluation: true,
+        jobScores: true,
+      },
+    });
+
+    if (!job) {
+      throw new Error("Is kaydi bulunamadi.");
+    }
+
+    if (job.status !== JobStatus.TAMAMLANDI) {
+      throw new Error("Form-1 puanlamasi sadece tamamlanan islerde yapilabilir.");
+    }
+
+    if (!job.deliveryReport) {
+      throw new Error("Is kapanmadan once saha raporu gonderilmelidir.");
+    }
+
+    if (job.evaluation || job.jobScores.length > 0) {
+      throw new Error("Bu is icin puanlama zaten kaydedilmis.");
+    }
+
+    if (job.assignments.length === 0) {
+      throw new Error("Puanlama icin en az bir teknisyen atamasi gerekli.");
+    }
+
+    const { baseScore } = calculateJobScore(evaluationAnswers, job.multiplier, 1);
+
+    const evaluationRecord = await tx.jobEvaluation.create({
+      data: {
+        jobId: job.id,
+        evaluatorId,
+        q1_unit: evaluationAnswers[0],
+        q2_photos: evaluationAnswers[1],
+        q3_parts: evaluationAnswers[2],
+        q4_sub: evaluationAnswers[3],
+        q5_notify: evaluationAnswers[4],
+        baseScore,
+      },
+    });
+
+    const assignmentNameMap = new Map(
+      job.assignments.map((assignment) => [assignment.userId, assignment.user.name])
+    );
+    const jobScoreRecords = buildJobScoreWriteRows({
+      jobId: job.id,
+      assignments: job.assignments.map((assignment) => ({
+        userId: assignment.userId,
+        role: assignment.role,
+      })),
+      baseScore,
+      multiplier: job.multiplier,
+      isKesif: job.isKesif,
+      scoreDate: closedAt,
+    });
+
+    if (jobScoreRecords.length > 0) {
+      await tx.jobScore.createMany({
+        data: jobScoreRecords,
+      });
+    }
+
+    if (job.isKesif && job.kesifJobId) {
+      const mainJob = await tx.serviceJob.findUnique({
+        where: { id: job.kesifJobId },
+        include: {
+          assignments: true,
+        },
+      });
+
+      if (mainJob) {
+        const kesifScore = calculateKesifScore(baseScore);
+        const kesifDate = job.createdAt;
+
+        const mainJobScoreRows: Prisma.JobScoreCreateManyInput[] = mainJob.assignments.map(
+          (assignment) => ({
+            jobId: job.id,
+            userId: assignment.userId,
+            role: assignment.role,
+            baseScore,
+            multiplier: 0.5,
+            roleMultiplier: 1,
+            finalScore: kesifScore,
+            isKesif: true,
+            month: kesifDate.getMonth() + 1,
+            year: kesifDate.getFullYear(),
+          })
+        );
+
+        if (mainJobScoreRows.length > 0) {
+          await tx.jobScore.createMany({
+            data: mainJobScoreRows,
+          });
+        }
+      }
+    }
+
+    const linkedKesifJobs = await tx.serviceJob.findMany({
+      where: {
+        id: { not: job.id },
+        isKesif: true,
+        OR: [
+          { kesifJobId: job.id },
+          {
+            boatId: job.boatId,
+            kesifJobId: null,
+            createdAt: {
+              lte: job.createdAt,
+            },
+          },
+        ],
+      },
+      include: {
+        assignments: true,
+        jobScores: true,
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    const retroBaseScore = calculateKesifScore(baseScore);
+    const retroKesifJobs = linkedKesifJobs.filter((kesifJob) => kesifJob.jobScores.length === 0);
+    const retroKesifScoreRows = retroKesifJobs.flatMap((kesifJob) =>
+      buildJobScoreWriteRows({
+        jobId: kesifJob.id,
+        assignments: kesifJob.assignments.map((assignment) => ({
+          userId: assignment.userId,
+          role: assignment.role,
+        })),
+        baseScore: retroBaseScore,
+        multiplier: 1,
+        isKesif: true,
+        scoreDate: kesifJob.createdAt,
+      })
+    );
+
+    if (retroKesifScoreRows.length > 0) {
+      await tx.jobScore.createMany({
+        data: retroKesifScoreRows,
+      });
+    }
+
+    if (retroKesifJobs.length > 0) {
+      await tx.serviceJob.updateMany({
+        where: {
+          id: {
+            in: retroKesifJobs.map((kesifJob) => kesifJob.id),
+          },
+        },
+        data: {
+          kesifJobId: job.id,
+        },
+      });
+    }
+
+    await tx.boat.update({
+      where: {
+        id: job.boatId,
+      },
+      data: {
+        visitCount: {
+          increment: 1,
+        },
+        isVip: job.boat.isVip || job.boat.visitCount + 1 >= 8,
+      },
+    });
+
+    const closedJob = await tx.serviceJob.update({
+      where: { id: job.id },
+      data: {
+        status: JobStatus.KAPANDI,
+        closedAt,
+        closedById: options?.closedById ?? actor.id,
+      },
+    });
+
+    return {
+      closedJob,
+      deliveryReport: job.deliveryReport,
+      evaluation: evaluationRecord,
+      scores: jobScoreRecords.map((score) => ({
+        userId: score.userId,
+        userName: assignmentNameMap.get(score.userId) ?? "Teknisyen",
+        role: score.role,
+        roleMultiplier: score.roleMultiplier,
+        finalScore: score.finalScore,
+      })),
+      baseScore,
+      multiplier: job.multiplier,
+    };
+  });
+
+  const closeoutDurationMs = Date.now() - closeoutStartedAt;
+
+  if (closeoutDurationMs > CLOSEOUT_LATENCY_TARGET_P95_MS) {
+    console.warn(
+      `[jobs.closeout] p95 target exceeded for ${jobId}: ${closeoutDurationMs}ms > ${CLOSEOUT_LATENCY_TARGET_P95_MS}ms`
+    );
+  }
+
+  return result;
+}
+
+export async function legacyCloseJobWithEvaluation(
   jobId: string,
   deliveryReport: DeliveryReportInput,
   evaluationAnswers: number[],
@@ -1107,22 +1512,14 @@ export async function closeJobWithEvaluation(
   return result;
 }
 
-export async function closeJobWithEvaluationAction(
-  _prevState: CloseJobWithEvaluationActionState,
+export async function evaluateAndCloseJobAction(
+  _prevState: EvaluateAndCloseJobActionState,
   formData: FormData
-): Promise<CloseJobWithEvaluationActionState> {
+): Promise<EvaluateAndCloseJobActionState> {
   const actor = await requireRoles([Role.ADMIN, Role.COORDINATOR]);
 
-  const parsed = closeJobSchema.safeParse({
+  const parsed = evaluateAndCloseSchema.safeParse({
     jobId: formData.get("jobId"),
-    evaluatorId: formData.get("evaluatorId"),
-    unitInfoScore: formData.get("unitInfoScore"),
-    photosScore: formData.get("photosScore"),
-    partsListScore: formData.get("partsListScore"),
-    hasSubcontractor: parseCheckbox(formData.get("hasSubcontractor")),
-    subcontractorScore: formData.get("subcontractorScore"),
-    clientNotifyScore: formData.get("clientNotifyScore"),
-    deliveryNotes: optionalString(formData.get("deliveryNotes")),
     q1_unit: formData.get("q1_unit"),
     q2_photos: formData.get("q2_photos"),
     q3_parts: formData.get("q3_parts"),
@@ -1131,19 +1528,12 @@ export async function closeJobWithEvaluationAction(
   });
 
   if (!parsed.success) {
-    const hasSubcontractor = parseCheckbox(formData.get("hasSubcontractor"));
-    const deliveryAnsweredCount = [
-      formData.get("unitInfoScore"),
-      formData.get("photosScore"),
-      formData.get("partsListScore"),
-      hasSubcontractor ? formData.get("subcontractorScore") : "5",
-      formData.get("clientNotifyScore"),
-    ].filter((value) => hasAnsweredScore(value)).length;
+    const deliveryAnsweredCount = 0;
     const evaluationAnsweredCount = [
       formData.get("q1_unit"),
       formData.get("q2_photos"),
       formData.get("q3_parts"),
-      hasSubcontractor ? formData.get("q4_sub") : "5",
+      formData.get("q4_sub"),
       formData.get("q5_notify"),
     ].filter((value) => hasAnsweredScore(value)).length;
 
@@ -1157,23 +1547,14 @@ export async function closeJobWithEvaluationAction(
     }
 
     return {
-      ...initialCloseJobWithEvaluationActionState,
+      ...initialEvaluateAndCloseJobActionState,
       error,
     };
   }
 
   try {
-    const result = await closeJobWithEvaluation(
+    const result = await evaluateAndCloseJob(
       parsed.data.jobId,
-      {
-        unitInfoScore: parsed.data.unitInfoScore,
-        photosScore: parsed.data.photosScore,
-        partsListScore: parsed.data.partsListScore,
-        hasSubcontractor: parsed.data.hasSubcontractor,
-        subcontractorScore: parsed.data.hasSubcontractor ? parsed.data.subcontractorScore : 5,
-        clientNotifyScore: parsed.data.clientNotifyScore,
-        notes: parsed.data.deliveryNotes,
-      },
       [
         parsed.data.q1_unit,
         parsed.data.q2_photos,
@@ -1187,16 +1568,7 @@ export async function closeJobWithEvaluationAction(
       }
     );
 
-    revalidatePath("/jobs");
-    revalidatePath(`/jobs/${parsed.data.jobId}`);
-    revalidatePath("/");
-    revalidatePath("/dashboard");
-    revalidatePath("/dispatch");
-    revalidatePath("/dispatch/weekly");
-    revalidatePath("/my-jobs");
-    revalidatePath("/my-jobs/weekly");
-    revalidatePath("/boats");
-    revalidatePath("/scoreboard");
+    revalidateJobLifecyclePaths(parsed.data.jobId);
 
     const responsibleScore =
       result.scores.find((score) => score.role === JobRole.SORUMLU)?.finalScore ??
@@ -1216,7 +1588,7 @@ export async function closeJobWithEvaluationAction(
     };
   } catch (error) {
     return {
-      ...initialCloseJobWithEvaluationActionState,
+      ...initialEvaluateAndCloseJobActionState,
       error:
         error instanceof Error
           ? error.message

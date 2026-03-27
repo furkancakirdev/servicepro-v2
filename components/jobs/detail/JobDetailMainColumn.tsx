@@ -22,6 +22,7 @@ import {
   type RelatedOpenJob,
   type TimelineEntry,
 } from "./shared";
+import type { FieldReportInput } from "@/lib/scoring";
 
 type JobDetailMainColumnProps = {
   job: ServiceJobDetail;
@@ -29,6 +30,7 @@ type JobDetailMainColumnProps = {
   supportAssignments: JobDetailAssignment[];
   sameBoatOpenJobs: RelatedOpenJob[];
   recentBoatHistory: RecentBoatHistoryItem[];
+  fieldReport: FieldReportInput | null;
   timeline: TimelineEntry[];
 };
 
@@ -38,6 +40,7 @@ export default function JobDetailMainColumn({
   supportAssignments,
   sameBoatOpenJobs,
   recentBoatHistory,
+  fieldReport,
   timeline,
 }: JobDetailMainColumnProps) {
   return (
@@ -112,6 +115,104 @@ export default function JobDetailMainColumn({
           </div>
         </CardContent>
       </Card>
+
+      {fieldReport ? (
+        <Card className="border-white/80 bg-white/95">
+          <CardHeader>
+            <CardTitle className="text-lg text-marine-navy">Saha raporu</CardTitle>
+            <CardDescription>
+              Teknisyen tarafindan gonderilen gorsel ve operasyon notlari.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-slate-600">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-marine-ocean">
+                  Unite bilgisi
+                </div>
+                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                  {fieldReport.unitInfo || "Bilgi girilmemis."}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-marine-ocean">
+                  Parca / malzeme
+                </div>
+                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                  {fieldReport.partsUsed || "Parca listesi girilmemis."}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-marine-ocean">
+                  Taseron bilgisi
+                </div>
+                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                  {fieldReport.hasSubcontractor
+                    ? fieldReport.subcontractorDetails || "Detay belirtilmemis."
+                    : "Bu iste taseron kullanilmadi."}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.12em] text-marine-ocean">
+                  Ek saha notlari
+                </div>
+                <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                  {fieldReport.notes || "Ek not bulunmuyor."}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-marine-ocean">
+                Fotograf galerisi
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {fieldReport.photos.before ? (
+                  <a
+                    href={fieldReport.photos.before}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 font-medium text-marine-navy transition-colors hover:border-marine-ocean/40"
+                  >
+                    Once fotografi
+                  </a>
+                ) : null}
+                {fieldReport.photos.after ? (
+                  <a
+                    href={fieldReport.photos.after}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 font-medium text-marine-navy transition-colors hover:border-marine-ocean/40"
+                  >
+                    Sonra fotografi
+                  </a>
+                ) : null}
+                {fieldReport.photos.details.map((photo, index) => (
+                  <a
+                    key={`${photo}-${index}`}
+                    href={photo}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 font-medium text-marine-navy transition-colors hover:border-marine-ocean/40"
+                  >
+                    Detay fotografi {index + 1}
+                  </a>
+                ))}
+                {!fieldReport.photos.before &&
+                !fieldReport.photos.after &&
+                fieldReport.photos.details.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8">
+                    Gorsel bulunmuyor.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="border-white/80 bg-white/95">
         <CardHeader>

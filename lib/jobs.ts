@@ -1,6 +1,7 @@
 import { HoldReason, JobStatus } from "@prisma/client";
 
 export const boatTypeOptions = ["M/V", "S/Y", "CAT", "RIB", "GULET", "DIGER"] as const;
+export const jobPriorityOptions = ["ACIL", "YUKSEK", "NORMAL", "DUSUK"] as const;
 export const activeOperationalStatuses: JobStatus[] = [
   JobStatus.PLANLANDI,
   JobStatus.DEVAM_EDIYOR,
@@ -35,8 +36,10 @@ export type JobsPaginationInput = {
   pageSize?: number | string | null;
 };
 export type JobScheduleInput = {
-  plannedStartAt: Date | string;
+  plannedStartAt?: Date | string | null;
+  plannedStartDate?: Date | string | null;
   plannedEndAt?: Date | string | null;
+  estimatedDate?: Date | string | number | null;
   slaHours?: number | null;
 };
 export type NormalizedJobSchedule = {
@@ -44,16 +47,15 @@ export type NormalizedJobSchedule = {
   plannedEndAt: Date;
   slaHours: number;
 };
+export type JobPriority = (typeof jobPriorityOptions)[number];
 
 export type CreateJobFieldName =
-  | "boatName"
-  | "boatType"
+  | "boatId"
   | "categoryId"
   | "description"
-  | "responsibleId"
-  | "plannedStartAt"
-  | "plannedEndAt"
-  | "slaHours";
+  | "plannedStartDate"
+  | "estimatedDate"
+  | "priority";
 
 export type CreateJobFormState = {
   error: string | null;
@@ -83,20 +85,62 @@ export type JobFilterOption = {
   name: string;
 };
 
+export const jobPriorityConfig: Record<
+  JobPriority,
+  {
+    label: string;
+    iconToneClassName: string;
+    badgeClassName: string;
+    accentClassName: string;
+  }
+> = {
+  ACIL: {
+    label: "Acil",
+    iconToneClassName: "text-rose-600",
+    badgeClassName: "border-rose-200 bg-rose-50 text-rose-700",
+    accentClassName: "border-rose-300 bg-rose-50 text-rose-900",
+  },
+  YUKSEK: {
+    label: "Yuksek",
+    iconToneClassName: "text-amber-600",
+    badgeClassName: "border-amber-200 bg-amber-50 text-amber-700",
+    accentClassName: "border-amber-300 bg-amber-50 text-amber-900",
+  },
+  NORMAL: {
+    label: "Normal",
+    iconToneClassName: "text-sky-600",
+    badgeClassName: "border-sky-200 bg-sky-50 text-sky-700",
+    accentClassName: "border-sky-300 bg-sky-50 text-sky-900",
+  },
+  DUSUK: {
+    label: "Dusuk",
+    iconToneClassName: "text-emerald-600",
+    badgeClassName: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    accentClassName: "border-emerald-300 bg-emerald-50 text-emerald-900",
+  },
+};
+
+export type BoatContinuitySuggestion = {
+  userId: string;
+  name: string;
+  visitCount: number;
+  lastVisitedAt: string | null;
+  label: string;
+};
+
+export type JobFormBoatOption = {
+  id: string;
+  name: string;
+  type: string;
+  ownerName: string | null;
+  homePort: string | null;
+  flag: string | null;
+  jobCount: number;
+  continuitySuggestions: BoatContinuitySuggestion[];
+};
+
 export type JobFormMeta = {
-  boats: Array<{
-    id: string;
-    name: string;
-    type: string;
-    jobCount: number;
-    continuitySuggestions: Array<{
-      userId: string;
-      name: string;
-      visitCount: number;
-      lastVisitedAt: string | null;
-      label: string;
-    }>;
-  }>;
+  boats: JobFormBoatOption[];
   technicians: JobFilterOption[];
   categories: Array<{
     id: string;
@@ -128,7 +172,9 @@ export const openStatuses: JobStatus[] = [
 
 type JobDateSource = {
   createdAt: Date;
+  plannedStartDate?: Date | null;
   plannedStartAt?: Date | null;
+  estimatedDate?: number | null;
   plannedEndAt?: Date | null;
   startedAt: Date | null;
   actualStartAt?: Date | null;
@@ -171,6 +217,18 @@ function toDate(value: Date | string | null | undefined, fieldName: string) {
   return normalized;
 }
 
+function toEstimatedDate(value: Date | string | number | null | undefined) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return new Date(value * 1000);
+  }
+
+  if (value instanceof Date || typeof value === "string") {
+    return toDate(value, "Tahmini bitis zamani");
+  }
+
+  return null;
+}
+
 export function normalizeJobsPagination(
   input: JobsPaginationInput = {}
 ): JobsPagination {
@@ -190,10 +248,11 @@ export function normalizeJobsPagination(
 }
 
 export function normalizeJobSchedule(input: JobScheduleInput): NormalizedJobSchedule {
-  const plannedStartAt = toDate(input.plannedStartAt, "Planlanan baslangic zamani");
-  const plannedEndInput = input.plannedEndAt
+  const plannedStartSource = input.plannedStartDate ?? input.plannedStartAt;
+  const plannedStartAt = toDate(plannedStartSource, "Planlanan baslangic zamani");
+  const plannedEndInput = toEstimatedDate(input.estimatedDate) ?? (input.plannedEndAt
     ? toDate(input.plannedEndAt, "Planlanan bitis zamani")
-    : null;
+    : null);
   const normalizedSlaHours =
     typeof input.slaHours === "number" && Number.isFinite(input.slaHours)
       ? Math.trunc(input.slaHours)
@@ -223,6 +282,22 @@ export function normalizeJobSchedule(input: JobScheduleInput): NormalizedJobSche
     plannedEndAt,
     slaHours,
   };
+}
+
+export function getEstimatedDateAsDate(value?: number | null) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? new Date(value * 1000)
+    : null;
+}
+
+export function toEstimatedDateSeconds(value: Date) {
+  return Math.trunc(value.getTime() / 1000);
+}
+
+export function normalizeJobPriority(value?: string | null): JobPriority {
+  return jobPriorityOptions.includes(value as JobPriority)
+    ? (value as JobPriority)
+    : "NORMAL";
 }
 
 export function isJobStatusGroup(value?: string): value is JobStatusGroup {
@@ -256,21 +331,25 @@ export function getJobDateFieldLabel(field: JobDateField) {
 }
 
 export function getJobDateValue(job: JobDateSource, field: JobDateField) {
+  const plannedStartDate = job.plannedStartDate ?? job.plannedStartAt ?? job.createdAt;
+  const estimatedDate = getEstimatedDateAsDate(job.estimatedDate);
+  const plannedEndDate = estimatedDate ?? job.plannedEndAt ?? plannedStartDate;
+
   switch (field) {
     case "plannedStartAt":
-      return job.plannedStartAt ?? job.createdAt;
+      return plannedStartDate;
     case "plannedEndAt":
-      return job.plannedEndAt ?? job.plannedStartAt ?? job.createdAt;
+      return plannedEndDate;
     case "startedAt":
-      return job.actualStartAt ?? job.startedAt ?? job.plannedStartAt ?? job.createdAt;
+      return job.actualStartAt ?? job.startedAt ?? plannedStartDate;
     case "actualStartAt":
-      return job.actualStartAt ?? job.startedAt ?? job.plannedStartAt ?? job.createdAt;
+      return job.actualStartAt ?? job.startedAt ?? plannedStartDate;
     case "completedAt":
-      return job.actualEndAt ?? job.completedAt ?? job.plannedEndAt ?? job.createdAt;
+      return job.actualEndAt ?? job.completedAt ?? plannedEndDate;
     case "closedAt":
       return job.closedAt ?? job.createdAt;
     case "actualEndAt":
-      return job.actualEndAt ?? job.completedAt ?? job.plannedEndAt ?? job.createdAt;
+      return job.actualEndAt ?? job.completedAt ?? plannedEndDate;
     case "createdAt":
     default:
       return job.createdAt;
@@ -278,8 +357,11 @@ export function getJobDateValue(job: JobDateSource, field: JobDateField) {
 }
 
 export function getJobOperationalReference(
-  job: Pick<JobDateSource, "createdAt" | "plannedStartAt" | "startedAt" | "actualStartAt">
+  job: Pick<
+    JobDateSource,
+    "createdAt" | "plannedStartDate" | "plannedStartAt" | "startedAt" | "actualStartAt"
+  >
 ) {
-  return job.actualStartAt ?? job.startedAt ?? job.plannedStartAt ?? job.createdAt;
+  return job.actualStartAt ?? job.startedAt ?? job.plannedStartDate ?? job.plannedStartAt ?? job.createdAt;
 }
 

@@ -161,7 +161,7 @@ export async function getDashboardData(
       where: {
         status: JobStatus.TAMAMLANDI,
         deliveryReport: {
-          is: null,
+          isNot: null,
         },
         evaluation: {
           is: null,

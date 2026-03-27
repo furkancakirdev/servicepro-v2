@@ -1,5 +1,25 @@
 import type { JobRole } from "@prisma/client";
 
+export type FieldReportPhotos = {
+  before?: string;
+  after?: string;
+  details: string[];
+};
+
+export type FieldReportInput = {
+  unitInfo: string;
+  partsUsed?: string;
+  hasSubcontractor: boolean;
+  subcontractorDetails?: string;
+  notes?: string;
+  photos: FieldReportPhotos;
+};
+
+export type SubmitFieldReportInput = FieldReportInput & {
+  responsibleId: string;
+  supportIds: string[];
+};
+
 export type DeliveryReportInput = {
   unitInfoScore: number;
   photosScore: number;
@@ -24,6 +44,17 @@ export type JobCloseoutResult = {
   multiplier: number;
   responsibleScore: number;
   scores: JobCloseoutScoreSummary[];
+};
+
+export type SubmitFieldReportActionState = {
+  success: boolean;
+  error: string | null;
+};
+
+export type EvaluateAndCloseJobActionState = {
+  success: boolean;
+  error: string | null;
+  result: JobCloseoutResult | null;
 };
 
 export type CloseJobWithEvaluationActionState = {
@@ -53,6 +84,86 @@ export const initialCloseJobWithEvaluationActionState: CloseJobWithEvaluationAct
   error: null,
   result: null,
 };
+
+export const initialSubmitFieldReportActionState: SubmitFieldReportActionState = {
+  success: false,
+  error: null,
+};
+
+export const initialEvaluateAndCloseJobActionState: EvaluateAndCloseJobActionState = {
+  success: false,
+  error: null,
+  result: null,
+};
+
+export function serializeFieldReport(input: FieldReportInput) {
+  return JSON.stringify({
+    version: 2,
+    unitInfo: input.unitInfo,
+    partsUsed: input.partsUsed ?? "",
+    hasSubcontractor: input.hasSubcontractor,
+    subcontractorDetails: input.subcontractorDetails ?? "",
+    notes: input.notes ?? "",
+    photos: {
+      before: input.photos.before ?? "",
+      after: input.photos.after ?? "",
+      details: input.photos.details ?? [],
+    },
+  });
+}
+
+export function parseFieldReport(raw: string | null | undefined): FieldReportInput | null {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as
+      | {
+          version?: number;
+          unitInfo?: string;
+          partsUsed?: string;
+          hasSubcontractor?: boolean;
+          subcontractorDetails?: string;
+          notes?: string;
+          userNote?: string;
+          photos?: {
+            before?: string;
+            after?: string;
+            details?: string[];
+          };
+        }
+      | string;
+
+    if (!parsed || typeof parsed === "string") {
+      return null;
+    }
+
+    return {
+      unitInfo: parsed.unitInfo ?? "",
+      partsUsed: parsed.partsUsed ?? "",
+      hasSubcontractor: Boolean(parsed.hasSubcontractor),
+      subcontractorDetails: parsed.subcontractorDetails ?? "",
+      notes: parsed.notes ?? parsed.userNote ?? "",
+      photos: {
+        before: parsed.photos?.before,
+        after: parsed.photos?.after,
+        details: Array.isArray(parsed.photos?.details) ? parsed.photos?.details : [],
+      },
+    };
+  } catch {
+    return {
+      unitInfo: "",
+      partsUsed: "",
+      hasSubcontractor: false,
+      subcontractorDetails: "",
+      notes: raw,
+      photos: {
+        details: [],
+      },
+    };
+  }
+}
 
 function assertFiniteNumber(value: unknown, fieldName: string): asserts value is number {
   if (typeof value !== "number" || Number.isNaN(value) || !Number.isFinite(value)) {

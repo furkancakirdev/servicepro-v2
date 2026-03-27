@@ -1,5 +1,10 @@
+import { AlertTriangle } from "lucide-react";
 import { JobStatus } from "@prisma/client";
 
+import {
+  jobPriorityConfig,
+  normalizeJobPriority,
+} from "@/lib/jobs";
 import { cn } from "@/lib/utils";
 
 export const statusConfig: Record<
@@ -44,17 +49,40 @@ export function getStatusLabel(status: JobStatus) {
   return statusConfig[status].label;
 }
 
-export default function StatusBadge({ status }: { status: JobStatus }) {
+export default function StatusBadge({
+  status,
+  priority,
+}: {
+  status: JobStatus;
+  priority?: string | null;
+}) {
   const current = statusConfig[status];
+  const normalizedPriority = priority ? normalizeJobPriority(priority) : null;
+  const priorityConfig = normalizedPriority
+    ? jobPriorityConfig[normalizedPriority]
+    : null;
 
   return (
-    <span
-      className={cn(
-        "inline-flex rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.12em] uppercase",
-        current.className
-      )}
-    >
-      {current.label}
-    </span>
+    <div className="flex flex-wrap items-center gap-2">
+      <span
+        className={cn(
+          "inline-flex rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.12em] uppercase",
+          current.className
+        )}
+      >
+        {current.label}
+      </span>
+      {priorityConfig ? (
+        <span
+          className={cn(
+            "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold tracking-[0.12em] uppercase",
+            priorityConfig.badgeClassName
+          )}
+        >
+          {normalizedPriority === "ACIL" ? <AlertTriangle className="size-3.5" /> : null}
+          {priorityConfig.label}
+        </span>
+      ) : null}
+    </div>
   );
 }

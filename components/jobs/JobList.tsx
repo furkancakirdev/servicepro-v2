@@ -7,6 +7,7 @@ import DifficultyBadge from "@/components/jobs/DifficultyBadge";
 import JobCard from "@/components/jobs/JobCard";
 import StatusBadge from "@/components/jobs/StatusBadge";
 import {
+  getEstimatedDateAsDate,
   getJobDateFieldLabel,
   getJobDateValue,
   type JobDateField,
@@ -30,7 +31,7 @@ function getResponsibleLabel(job: ServiceJobListItem) {
   return (
     job.assignments.find((assignment) => assignment.role === JobRole.SORUMLU)?.user.name ??
     job.assignments[0]?.user.name ??
-    "Atama bekleniyor"
+    "Havuzda (Atanmadi)"
   );
 }
 
@@ -47,6 +48,13 @@ function getSupportNames(job: ServiceJobListItem) {
 
 function formatJobDate(date: Date) {
   return format(date, "dd MMM yyyy HH:mm", { locale: tr });
+}
+
+function getPlanningMoments(job: ServiceJobListItem) {
+  return {
+    plannedStart: job.plannedStartDate ?? job.plannedStartAt,
+    estimatedEnd: getEstimatedDateAsDate(job.estimatedDate) ?? job.plannedEndAt,
+  };
 }
 
 function getVisiblePages(page: number, totalPages: number) {
@@ -179,6 +187,7 @@ export default function JobList({
             {jobs.map((job) => {
               const supportCount = getSupportCount(job);
               const supportNames = getSupportNames(job);
+              const planning = getPlanningMoments(job);
 
               return (
                 <TableRow key={job.id} className="border-slate-100">
@@ -201,10 +210,20 @@ export default function JobList({
                     ) : null}
                   </TableCell>
                   <TableCell className="px-4 py-4">
-                    <StatusBadge status={job.status} />
+                    <StatusBadge status={job.status} priority={job.priority} />
                   </TableCell>
                   <TableCell className="px-4 py-4 text-slate-600">
-                    {formatJobDate(getJobDateValue(job, dateField))}
+                    <div className="font-medium text-slate-700">
+                      {formatJobDate(getJobDateValue(job, dateField))}
+                    </div>
+                    <div className="mt-1 space-y-1 text-xs text-slate-500">
+                      {planning.plannedStart ? (
+                        <div>Plan: {formatJobDate(planning.plannedStart)}</div>
+                      ) : null}
+                      {planning.estimatedEnd ? (
+                        <div>Tahmini: {formatJobDate(planning.estimatedEnd)}</div>
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell className="px-4 py-4 text-slate-600">
                     {job.location ?? "Lokasyon bekleniyor"}
