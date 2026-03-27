@@ -659,7 +659,7 @@ export async function createJobAction(
     plannedStartDate: formData.get("plannedStartDate"),
     estimatedDate: formData.get("estimatedDate"),
     priority: formData.get("priority"),
-    nextPath: formData.get("nextPath"),
+    nextPath: optionalString(formData.get("nextPath")),
   });
 
   if (!parsed.success) {
