@@ -140,6 +140,8 @@ model ServiceJob {
   closedById   String?
   closedBy     User?           @relation("ClosedBy", fields: [closedById], references: [id])
   notes        String?         @db.Text
+  cancelReason String?         @db.Text
+  warrantyNote String?         @db.Text
   location     String?
   contactName  String?
   contactPhone String?

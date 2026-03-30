@@ -302,7 +302,7 @@ export async function updatePersonnelRoleAction(formData: FormData) {
       });
 
       if (!currentUser) {
-        throw new Error("Rol guncellenecek personel bulunamadi.");
+        throw new Error("Rol güncellenecek personel bulunamadı.");
       }
 
       if (currentUser.role !== parsed.data.role) {

@@ -128,8 +128,18 @@ export function buildJobTimeline(job: ServiceJobDetail): TimelineEntry[] {
       : null,
     job.closedAt
       ? {
-          label: "Is kapatildi",
-          description: "Puanlama sonrasi resmi kapanis yapildi.",
+          label:
+            job.status === JobStatus.IPTAL
+              ? "Is iptal edildi"
+              : job.status === JobStatus.GARANTI
+                ? "Is garantiye alindi"
+                : "Is kapatildi",
+          description:
+            job.status === JobStatus.IPTAL
+              ? job.cancelReason ?? "Iptal kaydi tamamlandi."
+              : job.status === JobStatus.GARANTI
+                ? job.warrantyNote ?? "Is garanti kapsaminda kapatildi."
+                : "Puanlama sonrasi resmi kapanis yapildi.",
           date: job.closedAt,
         }
       : null,

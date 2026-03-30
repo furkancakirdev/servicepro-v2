@@ -78,7 +78,7 @@ describe("normalizeJobSchedule", () => {
       });
 
     expect(execution).toThrow(
-      "Planlanan bitis veya SLA suresi alanlarindan biri zorunludur."
+      "Planlanan bitiş veya SLA suresi alanlarindan biri zorunludur."
     );
   });
 
@@ -89,7 +89,7 @@ describe("normalizeJobSchedule", () => {
         plannedEndAt: "2026-03-26T08:00:00.000Z",
       });
 
-    expect(execution).toThrow("Planlanan bitis zamani baslangictan sonra olmalidir.");
+    expect(execution).toThrow("Planlanan bitiş zamani baslangictan sonra olmalidir.");
   });
 });
 

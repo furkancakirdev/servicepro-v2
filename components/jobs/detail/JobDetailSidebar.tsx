@@ -7,6 +7,7 @@ import {
 } from "@/app/(dashboard)/jobs/actions";
 import ClientNotificationPanel from "@/components/jobs/ClientNotificationPanel";
 import DifficultyBadge from "@/components/jobs/DifficultyBadge";
+import JobStatusActionDialogs from "@/components/jobs/detail/JobStatusActionDialogs";
 import CoordinatorEvaluationFlow from "@/components/scoring/CoordinatorEvaluationFlow";
 import FieldReportFlow from "@/components/scoring/FieldReportFlow";
 import { Button } from "@/components/ui/button";
@@ -66,7 +67,20 @@ export default function JobDetailSidebar({
   responsibleScore,
   supportScores,
 }: JobDetailSidebarProps) {
+  const cancellableStatuses: JobStatus[] = [
+    JobStatus.KESIF,
+    JobStatus.PLANLANDI,
+    JobStatus.DEVAM_EDIYOR,
+    JobStatus.BEKLEMEDE,
+  ];
   const isPendingEvaluation =
+    job.status === JobStatus.TAMAMLANDI &&
+    Boolean(job.deliveryReport) &&
+    !job.evaluation &&
+    job.jobScores.length === 0;
+  const canCancelJob = canManageJob && cancellableStatuses.includes(job.status);
+  const canCloseAsWarranty =
+    canManageJob &&
     job.status === JobStatus.TAMAMLANDI &&
     Boolean(job.deliveryReport) &&
     !job.evaluation &&
@@ -382,6 +396,11 @@ export default function JobDetailSidebar({
                 Saha raporu alındı. Koordinatör saha görsellerini inceleyip Form-1
                 puanlamas?n? tamamlad?ktan sonra i? kapanacakt?r.
               </p>
+              <JobStatusActionDialogs
+                jobId={job.id}
+                showCancel={false}
+                showWarranty={canCloseAsWarranty}
+              />
               {canEvaluateAndClose && fieldReport ? (
                 <CoordinatorEvaluationFlow
                   jobId={job.id}
@@ -391,6 +410,12 @@ export default function JobDetailSidebar({
               ) : null}
             </div>
           ) : null}
+
+          <JobStatusActionDialogs
+            jobId={job.id}
+            showCancel={canCancelJob}
+            showWarranty={false}
+          />
 
           {canManageJob &&
           job.status === JobStatus.KAPANDI &&

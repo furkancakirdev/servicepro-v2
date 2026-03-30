@@ -81,13 +81,13 @@ export default function CoordinatorEvaluationModal({
           <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-seafoam">
             Form 1
           </p>
-          <h2 className="text-3xl font-semibold">Koordinator Degerlendirmesi</h2>
+          <h2 className="text-3xl font-semibold">Koordinatör Değerlendirmesi</h2>
           <p className="max-w-4xl text-sm leading-7 text-slate-200">
-            Asagidaki saha raporu teknisyen tarafindan gonderildi. Once raporu inceleyin,
-            ardindan 5 kriterin puanlamasini verip isi kapatin.
+            Aşağıdaki saha raporu teknisyen tarafından gönderildi. Önce raporu inceleyin,
+            ardından 5 kriterin puanlamasını verip işi kapatın.
           </p>
           <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white">
-            x{multiplier.toFixed(1)} zorluk carpani uygulanacak
+            x{multiplier.toFixed(1)} zorluk çarpanı uygulanacak
           </div>
         </div>
 
@@ -106,36 +106,36 @@ export default function CoordinatorEvaluationModal({
               <div className="mt-3 grid gap-4">
                 <div className="rounded-2xl border border-slate-200/20 bg-black/10 px-4 py-4">
                   <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
-                    Unite bilgisi
+                    Ünite bilgisi
                   </div>
                   <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-white">
-                    {report.unitInfo || "Bilgi girilmemis."}
+                    {report.unitInfo || "Bilgi girilmemiş."}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200/20 bg-black/10 px-4 py-4">
                   <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
-                    Parca / malzeme listesi
+                    Parça / malzeme listesi
                   </div>
                   <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-white">
-                    {report.partsUsed || "Parca listesi girilmemis."}
+                    {report.partsUsed || "Parça listesi girilmemiş."}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200/20 bg-black/10 px-4 py-4">
                   <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
-                    Taseron bilgisi
+                    Taşeron bilgisi
                   </div>
                   <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-white">
                     {report.hasSubcontractor
-                      ? report.subcontractorDetails || "Taseron secili ancak detay girilmemis."
-                      : "Bu iste taseron kullanilmadi."}
+                      ? report.subcontractorDetails || "Taşeron seçili ancak detay girilmemiş."
+                      : "Bu işte taşeron kullanılmadı."}
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-slate-200/20 bg-black/10 px-4 py-4">
                   <div className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-300">
-                    Ek saha notlari
+                    Ek saha notları
                   </div>
                   <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-white">
                     {report.notes || "Ek not bulunmuyor."}
@@ -146,17 +146,17 @@ export default function CoordinatorEvaluationModal({
 
             <div>
               <div className="text-sm font-semibold uppercase tracking-[0.16em] text-marine-seafoam">
-                Gorseller
+                Görseller
               </div>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {report.photos.before ? <PhotoTile label="Once" url={report.photos.before} /> : null}
+                {report.photos.before ? <PhotoTile label="Önce" url={report.photos.before} /> : null}
                 {report.photos.after ? <PhotoTile label="Sonra" url={report.photos.after} /> : null}
                 {report.photos.details.map((url, index) => (
                   <PhotoTile key={`${url}-${index}`} label={`Detay ${index + 1}`} url={url} />
                 ))}
                 {!report.photos.before && !report.photos.after && report.photos.details.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-white/20 px-4 py-8 text-sm text-slate-300">
-                    Gorsel bulunmuyor.
+                    Görsel bulunmuyor.
                   </div>
                 ) : null}
               </div>
@@ -165,57 +165,57 @@ export default function CoordinatorEvaluationModal({
 
           <div className="space-y-4 rounded-[28px] border border-white/10 bg-white/5 p-5">
             <div className="rounded-[24px] border border-white/10 bg-black/10 px-4 py-4 text-sm text-slate-200">
-              {answeredCount}/5 soru yanitlandi. Tüm puanlar tamamlandiginda is kapanir.
+              {answeredCount}/5 soru yanıtlandı. Tüm puanlar tamamlandığında iş kapanır.
             </div>
 
             <RatingScale
-              label="S1 - Unite bilgileri"
-              description="Raporlanan unite bilgisi operasyonel olarak yeterli mi?"
+              label="S1 - Ünite bilgileri"
+              description="Raporlanan ünite bilgisi operasyonel olarak yeterli mi?"
               value={value.q1_unit}
               onChange={(q1_unit) => onChange({ ...value, q1_unit })}
-              anchors={["1 - Yetersiz", "3 - Kismi", "5 - Tam ve net"]}
+              anchors={["1 - Yetersiz", "3 - Kısmi", "5 - Tam ve net"]}
             />
 
             <RatingScale
-              label="S2 - Fotograf kalitesi"
-              description="Gorseller isi dogrulayacak netlikte ve kapsamda mi?"
+              label="S2 - Fotoğraf kalitesi"
+              description="Görseller işi doğrulayacak netlikte ve kapsamda mı?"
               value={value.q2_photos}
               onChange={(q2_photos) => onChange({ ...value, q2_photos })}
-              anchors={["1 - Yetersiz", "3 - Kismi", "5 - Net ve yeterli"]}
+              anchors={["1 - Yetersiz", "3 - Kısmi", "5 - Net ve yeterli"]}
             />
 
             <RatingScale
-              label="S3 - Parca / malzeme listesi"
-              description="Parca ve sarf listesi muhasebe/operasyon icin yeterli mi?"
+              label="S3 - Parça / malzeme listesi"
+              description="Parça ve sarf listesi muhasebe/operasyon için yeterli mi?"
               value={value.q3_parts}
               onChange={(q3_parts) => onChange({ ...value, q3_parts })}
-              anchors={["1 - Eksik", "3 - Kismi", "5 - Tam liste"]}
+              anchors={["1 - Eksik", "3 - Kısmi", "5 - Tam liste"]}
             />
 
             <RatingScale
-              label="S4 - Taseron / dis tedarikci"
+              label="S4 - Taşeron / dış tedarikçi"
               description={
                 report.hasSubcontractor
-                  ? "Taseron bilgisi ve kapsam acik mi?"
-                  : "Bu iste taseron yok. Soru otomatik 5 kabul edilir."
+                  ? "Taşeron bilgisi ve kapsam açık mı?"
+                  : "Bu işte taşeron yok. Soru otomatik 5 kabul edilir."
               }
               value={report.hasSubcontractor ? value.q4_sub : 5}
               onChange={(q4_sub) => onChange({ ...value, q4_sub })}
-              anchors={["1 - Eksik", "3 - Kismi", "5 - N/A veya tam kayit"]}
+              anchors={["1 - Eksik", "3 - Kısmi", "5 - N/A veya tam kayıt"]}
               disabled={!report.hasSubcontractor}
             />
 
             <RatingScale
-              label="S5 - Kapanis iletisi / teslim netligi"
-              description="Raporun kapanis netligi ve koordinasyon kalitesi yeterli mi?"
+              label="S5 - Kapanış iletisi / teslim netliği"
+              description="Raporun kapanış netliği ve koordinasyon kalitesi yeterli mi?"
               value={value.q5_notify}
               onChange={(q5_notify) => onChange({ ...value, q5_notify })}
-              anchors={["1 - Belirsiz", "3 - Orta", "5 - Net kapanis"]}
+              anchors={["1 - Belirsiz", "3 - Orta", "5 - Net kapanış"]}
             />
 
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-[28px] border border-white/10 bg-black/10 p-5">
               <Button type="button" variant="outline" size="lg" onClick={onClose} className="h-12">
-                Vazgec
+                Vazgeç
               </Button>
               <Button
                 type="submit"
@@ -223,7 +223,7 @@ export default function CoordinatorEvaluationModal({
                 disabled={!canSubmit}
                 className="h-12 bg-white px-6 text-marine-navy hover:bg-slate-100"
               >
-                Puanla ve Isi Kapat
+                Puanla ve İşi Kapat
               </Button>
             </div>
           </div>

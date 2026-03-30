@@ -1,269 +1,312 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { AlertTriangle, GripHorizontal, MapPin, MoveRight } from "lucide-react";
+import { useState, useTransition } from "react";
+import { AlertTriangle, CalendarDays, GripHorizontal, MapPin, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
-import { reassignDispatchJob } from "@/app/(dashboard)/dispatch/actions";
-import type { DispatchBoardData, DispatchTimelineBlock } from "@/lib/dispatch";
+import { assignJobToDate } from "@/app/(dashboard)/dispatch/actions";
+import type {
+  DispatchBoardData,
+  DispatchJobCard,
+  DispatchRegionId,
+} from "@/lib/dispatch/types";
 
-const blockToneStyles: Record<DispatchTimelineBlock["tone"], string> = {
-  blue: "border-sky-200 bg-[#E6F1FB] text-sky-900",
-  green: "border-emerald-200 bg-[#EAF3DE] text-emerald-900",
-  amber: "border-amber-200 bg-[#FAEEDA] text-amber-900",
-  purple: "border-violet-200 bg-[#EEEDFE] text-violet-900",
-  slate: "border-slate-300 bg-slate-100 text-slate-700",
-};
-
-const priorityStyles: Record<string, string> = {
-  ACIL: "border-l-4 border-l-rose-500",
-  YUKSEK: "border-l-4 border-l-amber-500",
-  NORMAL: "border-l-4 border-l-sky-500",
-  DUSUK: "border-l-4 border-l-emerald-500",
-};
-
-const timelineHours = Array.from({ length: 10 }, (_, index) => 8 + index);
-const timelineWindowMinutes = 9 * 60;
+import DispatchJobDetailsDialog from "./DispatchJobDetailsDialog";
 
 type DispatchBoardProps = {
   data: DispatchBoardData;
 };
 
-function TimelineHeader() {
+type DropZoneProps = {
+  regionId: DispatchRegionId;
+  dateValue: string;
+  label: string;
+  jobs: DispatchJobCard[];
+  draggedJobId: string | null;
+  onDragStart: (jobId: string) => void;
+  onDrop: (regionId: DispatchRegionId, dateValue: string) => void;
+  availableTechnicians: DispatchBoardData["availableTechnicians"];
+};
+
+function WarningBanner({ title, description }: { title: string; description: string }) {
   return (
-    <div className="grid grid-cols-10 rounded-t-[28px] border border-slate-200 bg-white">
-      {timelineHours.map((hour) => (
-        <div
-          key={hour}
-          className="border-l border-slate-200 px-3 py-3 text-center text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 first:border-l-0"
-        >
-          {String(hour).padStart(2, "0")}:00
+    <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+        <div>
+          <div className="font-medium">{title}</div>
+          <div className="mt-1 text-amber-800">{description}</div>
         </div>
-      ))}
+      </div>
     </div>
   );
 }
 
-function JobToken({
-  title,
-  subtitle,
-  priority,
-  draggable = false,
+function DispatchJobCardView({
+  job,
   onDragStart,
 }: {
-  title: string;
-  subtitle: string;
-  priority?: string | null;
-  draggable?: boolean;
-  onDragStart?: () => void;
+  job: DispatchJobCard;
+  onDragStart: (jobId: string) => void;
 }) {
   return (
-    <button
-      type="button"
-      draggable={draggable}
-      onDragStart={onDragStart}
-      className={`flex w-full items-start justify-between gap-3 rounded-2xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-left transition-colors hover:border-rose-300 ${
-        priority ? priorityStyles[priority] ?? "" : ""
+    <div
+      draggable
+      onDragStart={() => onDragStart(job.id)}
+      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-marine-ocean/30"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate font-semibold text-marine-navy">{job.boatName}</div>
+          <div className="mt-1 text-sm text-slate-600">{job.categoryName}</div>
+        </div>
+        <div className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+          <GripHorizontal className="size-3.5" />
+          Tasinabilir
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2 text-xs">
+        <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">
+          {job.timeLabel ?? "Saat yok"}
+        </span>
+        <span className="rounded-full bg-sky-50 px-2 py-1 text-sky-700">
+          {job.responsibleName ?? "Teknisyen bekliyor"}
+        </span>
+        {job.priority ? (
+          <span className="rounded-full bg-amber-50 px-2 py-1 text-amber-700">
+            {job.priority}
+          </span>
+        ) : null}
+      </div>
+
+      <div className="mt-3 space-y-2 text-sm text-slate-600">
+        <div className="flex items-start gap-2">
+          <UserRound className="mt-0.5 size-4 shrink-0 text-slate-400" />
+          <span>{job.assignedTechnician ?? "Sorumlu teknisyen secilmedi"}</span>
+        </div>
+        <div className="flex items-start gap-2">
+          <MapPin className="mt-0.5 size-4 shrink-0 text-slate-400" />
+          <span>{job.location?.trim() || job.locationLabel}</span>
+        </div>
+      </div>
+
+      {job.hasLocationWarning ? (
+        <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          Marmaris Disi gorevinde acik lokasyon zorunlu.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DropZone({
+  regionId,
+  dateValue,
+  label,
+  jobs,
+  draggedJobId,
+  onDragStart,
+  onDrop,
+  availableTechnicians,
+}: DropZoneProps) {
+  return (
+    <div
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={() => onDrop(regionId, dateValue)}
+      className={`min-h-[180px] rounded-[24px] border border-dashed p-3 transition-colors ${
+        draggedJobId
+          ? "border-marine-ocean/40 bg-marine-ocean/5"
+          : "border-slate-200 bg-slate-50/80"
       }`}
     >
-      <div>
-        <div className="font-medium text-rose-900">{title}</div>
-        <div className="mt-1 text-sm text-rose-700">{subtitle}</div>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="text-sm font-medium text-marine-navy">{label}</div>
+        <div className="rounded-full bg-white px-2 py-1 text-xs font-medium text-slate-500">
+          {jobs.length} is
+        </div>
       </div>
-      <GripHorizontal className="mt-0.5 size-4 shrink-0 text-rose-500" />
-    </button>
+
+      <div className="space-y-3">
+        {jobs.length > 0 ? (
+          jobs.map((job) => (
+            <DispatchJobDetailsDialog
+              key={job.id}
+              job={job}
+              dateValue={dateValue}
+              technicians={availableTechnicians}
+              trigger={<DispatchJobCardView job={job} onDragStart={onDragStart} />}
+            />
+          ))
+        ) : (
+          <div className="rounded-2xl bg-white/80 px-4 py-6 text-sm text-slate-500">
+            Buraya kart birakip {label.toLowerCase()} icin plan olusturabilirsiniz.
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
 export default function DispatchBoard({ data }: DispatchBoardProps) {
   const router = useRouter();
   const [draggedJobId, setDraggedJobId] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const busyLaneIds = useMemo(
-    () => new Set(data.lanes.filter((lane) => lane.isOverloaded).map((lane) => lane.id)),
-    [data.lanes]
-  );
 
-  function handleDrop(technicianId: string) {
+  function handleDrop(regionId: DispatchRegionId, dateValue: string) {
     if (!draggedJobId) {
       return;
     }
 
-    setStatusMessage(null);
     startTransition(async () => {
-      await reassignDispatchJob({
-        jobId: draggedJobId,
-        technicianId,
-      });
-      setStatusMessage("Atama güncellendi. Timeline yenileniyor.");
-      setDraggedJobId(null);
-      router.refresh();
+      try {
+        await assignJobToDate({
+          jobId: draggedJobId,
+          dateValue,
+          regionId,
+        });
+        toast.success("Is yeni tarih ve bolgeye tasindi.");
+        setDraggedJobId(null);
+        router.refresh();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Kart tasinirken hata olustu.");
+      }
     });
   }
 
   return (
-    <div className="space-y-4">
-      {statusMessage ? (
-        <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
-          {statusMessage}
-        </div>
-      ) : null}
-
+    <div className="space-y-5">
       {data.warnings.length > 0 ? (
         <div className="space-y-3">
           {data.warnings.map((warning) => (
-            <div
+            <WarningBanner
               key={warning.id}
-              className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-            >
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                <div>
-                  <div className="font-medium">{warning.title}</div>
-                  <div className="mt-1 text-amber-800">{warning.description}</div>
-                </div>
-              </div>
-            </div>
+              title={warning.title}
+              description={warning.description}
+            />
           ))}
         </div>
       ) : null}
 
-      <div className="grid gap-4 xl:grid-cols-[180px_minmax(0,1fr)]">
-        <div className="rounded-[28px] border border-slate-200 bg-white">
-          <div className="border-b border-slate-200 px-4 py-4 text-sm font-semibold text-marine-navy">
-            Teknisyen rosteri
+      <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-5 shadow-panel sm:px-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-sm font-medium uppercase tracking-[0.16em] text-marine-ocean">
+              {data.viewMode === "daily" ? "Gunluk gorunum" : "Haftalik gorunum"}
+            </div>
+            <div className="mt-1 text-lg font-semibold text-marine-navy">{data.dateLabel}</div>
           </div>
-          <div className="space-y-2 p-3">
-            {data.lanes.map((lane) => (
-              <div
-                key={lane.id}
-                className={`rounded-2xl border px-3 py-3 ${
-                  busyLaneIds.has(lane.id)
-                    ? "border-amber-200 bg-amber-50"
-                    : "border-slate-200 bg-slate-50"
-                }`}
-              >
+          <div className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-600">
+            <CalendarDays className="size-4 text-marine-ocean" />
+            {data.weekLabel}
+          </div>
+        </div>
+      </div>
+
+      {data.viewMode === "daily" ? (
+        <div className="grid gap-4 xl:grid-cols-3">
+          {data.regions.map((region) => (
+            <div
+              key={region.id}
+              className={`rounded-[28px] border border-slate-200 bg-white p-4 shadow-panel ${
+                isPending ? "opacity-80" : ""
+              }`}
+            >
+              <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-2xl bg-marine-navy text-sm font-semibold text-white">
-                    {lane.initials}
+                  <div className="flex size-11 items-center justify-center rounded-2xl bg-marine-navy text-sm font-semibold text-white">
+                    {region.icon}
                   </div>
-                  <div className="min-w-0">
-                    <div className="truncate font-medium text-marine-navy">{lane.name}</div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                      <span>{lane.jobCount} iş</span>
-                      <span>•</span>
-                      <span className="truncate">{lane.locationLabel}</span>
-                    </div>
+                  <div>
+                    <div className="font-semibold text-marine-navy">{region.label}</div>
+                    <div className="text-sm text-slate-500">{region.jobCount} planli is</div>
                   </div>
                 </div>
               </div>
-            ))}
+
+              {region.days.map((day) => (
+                <DropZone
+                  key={`${region.id}-${day.dateValue}`}
+                  regionId={region.id}
+                  dateValue={day.dateValue}
+                  label={day.dateLabel}
+                  jobs={day.jobs}
+                  draggedJobId={draggedJobId}
+                  onDragStart={setDraggedJobId}
+                  onDrop={handleDrop}
+                  availableTechnicians={data.availableTechnicians}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className={`space-y-4 ${isPending ? "opacity-80" : ""}`}>
+          {data.regions.map((region) => (
+            <div
+              key={region.id}
+              className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-panel"
+            >
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex size-11 items-center justify-center rounded-2xl bg-marine-navy text-sm font-semibold text-white">
+                  {region.icon}
+                </div>
+                <div>
+                  <div className="font-semibold text-marine-navy">{region.label}</div>
+                  <div className="text-sm text-slate-500">{region.jobCount} planli is</div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-6">
+                {region.days.map((day) => (
+                  <DropZone
+                    key={`${region.id}-${day.dateValue}`}
+                    regionId={region.id}
+                    dateValue={day.dateValue}
+                    label={`${day.dayLabel} • ${day.dateLabel}`}
+                    jobs={day.jobs}
+                    draggedJobId={draggedJobId}
+                    onDragStart={setDraggedJobId}
+                    onDrop={handleDrop}
+                    availableTechnicians={data.availableTechnicians}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-[28px] border border-rose-200 bg-white p-4 shadow-panel">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <div className="font-semibold text-rose-900">Tarihe atanmamis isler</div>
+            <div className="text-sm text-rose-700">
+              Kartlari bolge gunlerine surukleyerek planlayin veya karti acip detaydan atayin.
+            </div>
+          </div>
+          <div className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700">
+            {data.unassignedJobs.length} bekleyen kart
           </div>
         </div>
 
-        <div className="space-y-4 overflow-x-auto">
-          <div className="min-w-[920px]">
-            <TimelineHeader />
-            <div className="rounded-b-[28px] border border-t-0 border-slate-200 bg-white">
-              {data.lanes.map((lane) => (
-                <div
-                  key={lane.id}
-                  className="grid grid-cols-[220px_minmax(0,1fr)] border-t border-slate-100 first:border-t-0"
-                >
-                  <div className="border-r border-slate-100 px-4 py-4">
-                    <div className="font-medium text-marine-navy">{lane.name}</div>
-                    <div className="mt-1 text-sm text-slate-500">{lane.locationLabel}</div>
-                  </div>
-                  <div
-                    className={`relative h-[92px] bg-[linear-gradient(to_right,rgba(226,232,240,0.8)_1px,transparent_1px)] bg-[length:10%_100%] px-2 py-3 ${
-                      isPending ? "opacity-70" : ""
-                    }`}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={() => handleDrop(lane.id)}
-                  >
-                    {lane.blocks.length > 0 ? (
-                      lane.blocks.map((block) => {
-                        const left = (block.startMinutes / timelineWindowMinutes) * 100;
-                        const width = (block.durationMinutes / timelineWindowMinutes) * 100;
-
-                        return (
-                          <div
-                            key={block.id}
-                            draggable={Boolean(block.jobId)}
-                            onDragStart={() => setDraggedJobId(block.jobId ?? null)}
-                            className={`absolute top-3 rounded-2xl border px-3 py-2 text-xs shadow-sm ${
-                              blockToneStyles[block.tone]
-                            } ${block.priority ? priorityStyles[block.priority] ?? "" : ""} ${
-                              block.jobId ? "cursor-grab active:cursor-grabbing" : ""
-                            }`}
-                            style={{
-                              left: `${left}%`,
-                              width: `${Math.max(width, 12)}%`,
-                            }}
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0">
-                                <div className="truncate font-semibold">{block.title}</div>
-                                <div className="truncate opacity-80">{block.subtitle}</div>
-                                <div className="mt-1 flex items-center gap-1 opacity-70">
-                                  <MapPin className="size-3" />
-                                  <span>
-                                    {block.startLabel} - {block.endLabel}
-                                  </span>
-                                </div>
-                              </div>
-                              {block.hasWarningDot ? (
-                                <span className="mt-1 inline-flex size-2 rounded-full bg-rose-500" />
-                              ) : null}
-                            </div>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="flex h-full items-center px-3 text-sm text-slate-400">
-                        Bu satır şu anda boş. Kırmızı kartları sürükleyip buraya
-                        bırakabilirsiniz.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {data.unassignedJobs.length > 0 ? (
+            data.unassignedJobs.map((job) => (
+              <DispatchJobDetailsDialog
+                key={job.id}
+                job={job}
+                dateValue={data.dateValue}
+                technicians={data.availableTechnicians}
+                trigger={<DispatchJobCardView job={job} onDragStart={setDraggedJobId} />}
+              />
+            ))
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+              Tarih bekleyen dispatch karti kalmadi.
             </div>
-          </div>
-
-          <div className="rounded-[28px] border border-rose-200 bg-white p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="font-semibold text-rose-900">Atanmamış işler</div>
-                <div className="text-sm text-rose-700">
-                  Kırmızı kartları ilgili teknisyen satırına taşıyarak atama yapın.
-                </div>
-              </div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700">
-                <MoveRight className="size-3.5" />
-                Sürükle ve bırak
-              </div>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {data.unassignedJobs.length > 0 ? (
-                data.unassignedJobs.map((job) => (
-                  <JobToken
-                    key={job.id}
-                    title={job.boatName}
-                    subtitle={`${job.categoryName} • ${job.locationLabel}`}
-                    priority={job.priority}
-                    draggable
-                    onDragStart={() => setDraggedJobId(job.id)}
-                  />
-                ))
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                  Bugün için atanmamış iş bulunmuyor.
-                </div>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

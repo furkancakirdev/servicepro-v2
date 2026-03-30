@@ -337,7 +337,7 @@ export async function getMyJobDetail(params: {
         not: job.id,
       },
       status: {
-        in: [JobStatus.TAMAMLANDI, JobStatus.KAPANDI],
+        in: [JobStatus.TAMAMLANDI, JobStatus.KAPANDI, JobStatus.GARANTI],
       },
     },
     select: {

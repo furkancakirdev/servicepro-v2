@@ -7,12 +7,6 @@ import DifficultyBadge from "@/components/jobs/DifficultyBadge";
 import JobCard from "@/components/jobs/JobCard";
 import StatusBadge from "@/components/jobs/StatusBadge";
 import {
-  getEstimatedDateAsDate,
-  getJobDateFieldLabel,
-  getJobDateValue,
-  type JobDateField,
-} from "@/lib/jobs";
-import {
   Table,
   TableBody,
   TableCell,
@@ -20,12 +14,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  getEstimatedDateAsDate,
+  getJobDateFieldLabel,
+  getJobDateValue,
+  type JobDateField,
+} from "@/lib/jobs";
 import type { ServiceJobListItem } from "@/types";
 
 const actionLinkClass =
-  "inline-flex h-9 items-center justify-center rounded-lg border border-marine-ocean/20 bg-white px-3 text-sm font-medium text-marine-navy transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5";
+  "inline-flex h-9 items-center justify-center rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5";
 const paginationLinkClass =
-  "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5";
+  "inline-flex h-9 min-w-9 items-center justify-center rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5";
 
 function getResponsibleLabel(job: ServiceJobListItem) {
   return (
@@ -107,18 +107,18 @@ export default function JobList({
   const visiblePages = getVisiblePages(page, totalPages);
 
   const pagination = totalPages > 1 ? (
-    <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
       <Link
         href={buildPageHref(Math.max(1, page - 1))}
         aria-disabled={page <= 1}
         className={`${paginationLinkClass} aria-disabled:pointer-events-none aria-disabled:opacity-50`}
       >
-        Önceki
+        Onceki
       </Link>
 
       {visiblePages.map((entry, index) =>
         entry === "ellipsis" ? (
-          <span key={`ellipsis-${index}`} className="px-1 text-slate-400">
+          <span key={`ellipsis-${index}`} className="px-1 text-muted-foreground">
             ...
           </span>
         ) : (
@@ -149,9 +149,9 @@ export default function JobList({
 
   if (jobs.length === 0) {
     return (
-      <section className="rounded-[28px] border border-dashed border-slate-300 bg-white/90 px-6 py-12 text-center shadow-panel">
-        <p className="text-lg font-semibold text-marine-navy">Filtreye uyan is bulunamadi.</p>
-        <p className="mt-2 text-sm text-slate-600">
+      <section className="rounded-[28px] border border-dashed border-border bg-card/90 px-6 py-12 text-center shadow-panel">
+        <p className="text-lg font-semibold text-foreground">Filtreye uyan is bulunamadi.</p>
+        <p className="mt-2 text-sm text-muted-foreground">
           Arama kriterlerini temizleyip tekrar deneyin ya da yeni bir servis isi olusturun.
         </p>
       </section>
@@ -161,18 +161,18 @@ export default function JobList({
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-sm text-slate-600">
-          Toplam <span className="font-semibold text-marine-navy">{totalCount}</span> isten{" "}
-          <span className="font-semibold text-marine-navy">{rangeStart}</span>-
-          <span className="font-semibold text-marine-navy">{rangeEnd}</span> arasi listeleniyor.
+        <div className="text-sm text-muted-foreground">
+          Toplam <span className="font-semibold text-foreground">{totalCount}</span> isten{" "}
+          <span className="font-semibold text-foreground">{rangeStart}</span>-
+          <span className="font-semibold text-foreground">{rangeEnd}</span> arasi listeleniyor.
         </div>
         {pagination}
       </div>
 
-      <div className="hidden overflow-hidden rounded-[28px] border border-white/80 bg-white/95 shadow-panel lg:block">
+      <div className="hidden overflow-hidden rounded-[28px] border border-border/80 bg-card/95 shadow-panel lg:block">
         <Table>
           <TableHeader>
-            <TableRow className="border-slate-200 bg-slate-50/80">
+            <TableRow className="border-border bg-muted/70">
               <TableHead className="px-4 py-4">Tekne</TableHead>
               <TableHead className="px-4 py-4">Kategori</TableHead>
               <TableHead className="px-4 py-4">Zorluk</TableHead>
@@ -184,39 +184,43 @@ export default function JobList({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {jobs.map((job) => {
+            {jobs.map((job, index) => {
               const supportCount = getSupportCount(job);
               const supportNames = getSupportNames(job);
               const planning = getPlanningMoments(job);
 
               return (
-                <TableRow key={job.id} className="border-slate-100">
+                <TableRow
+                  key={job.id}
+                  className="border-border/60 motion-safe:animate-fade-in"
+                  style={{ animationDelay: `${index * 45}ms` }}
+                >
                   <TableCell className="px-4 py-4">
-                    <div className="font-medium text-marine-navy">{job.boat.name}</div>
-                    <div className="text-xs text-slate-500">Is #{job.jobNumber}</div>
-                    <div className="text-xs text-slate-500">{job.boat.type}</div>
+                    <div className="font-medium text-foreground">{job.boat.name}</div>
+                    <div className="text-xs text-muted-foreground">Is #{job.jobNumber}</div>
+                    <div className="text-xs text-muted-foreground">{job.boat.type}</div>
                   </TableCell>
                   <TableCell className="px-4 py-4">
-                    <div className="font-medium text-slate-700">{job.category.name}</div>
-                    <div className="text-xs text-slate-500">{job.category.subScope}</div>
+                    <div className="font-medium text-foreground">{job.category.name}</div>
+                    <div className="text-xs text-muted-foreground">{job.category.subScope}</div>
                   </TableCell>
                   <TableCell className="px-4 py-4">
                     <DifficultyBadge multiplier={job.multiplier} />
                   </TableCell>
                   <TableCell className="px-4 py-4">
-                    <div className="font-medium text-slate-700">{getResponsibleLabel(job)}</div>
+                    <div className="font-medium text-foreground">{getResponsibleLabel(job)}</div>
                     {supportCount > 0 ? (
-                      <div className="text-xs text-slate-500">{supportNames}</div>
+                      <div className="text-xs text-muted-foreground">{supportNames}</div>
                     ) : null}
                   </TableCell>
                   <TableCell className="px-4 py-4">
                     <StatusBadge status={job.status} priority={job.priority} />
                   </TableCell>
-                  <TableCell className="px-4 py-4 text-slate-600">
-                    <div className="font-medium text-slate-700">
+                  <TableCell className="px-4 py-4 text-muted-foreground">
+                    <div className="font-medium text-foreground">
                       {formatJobDate(getJobDateValue(job, dateField))}
                     </div>
-                    <div className="mt-1 space-y-1 text-xs text-slate-500">
+                    <div className="mt-1 space-y-1 text-xs text-muted-foreground">
                       {planning.plannedStart ? (
                         <div>Plan: {formatJobDate(planning.plannedStart)}</div>
                       ) : null}
@@ -225,7 +229,7 @@ export default function JobList({
                       ) : null}
                     </div>
                   </TableCell>
-                  <TableCell className="px-4 py-4 text-slate-600">
+                  <TableCell className="px-4 py-4 text-muted-foreground">
                     {job.location ?? "Lokasyon bekleniyor"}
                   </TableCell>
                   <TableCell className="px-4 py-4">
@@ -248,8 +252,14 @@ export default function JobList({
       </div>
 
       <div className="grid gap-4 lg:hidden">
-        {jobs.map((job) => (
-          <JobCard key={job.id} job={job} dateField={dateField} />
+        {jobs.map((job, index) => (
+          <div
+            key={job.id}
+            className="motion-safe:animate-fade-in"
+            style={{ animationDelay: `${index * 45}ms` }}
+          >
+            <JobCard job={job} dateField={dateField} />
+          </div>
         ))}
       </div>
 

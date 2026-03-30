@@ -1,9 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Suspense } from "react";
-import { Toaster } from "sonner";
+import { Manrope } from "next/font/google";
 
-import RouteToastListener from "@/components/layout/RouteToastListener";
+import AppProviders from "@/components/layout/AppProviders";
 import "./globals.css";
+
+const manrope = Manrope({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-manrope",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   applicationName: "ServicePro",
@@ -11,8 +17,7 @@ export const metadata: Metadata = {
     default: "ServicePRO",
     template: "%s | ServicePRO",
   },
-  description:
-    "Marlin Yachting icin operasyon, servis ve personel performans yonetim sistemi.",
+  description: "Marlin için operasyon, servis ve personel performans yönetim sistemi.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -49,13 +54,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="tr" className="h-full antialiased">
+    <html
+      lang="tr"
+      suppressHydrationWarning
+      className={`${manrope.variable} h-full antialiased`}
+    >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              '(function(){try{var t=localStorage.getItem("servicepro-theme");var d=t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d);document.documentElement.style.colorScheme=d?"dark":"light";}catch(e){}})();',
+          }}
+        />
+      </head>
       <body className="flex min-h-full flex-col font-sans">
-        <Suspense fallback={null}>
-          <RouteToastListener />
-        </Suspense>
-        {children}
-        <Toaster richColors position="top-right" />
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

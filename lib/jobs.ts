@@ -155,7 +155,7 @@ export const holdReasonOptions: Array<{
   value: HoldReason;
   label: string;
 }> = [
-  { value: HoldReason.PARCA_BEKLENIYOR, label: "Parca bekleniyor" },
+  { value: HoldReason.PARCA_BEKLENIYOR, label: "Parça bekleniyor" },
   { value: HoldReason.MUSTERI_ONAYI, label: "Müşteri onayi" },
   { value: HoldReason.DIS_SERVIS, label: "Dis servis" },
   { value: HoldReason.DIGER, label: "Diger" },
@@ -167,7 +167,6 @@ export const openStatuses: JobStatus[] = [
   JobStatus.DEVAM_EDIYOR,
   JobStatus.BEKLEMEDE,
   JobStatus.TAMAMLANDI,
-  JobStatus.GARANTI,
 ];
 
 type JobDateSource = {
@@ -249,9 +248,9 @@ export function normalizeJobsPagination(
 
 export function normalizeJobSchedule(input: JobScheduleInput): NormalizedJobSchedule {
   const plannedStartSource = input.plannedStartDate ?? input.plannedStartAt;
-  const plannedStartAt = toDate(plannedStartSource, "Planlanan baslangic zamani");
+  const plannedStartAt = toDate(plannedStartSource, "Planlanan başlangıç zamani");
   const plannedEndInput = toEstimatedDate(input.estimatedDate) ?? (input.plannedEndAt
-    ? toDate(input.plannedEndAt, "Planlanan bitis zamani")
+    ? toDate(input.plannedEndAt, "Planlanan bitiş zamani")
     : null);
   const normalizedSlaHours =
     typeof input.slaHours === "number" && Number.isFinite(input.slaHours)
@@ -259,11 +258,11 @@ export function normalizeJobSchedule(input: JobScheduleInput): NormalizedJobSche
       : null;
 
   if (!plannedEndInput && (!normalizedSlaHours || normalizedSlaHours < 1)) {
-    throw new Error("Planlanan bitis veya SLA suresi alanlarindan biri zorunludur.");
+    throw new Error("Planlanan bitiş veya SLA suresi alanlarindan biri zorunludur.");
   }
 
   if (plannedEndInput && plannedEndInput.getTime() <= plannedStartAt.getTime()) {
-    throw new Error("Planlanan bitis zamani baslangictan sonra olmalidir.");
+    throw new Error("Planlanan bitiş zamani baslangictan sonra olmalidir.");
   }
 
   if (normalizedSlaHours !== null && normalizedSlaHours < 1) {
@@ -311,22 +310,22 @@ export function isJobDateField(value?: string): value is JobDateField {
 export function getJobDateFieldLabel(field: JobDateField) {
   switch (field) {
     case "plannedStartAt":
-      return "Planlanan baslangic";
+      return "Planlanan başlangıç";
     case "plannedEndAt":
-      return "Planlanan bitis";
+      return "Planlanan bitiş";
     case "startedAt":
-      return "Baslangic tarihi";
+      return "Başlangıç tarihi";
     case "actualStartAt":
-      return "Gercek baslangic";
+      return "Gerçek başlangıç";
     case "completedAt":
       return "Tamamlanma tarihi";
     case "closedAt":
-      return "Kapanis tarihi";
+      return "Kapanış tarihi";
     case "actualEndAt":
-      return "Gercek bitis";
+      return "Gerçek bitiş";
     case "createdAt":
     default:
-      return "Kayit tarihi";
+      return "Kayıt tarihi";
   }
 }
 

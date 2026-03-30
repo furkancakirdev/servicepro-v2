@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-marine-ocean">
-              Marlin Yachting
+              Marlin
             </p>
             <CardTitle className="text-2xl text-marine-navy">Şifre Sıfırla</CardTitle>
           </div>

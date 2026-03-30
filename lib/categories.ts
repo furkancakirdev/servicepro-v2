@@ -63,7 +63,7 @@ export const serviceCategoriesSeed: ServiceCategorySeed[] = [
   { name: "GRP / polyester", subScope: "Buyuk onarim", multiplier: 2.5, brandHints: null },
   { name: "Navigasyon elektronigi", subScope: "Kurulum", multiplier: 1.5, brandHints: null },
   { name: "Navigasyon elektronigi", subScope: "Entegrasyon ve sorun giderme", multiplier: 2.0, brandHints: null },
-  { name: "Kesif / Kontrol", subScope: "Durum tespiti ve raporlama", multiplier: 1.0, brandHints: null },
+  { name: "Keşif / Kontrol", subScope: "Durum tespiti ve raporlama", multiplier: 1.0, brandHints: null },
 ];
 
 export const serviceCategoryPreview = serviceCategoriesSeed.slice(0, 4);

@@ -57,8 +57,10 @@ export default async function JobDetailPage({
   );
   const created = takeFirstValue(searchParams?.created) === "1";
   const updated = takeFirstValue(searchParams?.updated) === "1";
+  const cancelled = takeFirstValue(searchParams?.cancelled) === "1";
   const objectionSubmitted = takeFirstValue(searchParams?.objection) === "1";
   const statusMessage = takeFirstValue(searchParams?.error);
+  const warranty = takeFirstValue(searchParams?.warranty) === "1";
   const canManageJob =
     currentUser.role === Role.ADMIN || currentUser.role === Role.COORDINATOR;
   const canSubmitFieldReport =
@@ -145,8 +147,10 @@ export default async function JobDetailPage({
       <JobDetailAlerts
         created={created}
         updated={updated}
+        cancelled={cancelled}
         objectionSubmitted={objectionSubmitted}
         statusMessage={statusMessage}
+        warranty={warranty}
       />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(340px,0.9fr)]">

@@ -121,25 +121,25 @@ export default function JobDetailMainColumn({
           <CardHeader>
             <CardTitle className="text-lg text-marine-navy">Saha raporu</CardTitle>
             <CardDescription>
-              Teknisyen tarafindan gonderilen gorsel ve operasyon notlari.
+              Teknisyen tarafından gönderilen görsel ve operasyon notları.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-slate-600">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.12em] text-marine-ocean">
-                  Unite bilgisi
+                  Ünite bilgisi
                 </div>
                 <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                  {fieldReport.unitInfo || "Bilgi girilmemis."}
+                  {fieldReport.unitInfo || "Bilgi girilmemiş."}
                 </div>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.12em] text-marine-ocean">
-                  Parca / malzeme
+                  Parça / malzeme
                 </div>
                 <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                  {fieldReport.partsUsed || "Parca listesi girilmemis."}
+                  {fieldReport.partsUsed || "Parça listesi girilmemiş."}
                 </div>
               </div>
             </div>
@@ -147,17 +147,17 @@ export default function JobDetailMainColumn({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.12em] text-marine-ocean">
-                  Taseron bilgisi
+                  Taşeron bilgisi
                 </div>
                 <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
                   {fieldReport.hasSubcontractor
-                    ? fieldReport.subcontractorDetails || "Detay belirtilmemis."
-                    : "Bu iste taseron kullanilmadi."}
+                    ? fieldReport.subcontractorDetails || "Detay belirtilmemiş."
+                    : "Bu işte taşeron kullanılmadı."}
                 </div>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                 <div className="text-xs font-semibold uppercase tracking-[0.12em] text-marine-ocean">
-                  Ek saha notlari
+                  Ek saha notları
                 </div>
                 <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
                   {fieldReport.notes || "Ek not bulunmuyor."}
@@ -167,7 +167,7 @@ export default function JobDetailMainColumn({
 
             <div className="space-y-3">
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-marine-ocean">
-                Fotograf galerisi
+                Fotoğraf galerisi
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {fieldReport.photos.before ? (
@@ -177,7 +177,7 @@ export default function JobDetailMainColumn({
                     rel="noreferrer"
                     className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 font-medium text-marine-navy transition-colors hover:border-marine-ocean/40"
                   >
-                    Once fotografi
+                    Önce fotoğrafı
                   </a>
                 ) : null}
                 {fieldReport.photos.after ? (
@@ -187,7 +187,7 @@ export default function JobDetailMainColumn({
                     rel="noreferrer"
                     className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 font-medium text-marine-navy transition-colors hover:border-marine-ocean/40"
                   >
-                    Sonra fotografi
+                    Sonra fotoğrafı
                   </a>
                 ) : null}
                 {fieldReport.photos.details.map((photo, index) => (
@@ -198,14 +198,14 @@ export default function JobDetailMainColumn({
                     rel="noreferrer"
                     className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 font-medium text-marine-navy transition-colors hover:border-marine-ocean/40"
                   >
-                    Detay fotografi {index + 1}
+                    Detay fotoğrafı {index + 1}
                   </a>
                 ))}
                 {!fieldReport.photos.before &&
                 !fieldReport.photos.after &&
                 fieldReport.photos.details.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8">
-                    Gorsel bulunmuyor.
+                    Görsel bulunmuyor.
                   </div>
                 ) : null}
               </div>

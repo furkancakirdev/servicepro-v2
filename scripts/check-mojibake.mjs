@@ -28,11 +28,19 @@ const allowedExtensions = new Set([
 ]);
 
 const suspiciousPatterns = [
-  { label: "utf8-mojibake", pattern: /[ÃÄÅ�]/u },
+  {
+    label: "utf8-mojibake",
+    pattern: /(?:Ã.|Å.|Ä.|â€¢|â€”|âœ“|ï¿½)/u,
+  },
   {
     label: "literal-question-mark-corruption",
     pattern:
-      /\b(?:Kateg\?ri|g\?nder|g\?r(?:sel|n(?:e|ü)m|ü)?|y\?l|olu\?tu|itirazi|Listesine Don|\?\?itma)\b/u,
+      /\b(?:Kateg\?ri|g\?nder|g\?r(?:sel|n(?:e|u)m|u)?|y\?l|olu\?tu|itirazi|Listesine Don|\?\?itma)\b/u,
+  },
+  {
+    label: "ascii-safe-turkish",
+    pattern:
+      /\b(?:Acilamiyor|Aramanizla|Baglanti|Baslangic|Degerlendirme(?:si)?|Degisen|Fotograf|Gonder|Gorsel(?:i|ler)?|Guncell(?:endi|enecek)|Ilerlemesi|Iletisi|Irtibat|Kaydi|Kayit|Kesif|Kullanildi|Kullanilmadi|Musteri|Oncelik|Once|Parca|Taseron|Unite|Yonetilir)\b/u,
   },
 ];
 
@@ -43,6 +51,16 @@ function shouldInspect(filePath) {
   }
 
   return allowedExtensions.has(path.extname(filePath));
+}
+
+function shouldSkipLine(line) {
+  return (
+    line.includes("not.toMatch(/[Ã") ||
+    line.includes("toMatch(/[Ã") ||
+    line.includes("ascii-safe-turkish") ||
+    line.includes("literal-question-mark-corruption") ||
+    line.includes("utf8-mojibake")
+  );
 }
 
 function walk(directory, collector) {
@@ -67,7 +85,7 @@ function walk(directory, collector) {
     const lines = content.split(/\r?\n/);
 
     lines.forEach((line, index) => {
-      if (line.includes("not.toMatch(/[ÃÄÅ]/)") || line.includes("toMatch(/[ÃÄÅ]/)")) {
+      if (shouldSkipLine(line)) {
         return;
       }
 

@@ -45,6 +45,9 @@
 
   html {
     scroll-behavior: smooth;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease;
     @apply font-sans;
   }
 
@@ -54,6 +57,10 @@
       radial-gradient(circle at top left, rgba(30, 107, 168, 0.12), transparent 32%),
       linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.96));
     min-height: 100vh;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease;
   }
 
   .dark {
@@ -88,5 +95,11 @@
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 215 24% 24%;
     --sidebar-ring: 202 82% 38%;
+  }
+
+  .dark body {
+    background-image:
+      radial-gradient(circle at top left, rgba(59, 130, 246, 0.18), transparent 30%),
+      linear-gradient(180deg, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.98));
   }
 }

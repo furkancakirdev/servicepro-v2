@@ -27,15 +27,7 @@ type ClientNotificationInput = {
   technicianName: string;
 };
 
-const dayNames = [
-  "Pazar",
-  "Pazartesi",
-  "Salı",
-  "Çarşamba",
-  "Perşembe",
-  "Cuma",
-  "Cumartesi",
-];
+const dayNames = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
 
 function assertValidDate(value: unknown, fieldName: string) {
   if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
@@ -78,12 +70,12 @@ export function generateYatmarinTemplate(
   const dayName = dayNames[date.getDay()];
   const dateStr = date.toLocaleDateString("tr-TR");
 
-  let template = `🔧 YATMARİN EKİBİ — ${dayName.toUpperCase()} ${dateStr}\n\n`;
+  let template = `🔧 YATMARİN EKİBİ - ${dayName.toUpperCase()} ${dateStr}\n\n`;
 
   for (const entry of entries) {
     template += `${entry.technicianName}:\n`;
     for (const job of entry.jobs) {
-      template += `• ${job.time} → ${job.boatName} (${job.location}) — ${job.description}\n`;
+      template += `• ${job.time} -> ${job.boatName} (${job.location}) - ${job.description}\n`;
     }
     template += "\n";
   }
@@ -91,12 +83,12 @@ export function generateYatmarinTemplate(
   if (continuingJobs && continuingJobs.length > 0) {
     template += "DEVAM EDEN İŞLER:\n";
     for (const job of continuingJobs) {
-      template += `• ${job.boatName} — ${job.description} (${job.technicianName})\n`;
+      template += `• ${job.boatName} - ${job.description} (${job.technicianName})\n`;
     }
     template += "\n";
   }
 
-  template += "Marlin Yachting Teknik Servis";
+  template += "Marlin Teknik Servis";
   return template;
 }
 
@@ -107,17 +99,17 @@ export function generateSahaTemplate(date: Date, entries: SahaPlanEntry[]) {
   const dayName = dayNames[date.getDay()];
   const dateStr = date.toLocaleDateString("tr-TR");
 
-  let template = `🚗 SAHA EKİBİ — ${dayName.toUpperCase()} ${dateStr}\n\n`;
+  let template = `🚗 SAHA EKİBİ - ${dayName.toUpperCase()} ${dateStr}\n\n`;
 
   for (const entry of entries) {
-    template += `${entry.technicianName} → ${entry.destination} (${entry.departureTime} çıkış, ~${entry.travelMin}dk)\n`;
+    template += `${entry.technicianName} -> ${entry.destination} (${entry.departureTime} çıkış, ~${entry.travelMin} dk)\n`;
     for (const job of entry.jobs) {
-      template += `• ${job.boatName} — ${job.description}\n`;
+      template += `• ${job.boatName} - ${job.description}\n`;
     }
     template += `Tahmini dönüş: ${entry.returnTime}\n\n`;
   }
 
-  template += "Marlin Yachting Teknik Servis";
+  template += "Marlin Teknik Servis";
   return template;
 }
 
@@ -130,12 +122,12 @@ ${data.boatName} tekneniz için randevunuzu hatırlatmak istedik.
 
 📅 ${data.day}, ${data.date}
 ⏰ ${data.time}
-📍 ${data.location} — ${data.berth}
+📍 ${data.location} - ${data.berth}
 🔧 ${data.description}
 👨‍🔧 Teknisyen: ${data.technicianName}
 
 Onaylamak için 👍 gönderiniz.
-Marlin Yachting Teknik Servis`;
+Marlin Teknik Servis`;
 }
 
 export function generateClientNotificationEN(data: ClientNotificationInput) {
@@ -147,10 +139,10 @@ This is a reminder for your upcoming service appointment.
 
 📅 ${data.day}, ${data.date}
 ⏰ ${data.time}
-📍 ${data.location} — ${data.berth}
+📍 ${data.location} - ${data.berth}
 🔧 ${data.description}
 👨‍🔧 Technician: ${data.technicianName}
 
 Please confirm with 👍
-Marlin Yachting Technical Service`;
+Marlin Technical Service`;
 }

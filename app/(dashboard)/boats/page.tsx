@@ -27,8 +27,8 @@ export default async function BoatsPage() {
           <BoatFormModal
             trigger="Yeni Tekne Ekle"
             refreshOnSuccess
-            title="Tekne rehberine yeni kayit"
-            description="Tekne kaydini master data olarak olusturun. Yeni isler artik sadece bu rehberdeki teknelerle acilir."
+            title="Tekne rehberine yeni kayıt"
+            description="Tekne kaydını master data olarak oluşturun. Yeni işler artık sadece bu rehberdeki teknelerle açılır."
           />
         </div>
       </section>

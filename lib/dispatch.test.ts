@@ -30,7 +30,11 @@ function createDispatchJobCard(
     boatId: "boat-1",
     boatName: "Blue Pearl",
     categoryName: "Elektrik",
+    description: "Jenerator kontrolu",
+    descriptionPreview: "Jenerator kontrolu",
+    location: "Netsel Marina",
     locationLabel: "Netsel",
+    regionId: "netsel",
     dispatchTab: "NETSEL",
     status: "PLANLANDI",
     multiplier: 1,
@@ -40,15 +44,20 @@ function createDispatchJobCard(
     contactPhone: "+905550101122",
     responsibleId: "tech-1",
     responsibleName: "Ali",
+    assignedTechnician: "Ali",
+    supportIds: [],
     supportNames: [],
     hasMissingContact: false,
+    hasLocationWarning: false,
     continuityHint: null,
     priority: "NORMAL",
     createdAtIso: "2026-03-25T12:00:00.000Z",
     dispatchDateIso: "2026-03-26T00:00:00.000Z",
     plannedStartDateIso: null,
     plannedStartAtIso: "2026-03-26T09:00:00.000Z",
+    plannedEndAtIso: "2026-03-26T11:00:00.000Z",
     estimatedDate: null,
+    timeLabel: "09:00",
     ...overrides,
   };
 }
@@ -119,12 +128,14 @@ describe("buildDispatchPublishLogEntries", () => {
 
     expect(result[0]).toMatchObject({
       location: "SAHA",
+      locationLabel: "Marmaris Disi",
       publishedByName: "Koordinator",
       hasTRTemplate: true,
       hasENTemplate: true,
     });
     expect(result[1]).toMatchObject({
       location: "YATMARIN",
+      locationLabel: "Yatmarin Marina",
       hasTRTemplate: true,
       hasENTemplate: false,
     });

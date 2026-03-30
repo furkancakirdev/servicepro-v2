@@ -27,7 +27,7 @@ type JobsPageProps = {
 const primaryLinkClass =
   "inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-marine-navy px-5 text-sm font-medium text-white transition-colors hover:bg-marine-ocean";
 const filterInputClass =
-  "h-12 rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition-colors focus:border-marine-ocean/40 focus:ring-2 focus:ring-marine-ocean/10";
+  "h-12 rounded-2xl border border-border bg-card px-4 text-sm text-foreground outline-none transition-colors focus:border-marine-ocean/40 focus:ring-2 focus:ring-marine-ocean/10";
 
 function isJobStatus(value?: string): value is JobStatus {
   return value ? Object.values(JobStatus).includes(value as JobStatus) : false;
@@ -105,15 +105,15 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 rounded-[28px] border border-white/70 bg-white px-5 py-5 shadow-panel sm:px-6">
+      <div className="flex flex-col gap-4 rounded-[28px] border border-border/70 bg-card px-5 py-5 shadow-panel sm:px-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
               Operasyon
             </p>
-            <h1 className="mt-2 text-2xl font-semibold text-marine-navy">Is Listesi</h1>
-            <p className="mt-2 text-sm text-slate-600">
-              Arama, {dateFieldLabel.toLowerCase()} ve teknisyen filtresiyle operasyon akisini
+            <h1 className="mt-2 text-2xl font-semibold text-foreground">Is Listesi</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Arama, {dateFieldLabel.toLowerCase()} ve teknisyen filtresiyle operasyon akisina
               yonetin.
             </p>
           </div>
@@ -129,7 +129,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
           <input type="hidden" name="dateField" value={currentDateField} />
 
           <div className="relative lg:col-span-2">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               name="q"
               defaultValue={query}
@@ -199,7 +199,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
 
           <Link
             href="/jobs"
-            className="inline-flex h-12 items-center justify-center rounded-lg border border-slate-200 bg-white px-5 text-sm font-medium text-slate-700 transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5"
+            className="inline-flex h-12 items-center justify-center rounded-lg border border-border bg-card px-5 text-sm font-medium text-foreground transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5"
           >
             Temizle
           </Link>
@@ -212,7 +212,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
               "rounded-full border px-4 py-2 text-sm transition-colors",
               !currentStatus && !currentStatusGroup && !pendingScoring
                 ? "border-marine-navy bg-marine-navy text-white"
-                : "border-slate-200 bg-slate-50 text-slate-600 hover:border-marine-ocean/40 hover:text-marine-navy"
+                : "border-border bg-muted/60 text-muted-foreground hover:border-marine-ocean/40 hover:text-foreground"
             )}
           >
             Tumu
@@ -223,7 +223,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
               "rounded-full border px-4 py-2 text-sm transition-colors",
               currentStatusGroup === "ACTIVE"
                 ? "border-marine-navy bg-marine-navy text-white"
-                : "border-slate-200 bg-slate-50 text-slate-600 hover:border-marine-ocean/40 hover:text-marine-navy"
+                : "border-border bg-muted/60 text-muted-foreground hover:border-marine-ocean/40 hover:text-foreground"
             )}
           >
             Aktif operasyon
@@ -238,7 +238,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
                   !(pendingScoring && status === JobStatus.TAMAMLANDI) &&
                   !currentStatusGroup
                   ? "border-marine-navy bg-marine-navy text-white"
-                  : "border-slate-200 bg-slate-50 text-slate-600 hover:border-marine-ocean/40 hover:text-marine-navy"
+                  : "border-border bg-muted/60 text-muted-foreground hover:border-marine-ocean/40 hover:text-foreground"
               )}
             >
               {getStatusLabel(status)}
@@ -253,7 +253,7 @@ export default async function JobsPage({ searchParams }: JobsPageProps) {
               "rounded-full border px-4 py-2 text-sm transition-colors",
               pendingScoring
                 ? "border-marine-navy bg-marine-navy text-white"
-                : "border-slate-200 bg-slate-50 text-slate-600 hover:border-marine-ocean/40 hover:text-marine-navy"
+                : "border-border bg-muted/60 text-muted-foreground hover:border-marine-ocean/40 hover:text-foreground"
             )}
           >
             Bekleyen puanlama

@@ -28,25 +28,25 @@ export async function submitFieldReportForActor(
     });
 
     if (!job) {
-      throw new Error("Is kaydi bulunamadi.");
+      throw new Error("İş kaydı bulunamadı.");
     }
 
     if (actor.role !== Role.TECHNICIAN) {
-      throw new Error("Saha raporu yalnizca teknisyen tarafindan gonderilebilir.");
+      throw new Error("Saha raporu yalnızca teknisyen tarafından gönderilebilir.");
     }
 
     if (job.status !== JobStatus.DEVAM_EDIYOR) {
-      throw new Error("Saha raporu yalnizca devam eden islerde gonderilebilir.");
+      throw new Error("Saha raporu yalnızca devam eden işlerde gönderilebilir.");
     }
 
     if (job.deliveryReport) {
-      throw new Error("Bu is icin saha raporu zaten gonderilmis.");
+      throw new Error("Bu iş için saha raporu zaten gönderilmiş.");
     }
 
     const declaredTeamIds = [report.responsibleId, ...supportIds];
 
     if (!declaredTeamIds.includes(actor.id)) {
-      throw new Error("Raporu gonderen teknisyen ekip listesinde yer almalidir.");
+      throw new Error("Raporu gönderen teknisyen ekip listesinde yer almalıdır.");
     }
 
     const technicians = await tx.user.findMany({
@@ -63,11 +63,11 @@ export async function submitFieldReportForActor(
     const technicianIds = new Set(technicians.map((technician) => technician.id));
 
     if (!technicianIds.has(report.responsibleId)) {
-      throw new Error("Secilen sorumlu teknisyen bulunamadi.");
+      throw new Error("Seçilen sorumlu teknisyen bulunamadı.");
     }
 
     if (supportIds.some((supportId) => !technicianIds.has(supportId))) {
-      throw new Error("Destek ekibindeki teknisyenlerden biri bulunamadi.");
+      throw new Error("Destek ekibindeki teknisyenlerden biri bulunamadı.");
     }
 
     await tx.jobAssignment.deleteMany({
@@ -102,12 +102,12 @@ export async function submitFieldReportForActor(
         beforePhotoUrl: report.photos.before || null,
         afterPhotoUrl: report.photos.after || null,
         detailPhotoUrls: report.photos.details,
-        unitInfoScore: 5,
-        photosScore: 5,
-        partsListScore: 5,
-        subcontractorScore: 5,
+        unitInfoScore: 0,
+        photosScore: 0,
+        partsListScore: 0,
+        subcontractorScore: 0,
         hasSubcontractor: report.hasSubcontractor,
-        clientNotifyScore: 5,
+        clientNotifyScore: 0,
         notes: serializeFieldReport(report),
       },
     });

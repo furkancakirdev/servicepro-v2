@@ -53,9 +53,9 @@ export default async function MyJobsWeeklyPage({
           </div>
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
-              Haftalik acik is havuzu
+              Haftalık açık iş havuzu
             </p>
-            <h1 className="mt-1 text-2xl font-semibold text-marine-navy">Hafta plani</h1>
+            <h1 className="mt-1 text-2xl font-semibold text-marine-navy">Hafta planı</h1>
           </div>
         </div>
       </section>
@@ -73,16 +73,16 @@ export default async function MyJobsWeeklyPage({
           >
             <div className="text-xs uppercase tracking-[0.16em] opacity-80">{day.label}</div>
             <div className="mt-3 text-2xl font-semibold">{day.count}</div>
-            <div className="mt-1 text-sm opacity-80">is</div>
+            <div className="mt-1 text-sm opacity-80">iş</div>
           </Link>
         ))}
       </div>
 
       <Card className="border-white/80 bg-white/95">
         <CardHeader>
-          <CardTitle className="text-marine-navy">{activeDay?.label} gunu ozeti</CardTitle>
+          <CardTitle className="text-marine-navy">{activeDay?.label} günü özeti</CardTitle>
           <CardDescription>
-            Secili gun icin toplam {activeDay?.count ?? 0} acik is havuzda gorunuyor.
+            Seçili gün için toplam {activeDay?.count ?? 0} açık iş havuzda görünüyor.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -111,7 +111,7 @@ export default async function MyJobsWeeklyPage({
             ))
           ) : (
             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-600">
-              Secili gunde planlanmis acik is bulunmuyor.
+              Seçili günde planlanmış açık iş bulunmuyor.
             </div>
           )}
         </CardContent>

@@ -286,7 +286,7 @@ async function main() {
     },
     {
       boatName: "M/V Bonita II",
-      categoryKey: "Kesif / Kontrol::Durum tespiti ve raporlama",
+      categoryKey: "Keşif / Kontrol::Durum tespiti ve raporlama",
       description: "Islak egzoz hatti icin kesif ziyareti.",
       status: JobStatus.KESIF,
       createdById: coord1.id,

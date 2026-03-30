@@ -11,7 +11,7 @@ export async function getBoatDirectory() {
       jobs: {
         where: {
           status: {
-            in: [JobStatus.TAMAMLANDI, JobStatus.KAPANDI],
+            in: [JobStatus.TAMAMLANDI, JobStatus.KAPANDI, JobStatus.GARANTI],
           },
         },
         orderBy: {

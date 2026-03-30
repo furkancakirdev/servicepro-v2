@@ -48,13 +48,13 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
       disabled={disabled || pending}
       className="h-12 w-full bg-marine-navy text-white hover:bg-marine-ocean"
     >
-      {pending ? "Kaydediliyor..." : "Isi kaydet"}
+      {pending ? "Kaydediliyor..." : "İşi kaydet"}
     </Button>
   );
 }
 
 function buildBoatMetaLabel(boat: Pick<JobFormBoatOption, "type" | "homePort" | "flag">) {
-  return [boat.type, boat.homePort, boat.flag].filter(Boolean).join(" • ");
+  return [boat.type, boat.homePort, boat.flag].filter(Boolean).join(" - ");
 }
 
 export default function JobForm({ meta }: JobFormProps) {
@@ -90,6 +90,7 @@ export default function JobForm({ meta }: JobFormProps) {
       ].some((value) => value.toLocaleLowerCase("tr").includes(normalizedQuery))
     );
   }, [boatSearchQuery, boats]);
+
   useEffect(() => {
     if (!isBoatPickerOpen) {
       return;
@@ -126,7 +127,7 @@ export default function JobForm({ meta }: JobFormProps) {
           <CardHeader>
             <CardTitle className="text-marine-navy">1. Tekne bilgileri</CardTitle>
             <CardDescription>
-              Tekne, lokasyon ve irtibat bilgilerini ekleyip saha kaydini baslatin.
+              Tekne, lokasyon ve irtibat bilgilerini ekleyip saha kaydını başlatın.
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-2">
@@ -153,11 +154,11 @@ export default function JobForm({ meta }: JobFormProps) {
                         {selectedBoat.name}
                       </div>
                       <div className="truncate text-xs text-slate-500">
-                        {buildBoatMetaLabel(selectedBoat) || "Kayitli tekne"}
+                        {buildBoatMetaLabel(selectedBoat) || "Kayıtlı tekne"}
                       </div>
                     </div>
                   ) : (
-                    <span className="text-slate-500">Kayitli tekne secin</span>
+                    <span className="text-slate-500">Kayıtlı tekne seçin</span>
                   )}
                   <ChevronsUpDown className="size-4 shrink-0 text-slate-400" />
                 </button>
@@ -221,7 +222,7 @@ export default function JobForm({ meta }: JobFormProps) {
                         })
                       ) : (
                         <div className="px-3 py-6 text-sm text-slate-500">
-                          Aramanizla eslesen tekne bulunamadi.
+                          Aramanızla eşleşen tekne bulunamadı.
                         </div>
                       )}
                     </div>
@@ -249,12 +250,12 @@ export default function JobForm({ meta }: JobFormProps) {
               ) : null}
 
               <p className="text-sm text-slate-500">
-                Is kaydi sadece rehberdeki teknelerle acilir. Listede yoksa once tekne olusturun.
+                İş kaydı sadece rehberdeki teknelerle açılır. Listede yoksa önce tekne oluşturun.
               </p>
 
               {selectedBoat?.continuitySuggestions.length ? (
                 <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 px-4 py-3 text-sm text-slate-700">
-                  <div className="font-medium text-marine-navy">Sureklilik onerisi</div>
+                  <div className="font-medium text-marine-navy">Süreklilik önerisi</div>
                   <div className="mt-1">
                     {selectedBoat.continuitySuggestions
                       .slice(0, 3)
@@ -276,7 +277,7 @@ export default function JobForm({ meta }: JobFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="contactName">Irtibat kisisi</Label>
+              <Label htmlFor="contactName">İrtibat kişisi</Label>
               <Input
                 id="contactName"
                 name="contactName"
@@ -297,13 +298,13 @@ export default function JobForm({ meta }: JobFormProps) {
 
             <div className="space-y-2 md:col-span-2">
               <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 px-4 py-3 text-sm text-slate-700">
-                Planlama kurali: operasyonun baslangic ve tahmini bitis zamani birlikte
-                girilir. Dispatch panosu bu iki bilgiyle zaman bloklarini olusturur.
+                Planlama kuralı: operasyonun başlangıç ve tahmini bitiş zamanı birlikte
+                girilir. Dispatch panosu bu iki bilgiyle zaman bloklarını oluşturur.
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="plannedStartDate">Planlanan baslangic</Label>
+              <Label htmlFor="plannedStartDate">Planlanan başlangıç</Label>
               <Input
                 id="plannedStartDate"
                 name="plannedStartDate"
@@ -317,7 +318,7 @@ export default function JobForm({ meta }: JobFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="estimatedDate">Tahmini bitis</Label>
+              <Label htmlFor="estimatedDate">Tahmini bitiş</Label>
               <Input
                 id="estimatedDate"
                 name="estimatedDate"
@@ -331,7 +332,7 @@ export default function JobForm({ meta }: JobFormProps) {
             </div>
 
             <div className="space-y-3 md:col-span-2">
-              <Label>Oncelik</Label>
+              <Label>Öncelik</Label>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {jobPriorityOptions.map((priority) => {
                   const current = jobPriorityConfig[priority];
@@ -374,12 +375,12 @@ export default function JobForm({ meta }: JobFormProps) {
                           </div>
                           <p className="text-sm text-slate-600">
                             {priority === "ACIL"
-                              ? "Ilk planlamada one cikart."
+                              ? "İlk planlamada öne çıkart."
                               : priority === "YUKSEK"
-                                ? "Takvime ust siralarda yerlestir."
+                                ? "Takvime üst sıralarda yerleştir."
                                 : priority === "NORMAL"
-                                  ? "Standart operasyon akisi."
-                                  : "Musait pencereye planlanabilir."}
+                                  ? "Standart operasyon akışı."
+                                  : "Müsait pencereye planlanabilir."}
                           </p>
                         </div>
                         {selected ? <Check className="size-4 shrink-0" /> : null}
@@ -399,8 +400,8 @@ export default function JobForm({ meta }: JobFormProps) {
           <CardHeader>
             <CardTitle className="text-marine-navy">2. Kategori ve kapsam</CardTitle>
             <CardDescription>
-              Zorluk katsayisi kategori secimiyle otomatik gelir ve puanlamada aynen
-              kullanilir.
+              Zorluk katsayısı kategori seçimiyle otomatik gelir ve puanlamada aynen
+              kullanılır.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -460,12 +461,12 @@ export default function JobForm({ meta }: JobFormProps) {
             ) : null}
 
             <div className="space-y-2">
-              <Label htmlFor="description">Aciklama</Label>
+              <Label htmlFor="description">Açıklama</Label>
               <Textarea
                 id="description"
                 name="description"
                 className="min-h-[144px]"
-                placeholder="Ariza semptomlarini, is kapsamindaki notlari ve teknisyenin sahada bilmesi gereken detaylari yazin..."
+                placeholder="Arıza semptomlarını, iş kapsamındaki notları ve teknisyenin sahada bilmesi gereken detayları yazın..."
                 aria-invalid={Boolean(state.fieldErrors.description)}
               />
               {state.fieldErrors.description ? (
@@ -474,12 +475,12 @@ export default function JobForm({ meta }: JobFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Is notlari</Label>
+              <Label htmlFor="notes">İş notları</Label>
               <Textarea
                 id="notes"
                 name="notes"
                 className="min-h-[112px]"
-                placeholder="Parca bekleniyor, ek ekipman gerekli, musteri notu gibi operasyon detaylari..."
+                placeholder="Parça bekleniyor, ek ekipman gerekli, müşteri notu gibi operasyon detayları..."
               />
             </div>
 
@@ -493,10 +494,10 @@ export default function JobForm({ meta }: JobFormProps) {
                 <div>
                   <div className="flex items-center gap-2 font-medium text-marine-navy">
                     <ShieldCheck className="size-4 text-marine-ocean" />
-                    Garanti isi
+                    Garanti işi
                   </div>
                   <p className="mt-1 text-sm text-slate-600">
-                    Is kaydi garanti kapsamindaysa puanlama ve takip akisi buna gore ayrilir.
+                    İş kaydı garanti kapsamındaysa puanlama ve takip akışı buna göre ayrılır.
                   </p>
                 </div>
               </label>
@@ -510,14 +511,11 @@ export default function JobForm({ meta }: JobFormProps) {
                 <div>
                   <div className="flex items-center gap-2 font-medium text-marine-navy">
                     <Wrench className="size-4 text-marine-ocean" />
-                    Kesif kaydi olarak ac
+                    Keşif kaydı olarak aç
                   </div>
                   <p className="mt-1 text-sm text-slate-600">
-                    Ilk ziyaret sadece tespit amacliysa durum otomatik olarak
-                    {" "}
-                    &quot;Kesif&quot;
-                    {" "}
-                    acilir.
+                    İlk ziyaret sadece tespit amaçlıysa durum otomatik olarak{" "}
+                    &quot;Keşif&quot; açılır.
                   </p>
                 </div>
               </label>
@@ -529,29 +527,24 @@ export default function JobForm({ meta }: JobFormProps) {
       <div className="space-y-6">
         <Card className="border-white/80 bg-white/95">
           <CardHeader>
-            <CardTitle className="text-marine-navy">3. Kayit ozeti</CardTitle>
+            <CardTitle className="text-marine-navy">3. Kayıt özeti</CardTitle>
             <CardDescription>
-              Isler tekne bazli havuza duser. Ekip atamasi saha teslim formunda geriye donuk
-              olarak teknisyen tarafindan bildirilir.
+              İşler tekne bazlı havuza düşer. Ekip ataması saha teslim formunda geriye dönük
+              olarak teknisyen tarafından bildirilir.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 px-4 py-4 text-sm leading-7 text-slate-700">
-              Koordinator sadece tekneyi, kategoriyi ve operasyon penceresini planlar.
-              Isi sahada kim tamamladiysa, teslim raporu aninda
-              {" "}
-              <span className="font-medium text-marine-navy">Sorumlu</span>
-              {" "}
-              ve
-              {" "}
-              <span className="font-medium text-marine-navy">Destek</span>
-              {" "}
-              secimlerini yaparak kaydi geriye donuk netlestirir.
+              Koordinatör sadece tekneyi, kategoriyi ve operasyon penceresini planlar. İşi
+              sahada kim tamamladıysa, teslim raporu anında{" "}
+              <span className="font-medium text-marine-navy">Sorumlu</span> ve{" "}
+              <span className="font-medium text-marine-navy">Destek</span> seçimlerini yaparak
+              kaydı geriye dönük netleştirir.
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-              Havuz mantigi sayesinde sabah sabit atama zorunlulugu ortadan kalkar. Is ilk
-              etapta atamasiz acilir ve detay sayfasindan baslatilir.
+              Havuz mantığı sayesinde sabah sabit atama zorunluluğu ortadan kalkar. İş ilk
+              etapta atamasız açılır ve detay sayfasından başlatılır.
             </div>
 
             {state.error ? (
@@ -562,15 +555,15 @@ export default function JobForm({ meta }: JobFormProps) {
 
             {!canSubmit ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                Aktif kategori kaydi olmadigi icin yeni is acilamiyor.
+                Aktif kategori kaydı olmadığı için yeni iş açılamıyor.
               </div>
             ) : null}
 
             <SubmitButton disabled={!canSubmit} />
 
             <p className="text-sm leading-6 text-slate-600">
-              Kayit olustuktan sonra detay sayfasindan durum gecisleri, bekletme nedenleri
-              ve ayni tekne icin acik is uyarilari yonetilir.
+              Kayıt oluştuktan sonra detay sayfasından durum geçişleri, bekletme nedenleri
+              ve aynı tekne için açık iş uyarıları yönetilir.
             </p>
           </CardContent>
         </Card>
@@ -581,7 +574,7 @@ export default function JobForm({ meta }: JobFormProps) {
         onOpenChange={setIsBoatModalOpen}
         onCreated={handleBoatCreated}
         title="Yeni tekne ekle"
-        description="Rehbere yeni tekne ekleyin. Kayit tamamlaninca is formunda otomatik secilir."
+        description="Rehbere yeni tekne ekleyin. Kayıt tamamlanınca iş formunda otomatik seçilir."
       />
     </form>
   );

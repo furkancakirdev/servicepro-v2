@@ -24,8 +24,8 @@ export default function AppErrorPage({ error, reset }: AppErrorPageProps) {
           Beklenmeyen bir hata oluştu
         </h1>
         <p className="mt-3 max-w-xl text-sm leading-7 text-slate-600">
-          Sayfa yüklenirken bir sey ters gitti. Yeniden deneyebilir veya operasyon
-          merkezine donebilirsiniz.
+          Sayfa yüklenirken bir şey ters gitti. Yeniden deneyebilir veya operasyon merkezine
+          dönebilirsiniz.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <button
@@ -40,11 +40,10 @@ export default function AppErrorPage({ error, reset }: AppErrorPageProps) {
             href="/"
             className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-medium text-marine-navy transition-colors hover:bg-slate-50"
           >
-            Dashboarda D?n
+            Dashboard&apos;a Dön
           </Link>
         </div>
       </div>
     </div>
   );
 }
-

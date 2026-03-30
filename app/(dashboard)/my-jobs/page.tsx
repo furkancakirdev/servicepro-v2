@@ -36,14 +36,14 @@ export default async function MyJobsPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.24em] text-marine-ocean">
-              Acik Is Havuzu
+              Açık İş Havuzu
             </p>
             <h1 className="mt-2 text-3xl font-semibold text-marine-navy">
-              {currentUser.name} | Bugun {overview.todayJobs.length} is | {dominantTab}
+              {currentUser.name} | Bugün {overview.todayJobs.length} iş | {dominantTab}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-              Teknisyenler gunluk acik is havuzunu birlikte gorur. Isi sahada tamamlayan ekip,
-              teslim raporu aninda sorumlu ve destek rollerini geriye donuk bildirir.
+              Teknisyenler günlük açık iş havuzunu birlikte görür. İşi sahada tamamlayan ekip,
+              teslim raporu anında sorumlu ve destek rollerini geriye dönük bildirir.
             </p>
           </div>
           <Link
@@ -51,16 +51,16 @@ export default async function MyJobsPage() {
             className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-marine-ocean/20 bg-white px-5 text-sm font-medium text-marine-navy transition-colors hover:border-marine-ocean/40 hover:bg-marine-ocean/5"
           >
             <CalendarRange className="size-4" />
-            Haftalik havuz
+            Haftalık havuz
           </Link>
         </div>
       </section>
 
       <Card className="border-white/80 bg-white/95">
         <CardHeader>
-          <CardTitle className="text-marine-navy">Hafta ozeti</CardTitle>
+          <CardTitle className="text-marine-navy">Hafta özeti</CardTitle>
           <CardDescription>
-            Pazartesi - Cumartesi acik is havuzu. Bugun vurgulu gosterilir.
+            Pazartesi - Cumartesi açık iş havuzu. Bugün vurgulu gösterilir.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -76,7 +76,7 @@ export default async function MyJobsPage() {
             >
               <div className="text-xs uppercase tracking-[0.16em] opacity-75">{day.label}</div>
               <div className="mt-3 text-2xl font-semibold">{day.count}</div>
-              <div className="mt-1 text-sm opacity-80">is</div>
+              <div className="mt-1 text-sm opacity-80">iş</div>
             </Link>
           ))}
         </CardContent>
@@ -127,7 +127,7 @@ export default async function MyJobsPage() {
           ))
         ) : (
           <div className="rounded-[28px] border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-600">
-            Bugun icin havuzda planlanmis aktif is bulunmuyor.
+            Bugün için havuzda planlanmış aktif iş bulunmuyor.
           </div>
         )}
       </div>

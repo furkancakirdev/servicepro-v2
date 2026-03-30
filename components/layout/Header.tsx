@@ -7,6 +7,7 @@ import type { Role } from "@prisma/client";
 import LogoutButton from "@/components/layout/LogoutButton";
 import NotificationBell from "@/components/layout/NotificationBell";
 import { SidebarContent } from "@/components/layout/Sidebar";
+import ThemeToggle from "@/components/layout/ThemeToggle";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,7 +105,7 @@ export default function Header({
   const current = getHeaderCopy(pathname);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b border-border/80 bg-card/80 backdrop-blur">
       <div className="flex items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-10">
         <div className="flex items-center gap-3">
           <Sheet>
@@ -113,14 +114,17 @@ export default function Header({
                 <Button
                   variant="outline"
                   size="icon-lg"
-                  className="border-marine-ocean/20 bg-white text-marine-navy md:hidden"
+                  className="border-border/70 bg-card/80 text-foreground shadow-sm backdrop-blur md:hidden"
                 />
               }
             >
               <PanelLeft className="size-4" />
               <span className="sr-only">Navigasyonu aç</span>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[86vw] max-w-sm bg-marine-navy p-0 text-white">
+            <SheetContent
+              side="left"
+              className="w-[86vw] max-w-sm bg-marine-navy p-0 text-white motion-safe:animate-slide-in-right"
+            >
               <SheetHeader className="border-b border-white/10">
                 <SheetTitle className="text-white">ServicePRO menü</SheetTitle>
               </SheetHeader>
@@ -132,20 +136,21 @@ export default function Header({
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-marine-ocean">
               {current.eyebrow}
             </p>
-            <h1 className="mt-1 text-2xl font-semibold text-marine-navy">{current.title}</h1>
+            <h1 className="mt-1 text-2xl font-semibold text-foreground">{current.title}</h1>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden rounded-2xl border border-slate-200 bg-white px-4 py-2 text-right text-sm text-slate-600 lg:block">
-            <div className="font-medium text-marine-navy">{todayLabel}</div>
+          <div className="hidden rounded-2xl border border-border/70 bg-card/80 px-4 py-2 text-right text-sm text-muted-foreground backdrop-blur lg:block">
+            <div className="font-medium text-foreground">{todayLabel}</div>
             <div>{operationsStatus}</div>
           </div>
 
+          <ThemeToggle />
           <NotificationBell notificationCenter={notificationCenter} />
           <LogoutButton compact className="hidden sm:inline-flex" />
 
-          <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+          <div className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/80 px-3 py-2 backdrop-blur">
             <Avatar size="lg" className="bg-marine-navy text-white">
               <AvatarFallback className="bg-marine-navy text-white">
                 {currentUser.name
@@ -157,8 +162,8 @@ export default function Header({
               </AvatarFallback>
             </Avatar>
             <div className="hidden text-sm sm:block">
-              <div className="font-medium text-marine-navy">{currentUser.name}</div>
-              <div className="text-slate-500">
+              <div className="font-medium text-foreground">{currentUser.name}</div>
+              <div className="text-muted-foreground">
                 {roleLabels[currentUser.role]} | {currentUser.email}
               </div>
               {currentUser.isPreview ? (

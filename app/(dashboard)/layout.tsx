@@ -8,7 +8,7 @@ import { requireAppUser } from "@/lib/auth";
 import { getNotificationCenterData } from "@/lib/notifications";
 
 function getOperationsStatus(role: Role) {
-  return role === Role.TECHNICIAN ? "Mobil operasyon gorunumu" : "Canli operasyon gorunumu";
+  return role === Role.TECHNICIAN ? "Mobil operasyon görünümü" : "Canlı operasyon görünümü";
 }
 
 export default async function DashboardLayout({
@@ -23,7 +23,7 @@ export default async function DashboardLayout({
   const operationsStatus = getOperationsStatus(currentUser.role);
 
   return (
-    <div className="min-h-screen bg-marine-mist md:grid md:grid-cols-[280px_minmax(0,1fr)]">
+    <div className="min-h-screen bg-transparent md:grid md:grid-cols-[280px_minmax(0,1fr)]">
       <Sidebar currentUser={currentUser} />
       <div className="relative flex min-h-screen flex-col">
         <Header
@@ -32,7 +32,9 @@ export default async function DashboardLayout({
           todayLabel={todayLabel}
           operationsStatus={operationsStatus}
         />
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-10">{children}</main>
+        <main className="flex-1 px-4 py-6 motion-safe:animate-fade-in sm:px-6 lg:px-10">
+          {children}
+        </main>
       </div>
     </div>
   );

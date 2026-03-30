@@ -36,7 +36,7 @@ function ResetPasswordCard() {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-marine-ocean">
-              Marlin Yachting
+              Marlin
             </p>
             <CardTitle className="text-2xl text-marine-navy">Şifre Aktivasyonu</CardTitle>
           </div>
@@ -119,7 +119,7 @@ function ResetPasswordCard() {
             className="inline-flex items-center gap-2 text-sm font-medium text-marine-navy transition-colors hover:text-marine-ocean"
           >
             <ArrowLeft className="size-4" />
-            Güvenli çıkış
+            Güvenli Çıkış
           </button>
         </form>
       </CardContent>

@@ -1,0 +1,3 @@
+ALTER TABLE "ServiceJob"
+ADD COLUMN IF NOT EXISTS "cancelReason" TEXT,
+ADD COLUMN IF NOT EXISTS "warrantyNote" TEXT;

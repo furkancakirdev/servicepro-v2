@@ -52,7 +52,7 @@ type SidebarUser = {
 
 const roleLabels: Record<Role, string> = {
   ADMIN: "Admin",
-  COORDINATOR: "Koordinator",
+  COORDINATOR: "Koordinatör",
   TECHNICIAN: "Teknisyen",
   WORKSHOP_CHIEF: "Usta",
 };
@@ -70,10 +70,10 @@ export function SidebarContent({
   return (
     <div className="flex h-full flex-col">
       <div className="border-b border-white/10 px-5 py-6">
-        <p className="text-xs uppercase tracking-[0.32em] text-slate-400">Marlin Yachting</p>
+        <p className="text-xs uppercase tracking-[0.32em] text-slate-400">Marlin</p>
         <h2 className="mt-3 text-2xl font-semibold text-white">ServicePRO</h2>
         <p className="mt-2 max-w-[18rem] text-sm leading-6 text-slate-300">
-          Servis yonetimi, kapanis puanlamasi ve liderlik takibini tek yerden yonetin.
+          Servis yönetimi, kapanış puanlaması ve liderlik takibini tek yerden yönetin.
         </p>
       </div>
 

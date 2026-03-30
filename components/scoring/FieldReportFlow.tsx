@@ -223,7 +223,7 @@ export default function FieldReportFlow({
 
   async function handlePhotoUpload(file: File, type: "before" | "after" | "detail") {
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      toast.error("Fotograf yuklemek icin internet baglantisi gerekiyor.");
+      toast.error("Fotoğraf yüklemek için internet bağlantısı gerekiyor.");
       return;
     }
 
@@ -243,9 +243,9 @@ export default function FieldReportFlow({
         }));
       }
 
-      toast.success("Fotograf yuklendi.");
+      toast.success("Fotoğraf yüklendi.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Fotograf yuklenemedi.");
+      toast.error(error instanceof Error ? error.message : "Fotoğraf yüklenemedi.");
     } finally {
       setUploading(false);
     }
@@ -259,7 +259,7 @@ export default function FieldReportFlow({
         className="h-12 w-full bg-marine-navy text-white hover:bg-marine-ocean"
         onClick={() => setOpen(true)}
       >
-        Saha Raporunu Gonder
+        Saha Raporunu Gönder
       </Button>
 
       <form ref={formRef} action={formAction}>
@@ -320,7 +320,7 @@ export default function FieldReportFlow({
               clearLocalDraft();
               resetDraftState();
               toast.success(
-                "Internet yok, saha raporu cihaza alindi. Baglanti gelince otomatik gonderilecek."
+                "İnternet yok, saha raporu cihaza alındı. Bağlantı gelince otomatik gönderilecek."
               );
               return;
             }

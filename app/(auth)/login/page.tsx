@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { Anchor, ArrowRight, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 import { login } from "@/app/(auth)/login/actions";
 import { initialLoginState } from "@/app/(auth)/login/state";
@@ -18,7 +19,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useActionStateCompat } from "@/lib/use-action-state-compat";
-import Link from "next/link";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -51,7 +51,7 @@ function LoginCard({ nextPath }: { nextPath: string }) {
           </div>
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-marine-ocean">
-              Marlin Yachting
+              Marlin
             </p>
             <CardTitle className="text-2xl text-marine-navy">ServicePRO</CardTitle>
           </div>
@@ -115,7 +115,7 @@ function LoginCard({ nextPath }: { nextPath: string }) {
           </div>
 
           {state.error ? (
-            <div className="animate-in fade-in slide-in-from-top-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 duration-200">
+            <div className="animate-fade-in rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {state.error}
             </div>
           ) : null}

@@ -189,8 +189,8 @@ export default function FieldCompletionModal({
             {boatName} / {categoryName}
           </h2>
           <p className="max-w-3xl text-sm leading-7 text-slate-200">
-            Bu ekran sadece saha verisi icindir. Fotograf, unite bilgisi, parca listesi ve
-            saha notlarini hizlica girebilirsiniz.
+            Bu ekran sadece saha verisi içindir. Fotoğraf, ünite bilgisi, parça listesi ve
+            saha notlarını hızlıca girebilirsiniz.
           </p>
         </div>
 
@@ -198,7 +198,7 @@ export default function FieldCompletionModal({
           <Progress value={(completedSections / 4) * 100}>
             <ProgressLabel className="text-white">Saha raporu ilerlemesi</ProgressLabel>
             <ProgressValue className="text-slate-200">
-              {() => `${completedSections}/4 kritik alan hazir`}
+              {() => `${completedSections}/4 kritik alan hazır`}
             </ProgressValue>
           </Progress>
         </div>
@@ -213,10 +213,10 @@ export default function FieldCompletionModal({
           <div className="rounded-2xl border border-amber-300/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-50">
             <div className="flex items-center gap-2 font-medium">
               <WifiOff className="size-4" />
-              Internet baglantisi yok.
+              İnternet bağlantısı yok.
             </div>
             <p className="mt-1 text-amber-100/90">
-              Gonder tusuna bastiginizda form cihaza kuyruklanir ve baglanti geri geldiginde
+              Gönder tuşuna bastığınızda form cihaza kuyruklanır ve bağlantı geri geldiğinde
               otomatik olarak senkronize edilir.
             </p>
           </div>
@@ -224,7 +224,7 @@ export default function FieldCompletionModal({
 
         {syncingQueue ? (
           <div className="rounded-2xl border border-cyan-300/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-50">
-            Bekleyen saha raporlari gonderiliyor...
+            Bekleyen saha raporları gönderiliyor...
           </div>
         ) : null}
 
@@ -236,8 +236,8 @@ export default function FieldCompletionModal({
 
         {!isVoiceSupported ? (
           <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-200">
-            Tarayiciniz sesli dikte ozelligini desteklemiyor. Chrome ve Safari tabanli
-            guncel tarayicilarda mikrofonla not yazabilirsiniz.
+            Tarayıcınız sesli dikte özelliğini desteklemiyor. Chrome ve Safari tabanlı güncel
+            tarayıcılarda mikrofonla not yazabilirsiniz.
           </div>
         ) : null}
 
@@ -251,10 +251,10 @@ export default function FieldCompletionModal({
           <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
             <div className="mb-4 space-y-2">
               <p className="text-sm font-semibold uppercase tracking-[0.14em] text-marine-seafoam">
-                Isi yapan ekip
+                İşi yapan ekip
               </p>
               <p className="text-sm leading-6 text-slate-200">
-                Isi kapatan ekip burada beyan edilir. Sorumlu teknisyen tek secilir, destek
+                İşi kapatan ekip burada beyan edilir. Sorumlu teknisyen tek seçilir, destek
                 personeli gerekiyorsa eklenir.
               </p>
             </div>
@@ -285,7 +285,7 @@ export default function FieldCompletionModal({
                       >
                         <div className="font-medium">{technician.name}</div>
                         <div className="mt-1 text-xs uppercase tracking-[0.12em] text-slate-300">
-                          {selected ? "Sorumlu secildi" : "Sorumlu olarak ata"}
+                          {selected ? "Sorumlu seçildi" : "Sorumlu olarak ata"}
                         </div>
                       </button>
                     );
@@ -314,7 +314,7 @@ export default function FieldCompletionModal({
                         <div>
                           <div className="font-medium">{technician.name}</div>
                           <div className="mt-1 text-xs uppercase tracking-[0.12em]">
-                            {disabled ? "Sorumlu secildigi icin pasif" : "Destek"}
+                            {disabled ? "Sorumlu seçildiği için pasif" : "Destek"}
                           </div>
                         </div>
                         <input
@@ -347,25 +347,25 @@ export default function FieldCompletionModal({
 
           <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
             <label className="mb-2 block text-sm font-medium text-white" htmlFor="unitInfo">
-              Cihaz / unite bilgisi
+              Cihaz / ünite bilgisi
             </label>
             <Textarea
               id="unitInfo"
               value={value.unitInfo}
               onChange={(event) => onChange({ ...value, unitInfo: event.target.value })}
               className="min-h-[120px] border-white/10 bg-white/5 text-white placeholder:text-slate-400"
-              placeholder="Model, seri numarasi, calisma saati ve sahada tespit edilen teknik bilgileri yazin..."
+              placeholder="Model, seri numarası, çalışma saati ve sahada tespit edilen teknik bilgileri yazın..."
             />
           </div>
 
           <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
             <div className="mb-4 space-y-2">
               <p className="text-sm font-semibold uppercase tracking-[0.14em] text-marine-seafoam">
-                Fotograf yukleme
+                Fotoğraf yükleme
               </p>
               <p className="text-sm leading-6 text-slate-200">
-                En az bir saha gorseli ekleyin. Once, sonra ve detay kareleri tek tek
-                gonderebilirsiniz.
+                En az bir saha görseli ekleyin. Önce, sonra ve detay kareleri tek tek
+                gönderebilirsiniz.
               </p>
             </div>
 
@@ -391,7 +391,7 @@ export default function FieldCompletionModal({
                         : "border-dashed border-white/25 text-slate-300"
                     }`}
                   >
-                    {photos.before ? "✓ Once fotografi eklendi" : "+ Once fotografi"}
+                    {photos.before ? "✓ Önce fotoğrafı eklendi" : "+ Önce fotoğrafı"}
                   </div>
                 </label>
 
@@ -415,7 +415,7 @@ export default function FieldCompletionModal({
                         : "border-dashed border-white/25 text-slate-300"
                     }`}
                   >
-                    {photos.after ? "✓ Sonra fotografi eklendi" : "+ Sonra fotografi"}
+                    {photos.after ? "✓ Sonra fotoğrafı eklendi" : "+ Sonra fotoğrafı"}
                   </div>
                 </label>
               </div>
@@ -441,13 +441,13 @@ export default function FieldCompletionModal({
                   }`}
                 >
                   {photos.details.length > 0
-                    ? `✓ Detay fotografi (${photos.details.length})`
-                    : "+ Detay fotografi"}
+                    ? `✓ Detay fotoğrafı (${photos.details.length})`
+                    : "+ Detay fotoğrafı"}
                 </div>
               </label>
 
               {uploading ? (
-                <p className="text-xs text-slate-300">Fotograf yukleniyor...</p>
+                <p className="text-xs text-slate-300">Fotoğraf yükleniyor...</p>
               ) : null}
             </div>
           </div>
@@ -456,7 +456,7 @@ export default function FieldCompletionModal({
             <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
                 <label className="block text-sm font-medium text-white" htmlFor="partsUsed">
-                  Degisen parcalar / malzemeler
+                  Değişen parçalar / malzemeler
                 </label>
                 {renderDictationButton("partsUsed")}
               </div>
@@ -465,17 +465,17 @@ export default function FieldCompletionModal({
                 value={value.partsUsed}
                 onChange={(event) => onChange({ ...value, partsUsed: event.target.value })}
                 className="min-h-[140px] border-white/10 bg-white/5 text-white placeholder:text-slate-400"
-                placeholder="Degisen parca, sarf malzeme ve varsa parca numaralarini yazin..."
+                placeholder="Değişen parça, sarf malzeme ve varsa parça numaralarını yazın..."
               />
             </div>
 
             <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
               <div className="mb-3 space-y-2">
                 <p className="text-sm font-semibold uppercase tracking-[0.14em] text-marine-seafoam">
-                  Taseron / dis tedarikci
+                  Taşeron / dış tedarikçi
                 </p>
                 <p className="text-sm text-slate-200">
-                  Bu iste taseron kullanildiysa firma ve kapsam bilgisini ekleyin.
+                  Bu işte taşeron kullanıldıysa firma ve kapsam bilgisini ekleyin.
                 </p>
               </div>
 
@@ -484,9 +484,11 @@ export default function FieldCompletionModal({
                   type="button"
                   variant={value.hasSubcontractor ? "outline" : "secondary"}
                   className="h-11"
-                  onClick={() => onChange({ ...value, hasSubcontractor: false, subcontractorDetails: "" })}
+                  onClick={() =>
+                    onChange({ ...value, hasSubcontractor: false, subcontractorDetails: "" })
+                  }
                 >
-                  Kullanilmadi
+                  Kullanılmadı
                 </Button>
                 <Button
                   type="button"
@@ -494,7 +496,7 @@ export default function FieldCompletionModal({
                   className="h-11"
                   onClick={() => onChange({ ...value, hasSubcontractor: true })}
                 >
-                  Kullanildi
+                  Kullanıldı
                 </Button>
               </div>
 
@@ -505,7 +507,7 @@ export default function FieldCompletionModal({
                     onChange({ ...value, subcontractorDetails: event.target.value })
                   }
                   className="mt-3 min-h-[100px] border-white/10 bg-white/5 text-white placeholder:text-slate-400"
-                  placeholder="Firma adi, yapilan is ve teslim edilen kapsam bilgisi..."
+                  placeholder="Firma adı, yapılan iş ve teslim edilen kapsam bilgisi..."
                 />
               ) : null}
             </div>
@@ -514,7 +516,7 @@ export default function FieldCompletionModal({
           <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
             <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
               <label className="block text-sm font-medium text-white" htmlFor="fieldNotes">
-                Ek saha notlari
+                Ek saha notları
               </label>
               {renderDictationButton("notes")}
             </div>
@@ -523,19 +525,19 @@ export default function FieldCompletionModal({
               value={value.notes}
               onChange={(event) => onChange({ ...value, notes: event.target.value })}
               className="min-h-[120px] border-white/10 bg-white/5 text-white placeholder:text-slate-400"
-              placeholder="Bir sonraki ziyaret icin notlar, riskler veya koordinatörun bilmesi gereken detaylar..."
+              placeholder="Bir sonraki ziyaret için notlar, riskler veya koordinatörün bilmesi gereken detaylar..."
             />
           </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-[28px] border border-white/10 bg-white/5 p-5">
           <div className="text-sm text-slate-200">
-            Gonderimle birlikte is kaydi tamamlandi durumuna cekilir ve koordinatör
-            puanlamasina hazir olur.
+            Gönderimle birlikte iş kaydı tamamlandı durumuna çekilir ve koordinatör
+            puanlamasına hazır olur.
           </div>
           <div className="flex gap-3">
             <Button type="button" variant="outline" size="lg" onClick={onClose} className="h-12">
-              Vazgec
+              Vazgeç
             </Button>
             <Button
               type="button"
@@ -544,7 +546,7 @@ export default function FieldCompletionModal({
               disabled={!canSubmit}
               className="h-12 bg-white px-6 text-marine-navy hover:bg-slate-100"
             >
-              Saha Raporunu Gonder
+              Saha Raporunu Gönder
             </Button>
           </div>
         </div>

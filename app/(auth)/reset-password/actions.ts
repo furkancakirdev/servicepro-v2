@@ -18,19 +18,19 @@ export async function completePasswordActivation(
 
   if (!currentPassword || !newPassword || !confirmPassword) {
     return {
-      error: "Tum parola alanlari zorunludur.",
+      error: "Tüm parola alanları zorunludur.",
     };
   }
 
   if (newPassword.length < 8) {
     return {
-      error: "Yeni parola en az 8 karakter olmalidir.",
+      error: "Yeni parola en az 8 karakter olmalıdır.",
     };
   }
 
   if (newPassword !== confirmPassword) {
     return {
-      error: "Yeni parola ve dogrulama alani ayni olmali.",
+      error: "Yeni parola ve doğrulama alanı aynı olmalı.",
     };
   }
 
@@ -46,7 +46,7 @@ export async function completePasswordActivation(
 
   if (!profile?.password) {
     return {
-      error: "Parola kaydi bulunamadi. Sistem yoneticisi ile iletisime gecin.",
+      error: "Parola kaydı bulunamadı. Sistem yöneticisi ile iletişime geçin.",
     };
   }
 
@@ -54,7 +54,7 @@ export async function completePasswordActivation(
 
   if (!isValid) {
     return {
-      error: "Gecerli gecici veya mevcut parola girilmedi.",
+      error: "Geçerli geçici veya mevcut parola girilmedi.",
     };
   }
 

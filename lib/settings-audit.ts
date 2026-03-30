@@ -33,7 +33,7 @@ export function buildRoleAuditLogPayload(input: {
     entityType: "USER_ROLE",
     entityId: input.userId,
     changedById: input.changedById,
-    reason: `Rol degisimi: ${input.userName} <${input.userEmail}>`,
+    reason: `Rol değişimi: ${input.userName} <${input.userEmail}>`,
     oldValues: {
       role: input.previousRole,
     },
@@ -53,7 +53,7 @@ export function buildSystemSettingAuditLogPayload(input: {
     entityType: "SYSTEM_SETTING",
     entityId: input.key,
     changedById: input.changedById,
-    reason: `Sistem ayari guncellendi: ${input.key}`,
+    reason: `Sistem ayarı güncellendi: ${input.key}`,
     oldValues: {
       value: input.previousValue,
     },
