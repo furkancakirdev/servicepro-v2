@@ -70,7 +70,7 @@ export default function ScoreResult({ result }: ScoreResultProps) {
       <div className="relative mx-auto w-full max-w-4xl space-y-6 rounded-[32px] border border-emerald-200/30 bg-emerald-500/10 p-6 text-white shadow-2xl shadow-black/30">
         <div className="space-y-3 text-center">
           <p className="text-sm font-medium uppercase tracking-[0.28em] text-emerald-200">
-            Kapanis Basarili
+            Kapanış Başarılı
           </p>
           <h2 className="flex items-center justify-center gap-3 text-4xl font-semibold">
             <Sparkles className="size-8 text-emerald-200" />
@@ -123,7 +123,7 @@ export default function ScoreResult({ result }: ScoreResultProps) {
         <div className="flex flex-wrap justify-center gap-3">
           <Link href="/jobs">
             <Button size="lg" className="h-12 bg-white text-marine-navy hover:bg-slate-100">
-              ?? Listesine Don
+              İş Listesine Dön
             </Button>
           </Link>
           <Link href="/dashboard">

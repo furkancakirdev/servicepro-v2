@@ -33,7 +33,7 @@ export default function BadgeDisplay({ badgeSummary }: BadgeDisplayProps) {
   return (
     <Card className="border-white/80 bg-white/95">
       <CardHeader>
-        <CardTitle className="text-marine-navy">Rozet g?runumu</CardTitle>
+        <CardTitle className="text-marine-navy">Rozet görünümü</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm text-slate-600">
         {badgeSummary.map((summary) => {

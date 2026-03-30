@@ -13,9 +13,9 @@ function getToastMessage(key: string | null) {
     case "boat-saved":
       return { type: "success", message: "Tekne kaydi güncellendi" };
     case "category-saved":
-      return { type: "success", message: "Kateg?ri kaydedildi" };
+      return { type: "success", message: "Kategori kaydedildi" };
     case "category-created":
-      return { type: "success", message: "Kateg?ri oluşturuldu" };
+      return { type: "success", message: "Kategori oluşturuldu" };
     case "system-saved":
       return { type: "success", message: "Sistem ayari güncellendi" };
     default:
@@ -49,7 +49,7 @@ export default function RouteToastListener() {
     }
 
     if (searchParams.get("objection") === "1") {
-      toast.success("Puan itirazi g?nderildi");
+      toast.success("Puan itirazı gönderildi");
     }
 
     if (searchParams.get("reviewed")) {

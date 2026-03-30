@@ -14,6 +14,20 @@ User: serviceproadmin
 
 Primary workflow is now server-first. Code changes should be synced directly to this server and kept current there.
 
+## Required Environment
+
+Before running `bootstrap-qnap-prod-safe.sh`, make sure the production `.env` includes:
+
+- `DATABASE_URL`
+- `AUTH_SECRET`
+- `AUTH_URL`
+- `MINIO_*`
+- `DB_PASSWORD`
+- `APP_URL`
+- `APP_DOMAIN`
+
+`docker-compose.yml` uses `APP_DOMAIN` for the Caddy reverse proxy and `AUTH_URL` / `APP_URL` should point to the same public HTTPS origin.
+
 ## Default Rule
 
 For this repository, the expected end-of-task workflow is:
@@ -52,6 +66,8 @@ These scripts do the following:
 - `npm run db:seed` overwrites real data with sample data. Never run it on the live database.
 - Prisma migrations on this server were baselined on `2026-03-26`, so `migrate deploy` now works cleanly against the existing production database.
 - The deploy scripts pin Prisma to `5.14.0` to avoid `npx` pulling Prisma 7 and breaking migration commands.
+- Reverse proxy config lives in [infra/Caddyfile](./infra/Caddyfile); `docker-compose.yml` mounts that file into the `caddy` service.
+- PWA installability requires HTTPS. Raw `http://192.168.12.11:3000` is useful for debugging, but browsers will not register the service worker there as an installable app.
 
 ## Verification
 

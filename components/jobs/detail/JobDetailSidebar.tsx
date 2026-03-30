@@ -76,7 +76,7 @@ export default function JobDetailSidebar({
     <div className="space-y-6">
       <Card className="border-white/80 bg-white/95">
         <CardHeader>
-          <CardTitle className="text-lg text-marine-navy">Operasyon Ã¶zeti</CardTitle>
+          <CardTitle className="text-lg text-marine-navy">Operasyon ?zeti</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-slate-600">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -89,7 +89,7 @@ export default function JobDetailSidebar({
 
           <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-marine-ocean">
-              Zorluk Ã§arpanÄ±
+              Zorluk ?arpan?
             </div>
             <div className="mt-2">
               <DifficultyBadge multiplier={job.multiplier} />
@@ -112,9 +112,9 @@ export default function JobDetailSidebar({
       {job.jobScores.length > 0 ? (
         <Card className="border-white/80 bg-white/95">
           <CardHeader>
-            <CardTitle className="text-lg text-marine-navy">KapanÄ±ÅŸ puan Ã¶zeti</CardTitle>
+            <CardTitle className="text-lg text-marine-navy">Kapan?? puan ?zeti</CardTitle>
             <CardDescription>
-              Kaydedilen Form-1 puanlarÄ±nÄ±n personel daÄŸÄ±lÄ±mÄ±.
+              Kaydedilen Form-1 puanlar?n?n personel da??l?m?.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-slate-600">
@@ -125,12 +125,12 @@ export default function JobDetailSidebar({
               <div className="mt-2 flex items-end justify-between gap-3">
                 <div>
                   <div className="font-medium text-marine-navy">
-                    {responsibleScore?.user.name ?? "KayÄ±t bulunamadÄ±"}
+                    {responsibleScore?.user.name ?? "Kay?t bulunamad?"}
                   </div>
                   <div className="text-xs uppercase tracking-[0.12em] text-slate-500">
                     {job.evaluation
                       ? `Base ${job.evaluation.baseScore.toFixed(1)} x ${job.multiplier}`
-                      : `Rol Ã§arpanÄ± ${responsibleScore?.roleMultiplier ?? 1}`}
+                      : `Rol ?arpan? ${responsibleScore?.roleMultiplier ?? 1}`}
                   </div>
                 </div>
                 <div className="text-2xl font-semibold text-emerald-700">
@@ -149,7 +149,7 @@ export default function JobDetailSidebar({
                     <div>
                       <div className="font-medium text-marine-navy">{score.user.name}</div>
                       <div className="text-xs uppercase tracking-[0.12em] text-slate-500">
-                        Destek rolÃ¼ x{score.roleMultiplier}
+                        Destek rol? x{score.roleMultiplier}
                       </div>
                     </div>
                     <div className="font-semibold text-marine-navy">
@@ -168,7 +168,7 @@ export default function JobDetailSidebar({
           <CardHeader>
             <CardTitle className="text-lg text-marine-navy">Puanlamaya itiraz et</CardTitle>
             <CardDescription>
-              KapanÄ±ÅŸtan sonraki 30 gÃ¼n iÃ§inde Form-1 puanlamasÄ± iÃ§in inceleme talep
+              Kapan??tan sonraki 30 g?n i?inde Form-1 puanlamas? i?in inceleme talep
               edebilirsiniz.
             </CardDescription>
           </CardHeader>
@@ -180,11 +180,11 @@ export default function JobDetailSidebar({
                 required
                 minLength={10}
                 rows={4}
-                placeholder="Neyi dÃ¼zeltmemizi istediÄŸinizi kÄ±saca aÃ§Ä±klayÄ±n."
+                placeholder="Neyi d?zeltmemizi istedi?inizi k?saca a??klay?n."
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition-colors focus:border-marine-ocean"
               />
               <Button type="submit" variant="outline" className="h-12 w-full">
-                Puanlamaya Ä°tiraz Et
+                Puanlamaya ?tiraz Et
               </Button>
             </form>
           </CardContent>
@@ -194,9 +194,9 @@ export default function JobDetailSidebar({
       {canSendClientNotification ? (
         <Card className="border-white/80 bg-white/95">
           <CardHeader>
-            <CardTitle className="text-lg text-marine-navy">Randevu bildirimi gÃ¶nder</CardTitle>
+            <CardTitle className="text-lg text-marine-navy">Randevu bildirimi gönder</CardTitle>
             <CardDescription>
-              Ä°rtibat kiÅŸinin dil tercihine gÃ¶re WhatsApp ÅŸablonu hazÄ±rlanÄ±r.
+              İrtibat kişinin dil tercihine göre WhatsApp şablonu hazırlanır.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -208,7 +208,7 @@ export default function JobDetailSidebar({
                   rel="noreferrer"
                   className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-700"
                 >
-                  Randevu Bildirimi GÃ¶nder
+                  Randevu Bildirimi G?nder
                 </a>
               </div>
             ) : null}
@@ -252,16 +252,16 @@ export default function JobDetailSidebar({
         <CardContent className="space-y-4 text-sm text-slate-600">
           {!canManageJob && !canSubmitFieldReport ? (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              Bu kaydÄ±n operasyon aksiyonlarÄ± yalnÄ±zca atanmÄ±ÅŸ teknisyen veya koordinatÃ¶r
-              tarafÄ±ndan yÃ¶netilebilir.
+              Bu kayd?n operasyon aksiyonlar? yaln?zca atanm?? teknisyen veya koordinat?r
+              taraf?ndan y?netilebilir.
             </div>
           ) : null}
 
           {canManageJob && job.status === JobStatus.KESIF ? (
             <>
               <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 px-4 py-3">
-                KeÅŸif kaydÄ± Ã¶nce randevuya alÄ±nabilir, gerekirse aynÄ± ekrandan normal iÅŸe
-                dÃ¶nÃ¼ÅŸtÃ¼rÃ¼lebilir.
+                Ke?if kayd? ?nce randevuya al?nabilir, gerekirse ayn? ekrandan normal i?e
+                d?n??t?r?lebilir.
               </div>
 
               <form action={updateJobStatusAction}>
@@ -277,7 +277,7 @@ export default function JobDetailSidebar({
                 <input type="hidden" name="newStatus" value={JobStatus.PLANLANDI} />
                 <input type="hidden" name="convertKesif" value="true" />
                 <Button type="submit" size="lg" variant="outline" className="h-12 w-full">
-                  Ä°ÅŸe DÃ¶nÃ¼ÅŸtÃ¼r
+                  ??e D?n??t?r
                 </Button>
               </form>
             </>
@@ -288,7 +288,7 @@ export default function JobDetailSidebar({
               <input type="hidden" name="jobId" value={job.id} />
               <input type="hidden" name="newStatus" value={JobStatus.DEVAM_EDIYOR} />
               <Button type="submit" size="lg" className={primaryButtonClass}>
-                BaÅŸlat
+                Ba?lat
               </Button>
             </form>
           ) : null}
@@ -323,7 +323,7 @@ export default function JobDetailSidebar({
                       className="mb-2 block text-sm font-medium text-marine-navy"
                       htmlFor="reminderDays"
                     >
-                      HatÄ±rlatma gÃ¼nÃ¼
+                      Hat?rlatma g?n?
                     </label>
                     <input
                       id="reminderDays"
@@ -344,8 +344,8 @@ export default function JobDetailSidebar({
               {canSubmitFieldReport ? (
                 <div className="rounded-2xl border border-marine-ocean/20 bg-marine-ocean/5 p-4">
                   <p className="mb-3 text-sm text-slate-600">
-                    Saha personeli bu iÅŸi kapatmadan Ã¶nce sadece saha raporunu ve gÃ¶rselleri
-                    gÃ¶nderir. Form-1 puanlamasÄ± koordinatÃ¶r tarafÄ±nda yapÄ±lÄ±r.
+                    Saha personeli bu işi kapatmadan önce sadece saha raporunu ve görselleri
+                    gönderir. Form-1 puanlaması koordinatör tarafında yapılır.
                   </p>
                   <FieldReportFlow
                     jobId={job.id}
@@ -371,16 +371,16 @@ export default function JobDetailSidebar({
 
           {job.status === JobStatus.TAMAMLANDI && !job.deliveryReport ? (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-              Ä°ÅŸ tamamlandÄ± ancak saha raporu gelmedi. Nihai puanlama iÃ§in Ã¶nce teknisyen
-              tarafÄ±ndan saha raporu gÃ¶nderilmelidir.
+              ?? tamamland? ancak saha raporu gelmedi. Nihai puanlama i?in ?nce teknisyen
+              tarafından saha raporu gönderilmelidir.
             </div>
           ) : null}
 
           {isPendingEvaluation ? (
             <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm text-slate-600">
-                Saha raporu alÄ±ndÄ±. KoordinatÃ¶r saha gÃ¶rsellerini inceleyip Form-1
-                puanlamasÄ±nÄ± tamamladÄ±ktan sonra iÅŸ kapanacaktÄ±r.
+                Saha raporu alındı. Koordinatör saha görsellerini inceleyip Form-1
+                puanlamas?n? tamamlad?ktan sonra i? kapanacakt?r.
               </p>
               {canEvaluateAndClose && fieldReport ? (
                 <CoordinatorEvaluationFlow
@@ -397,13 +397,13 @@ export default function JobDetailSidebar({
           job.evaluation &&
           job.jobScores.length > 0 ? (
             <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-              Form-1 puanlama tamamlandÄ± ve iÅŸ resmi olarak kapatÄ±ldÄ±.
+              Form-1 puanlama tamamland? ve i? resmi olarak kapat?ld?.
             </div>
           ) : null}
 
           {!promptThreeActionStatuses.includes(job.status) && job.status !== JobStatus.KAPANDI ? (
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              Bu iÅŸ durumu iÃ§in ek aksiyon yok.
+              Bu i? durumu i?in ek aksiyon yok.
             </div>
           ) : null}
         </CardContent>

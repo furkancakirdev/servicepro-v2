@@ -28,7 +28,7 @@ export default function ScoreboardPeriodPicker({
         router.push(`${pathname}?${params.toString()}`);
       }}
       className="h-11 rounded-xl border border-marine-ocean/20 bg-white px-4 text-sm font-medium text-marine-navy outline-none transition-colors focus:border-marine-ocean focus:ring-2 focus:ring-marine-ocean/20"
-      aria-label="Ay ve y?l sec"
+      aria-label="Ay ve yıl seç"
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>

@@ -123,7 +123,7 @@ export async function saveWorkshopEvaluationsAction(
       error:
         error instanceof Error
           ? error.message
-          : "Usta değerlendirmesi kaydedilirken beklenmeyen bir hata olu?tu.",
+          : "Usta değerlendirmesi kaydedilirken beklenmeyen bir hata oluştu.",
     };
   }
 }
@@ -193,7 +193,7 @@ export async function saveCoordinatorEvaluationsAction(
       error:
         error instanceof Error
           ? error.message
-          : "Koordinatör değerlendirmesi kaydedilirken beklenmeyen bir hata olu?tu.",
+          : "Koordinatör değerlendirmesi kaydedilirken beklenmeyen bir hata oluştu.",
     };
   }
 }
