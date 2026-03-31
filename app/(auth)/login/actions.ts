@@ -6,13 +6,14 @@ import { redirect } from "next/navigation";
 import type { LoginActionState } from "@/app/(auth)/login/state";
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { getPostLoginRedirectPath } from "@/lib/auth-flows";
+import { normalizeEmailAddress } from "@/lib/email";
 import { signIn } from "@/lib/next-auth";
 
 export async function login(
   _prevState: LoginActionState,
   formData: FormData
 ): Promise<LoginActionState> {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const email = normalizeEmailAddress(String(formData.get("email") ?? ""));
   const password = String(formData.get("password") ?? "");
   const nextPath = String(formData.get("next") ?? "/").trim();
   const safeNextPath =

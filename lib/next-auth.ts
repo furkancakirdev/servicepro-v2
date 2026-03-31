@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 
 import { authConfig } from "@/lib/auth.config";
+import { normalizeEmailAddress } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -17,7 +18,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: {},
       },
       async authorize(credentials) {
-        const email = String(credentials?.email ?? "").trim().toLowerCase();
+        const email = normalizeEmailAddress(String(credentials?.email ?? ""));
         const password = String(credentials?.password ?? "");
 
         if (!email || !password) {

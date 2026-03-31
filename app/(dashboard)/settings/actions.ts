@@ -11,6 +11,7 @@ import { requireRoles } from "@/lib/auth";
 import { calculateMonthlyBadges } from "@/lib/badges";
 import { parseSettingsTab, type SettingsTabValue } from "@/components/settings/shared";
 import { prisma } from "@/lib/prisma";
+import { normalizeEmailAddress } from "@/lib/email";
 import {
   buildRoleAuditLogPayload,
   buildSystemSettingAuditLogPayload,
@@ -195,7 +196,7 @@ export async function createPersonnelAction(formData: FormData) {
 
   const parsed = createPersonnelSchema.safeParse({
     name: formData.get("name"),
-    email: formData.get("email"),
+    email: normalizeEmailAddress(String(formData.get("email") ?? "")),
     role: formData.get("role"),
   });
 
